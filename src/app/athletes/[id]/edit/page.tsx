@@ -2,7 +2,7 @@
 import AthleteForm from '@/components/AthleteForm';
 import Link from 'next/link';
 // Importa le utility necessarie da @supabase/ssr e next/headers
-import { createServerClient, type CookieOptions } from '@supabase/ssr';
+import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers'; // L'import rimane lo stesso
 import { redirect } from 'next/navigation';
 import type { Athlete } from '@/app/athletes/page';
@@ -38,23 +38,14 @@ export default async function EditAthletePage({ params }: EditAthletePageProps) 
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        get(name: string) {
-          return cookieStore.get(name)?.value;
+        getAll() {
+          return cookieStore.getAll();
         },
-        set(name: string, value: string, options: CookieOptions) {
-          try {
-            cookieStore.set({ name, value, ...options });
-          } catch (error) {
-            console.warn(`WARN (edit-athlete): Supabase client tried to set cookie '${name}' from a Server Component.`);
+        setAll(cookiesToSet) {
+          if (cookiesToSet.length > 0) {
+            console.warn(`(Server Component at athletes/[id]/edit/page.tsx) Attempted to set cookies via setAll: ${cookiesToSet.map(c => c.name).join(', ')}. This operation has no effect here and should be handled by middleware.`);
           }
-        },
-        remove(name: string, options: CookieOptions) {
-          try {
-            cookieStore.set({ name, value: '', ...options });
-          } catch (error) {
-            console.warn(`WARN (edit-athlete): Supabase client tried to remove cookie '${name}' from a Server Component.`);
-          }
-        },
+        }
       },
     }
   );

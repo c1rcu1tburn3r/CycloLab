@@ -1,6 +1,7 @@
 // src/middleware.ts
-import { createServerClient, type CookieOptions } from '@supabase/ssr';
+import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
+import type { ResponseCookie } from 'next/dist/compiled/@edge-runtime/cookies';
 
 export async function middleware(req: NextRequest) {
   console.log(`\n--- SUPABASE MIDDLEWARE START FOR: ${req.nextUrl.pathname} ---\n`);
@@ -14,20 +15,17 @@ export async function middleware(req: NextRequest) {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        get(name: string) {
-          console.log(`Middleware Cookie GET: ${name}`);
-          return req.cookies.get(name)?.value;
+        getAll() {
+          console.log('Middleware Cookie getAll');
+          return req.cookies.getAll();
         },
-        set(name: string, value: string, options: CookieOptions) {
-          console.log(`Middleware Cookie SET: ${name}, Value: ${value.substring(0,15)}...`);
-          req.cookies.set({ name, value, ...options });
-          res.cookies.set({ name, value, ...options });
-        },
-        remove(name: string, options: CookieOptions) {
-          console.log(`Middleware Cookie REMOVE: ${name}`);
-          req.cookies.set({ name, value: '', ...options });
-          res.cookies.set({ name, value: '', ...options });
-        },
+        setAll(cookiesToSet: ResponseCookie[]) {
+          console.log('Middleware Cookie setAll:', cookiesToSet.map(c => c.name));
+          cookiesToSet.forEach((cookie) => {
+            req.cookies.set(cookie);
+            res.cookies.set(cookie);
+          });
+        }
       },
     }
   );
