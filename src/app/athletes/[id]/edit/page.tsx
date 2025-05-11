@@ -1,14 +1,15 @@
 // src/app/athletes/[id]/edit/page.tsx
 import AthleteForm from '@/components/AthleteForm';
 import Link from 'next/link';
-import { createServerComponentClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
+// Importa le utility necessarie da @supabase/ssr e next/headers
+import { createServerClient, type CookieOptions } from '@supabase/ssr';
+import { cookies } from 'next/headers'; // L'import rimane lo stesso
 import { redirect } from 'next/navigation';
-import type { Athlete } from '@/app/athletes/page'; // Riutilizziamo l'interfaccia
+import type { Athlete } from '@/app/athletes/page';
 
 interface EditAthletePageProps {
   params: {
-    id: string; // L'ID dell'atleta dall'URL
+    id: string;
   };
 }
 
@@ -17,19 +18,46 @@ async function getAthleteById(supabaseClient: any, athleteId: string, userId: st
     .from('athletes')
     .select('*')
     .eq('id', athleteId)
-    .eq('user_id', userId) // Assicura che il coach possa modificare solo i propri atleti
-    .single(); // Ci aspettiamo un solo risultato
+    .eq('user_id', userId)
+    .single();
 
   if (error) {
     console.error('Errore nel recuperare l_atleta per la modifica:', error.message);
     return null;
   }
-  return data;
+  return data as Athlete | null;
 }
 
 export default async function EditAthletePage({ params }: EditAthletePageProps) {
-  const supabase = createServerComponentClient({ cookies });
+  // USA AWAIT QUI, perché TypeScript nel tuo ambiente pensa che cookies() sia async
+  const cookieStore = await cookies();
   const { id: athleteId } = params;
+
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        get(name: string) {
+          return cookieStore.get(name)?.value;
+        },
+        set(name: string, value: string, options: CookieOptions) {
+          try {
+            cookieStore.set({ name, value, ...options });
+          } catch (error) {
+            console.warn(`WARN (edit-athlete): Supabase client tried to set cookie '${name}' from a Server Component.`);
+          }
+        },
+        remove(name: string, options: CookieOptions) {
+          try {
+            cookieStore.set({ name, value: '', ...options });
+          } catch (error) {
+            console.warn(`WARN (edit-athlete): Supabase client tried to remove cookie '${name}' from a Server Component.`);
+          }
+        },
+      },
+    }
+  );
 
   const { data: { user }, error: userError } = await supabase.auth.getUser();
 
@@ -40,8 +68,6 @@ export default async function EditAthletePage({ params }: EditAthletePageProps) 
   const athleteToEdit = await getAthleteById(supabase, athleteId, user.id);
 
   if (!athleteToEdit) {
-    // Atleta non trovato o non appartenente all'utente
-    // Potresti mostrare una pagina 404 o un messaggio di errore
     return (
       <div className="text-center py-10">
         <h1 className="text-2xl font-bold text-red-600">Atleta non trovato</h1>
@@ -66,10 +92,9 @@ export default async function EditAthletePage({ params }: EditAthletePageProps) 
           Torna alla lista atleti
         </Link>
       </div>
-      {/* Passiamo i dati iniziali dell'atleta al form */}
       <AthleteForm initialData={athleteToEdit} />
     </div>
   );
 }
 
-export const dynamic = 'force-dynamic'; // Assicura che i dati siano sempre freschi
+export const dynamic = 'force-dynamic';

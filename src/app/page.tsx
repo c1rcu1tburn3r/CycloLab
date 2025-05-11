@@ -1,11 +1,41 @@
 // src/app/page.tsx
 import Link from 'next/link';
-import { createServerComponentClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
+
+// Importa le utility necessarie da @supabase/ssr e next/headers
+import { createServerClient, type CookieOptions } from '@supabase/ssr';
+import { cookies } from 'next/headers'; // L'import rimane lo stesso
 
 export default async function HomePage() {
-  const cookieStore = cookies();
-  const supabase = createServerComponentClient({ cookies: () => cookieStore });
+  // USA AWAIT QUI, perché TypeScript nel tuo ambiente pensa che cookies() sia async
+  const cookieStore = await cookies();
+
+  // Inizializza il client Supabase usando createServerClient da @supabase/ssr
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        get(name: string) {
+          return cookieStore.get(name)?.value;
+        },
+        set(name: string, value: string, options: CookieOptions) {
+          try {
+            cookieStore.set({ name, value, ...options });
+          } catch (error) {
+            console.warn(`WARN (page): Supabase client tried to set cookie '${name}' from a Server Component. This is usually handled by middleware.`);
+          }
+        },
+        remove(name: string, options: CookieOptions) {
+          try {
+            cookieStore.set({ name, value: '', ...options });
+          } catch (error) {
+            console.warn(`WARN (page): Supabase client tried to remove cookie '${name}' from a Server Component. This is usually handled by middleware.`);
+          }
+        },
+      },
+    }
+  );
+
   const { data: { session } } = await supabase.auth.getSession();
 
   return (

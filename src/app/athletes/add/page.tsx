@@ -1,20 +1,45 @@
 // src/app/athletes/add/page.tsx
 import AthleteForm from '@/components/AthleteForm';
 import Link from 'next/link';
-import { createServerComponentClient } from '@supabase/auth-helpers-nextjs'; // Helper corretto
-import { cookies } from 'next/headers'; // Importa cookies da next/headers
+// Importa le utility necessarie da @supabase/ssr e next/headers
+import { createServerClient, type CookieOptions } from '@supabase/ssr';
+import { cookies } from 'next/headers'; // L'import rimane lo stesso
 import { redirect } from 'next/navigation';
 
 export default async function AddAthletePage() {
-  // Crea il client Supabase per Server Components, passando la funzione cookies
-  const supabase = createServerComponentClient({ cookies });
+  // USA AWAIT QUI
+  const cookieStore = await cookies();
 
-  // Usa getUser() per ottenere l'utente autenticato dal server Supabase
+  // Inizializza il client Supabase usando createServerClient da @supabase/ssr
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        get(name: string) {
+          return cookieStore.get(name)?.value;
+        },
+        set(name: string, value: string, options: CookieOptions) {
+          try {
+            cookieStore.set({ name, value, ...options });
+          } catch (error) {
+            console.warn(`WARN (add athlete page): Supabase client tried to set cookie '${name}' from a Server Component.`);
+          }
+        },
+        remove(name: string, options: CookieOptions) {
+          try {
+            cookieStore.set({ name, value: '', ...options });
+          } catch (error) {
+            console.warn(`WARN (add athlete page): Supabase client tried to remove cookie '${name}' from a Server Component.`);
+          }
+        },
+      },
+    }
+  );
+
   const { data: { user }, error: userError } = await supabase.auth.getUser();
 
   if (userError || !user) {
-    // Se c'è un errore o l'utente non è trovato (non autenticato), reindirizza al login
-    // console.error('AddAthletePage: Utente non autenticato o errore nel recupero sessione.', userError);
     redirect('/auth/login');
   }
 
@@ -29,10 +54,9 @@ export default async function AddAthletePage() {
           Torna alla lista atleti
         </Link>
       </div>
-      <AthleteForm /> {/* Il form non ha initialData qui perché è per l'aggiunta */}
+      <AthleteForm />
     </div>
   );
 }
 
-// Potrebbe essere utile rendere anche questa pagina dinamica se ci fossero problemi di caching
 // export const dynamic = 'force-dynamic';

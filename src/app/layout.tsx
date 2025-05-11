@@ -3,8 +3,11 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import Link from "next/link";
 import "./globals.css";
-import { createServerComponentClient } from "@supabase/auth-helpers-nextjs"; // Helper corretto
-import { cookies } from "next/headers"; // Importa cookies direttamente
+
+// Importa le utility necessarie da @supabase/ssr e next/headers
+import { createServerClient, type CookieOptions } from '@supabase/ssr';
+import { cookies } from 'next/headers'; // L'import rimane lo stesso
+
 import LogoutButtonClient from "@/components/LogoutButtonClient";
 
 const inter = Inter({ subsets: ["latin"] });
@@ -14,19 +17,41 @@ export const metadata: Metadata = {
   description: "Gestione Atleti e Allenamenti",
 };
 
-export default async function RootLayout({ // La funzione deve essere async
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  // Crea il client Supabase per Server Components, passando la funzione cookies direttamente
-  const supabase = createServerComponentClient({ cookies });
+  // USA AWAIT QUI, perché TypeScript nel tuo ambiente pensa che cookies() sia async
+  const cookieStore = await cookies();
 
-  // Usa getUser() per ottenere l'utente. Se l'utente non è loggato, user sarà null.
-  // Non c'è bisogno di un reindirizzamento qui perché il layout deve sempre essere renderizzato.
-  // Il middleware gestisce i reindirizzamenti per le pagine protette.
-  // Qui vogliamo solo sapere se c'è una sessione per mostrare i link corretti.
-  const { data: { user } } = await supabase.auth.getUser(); // Usiamo user per controllare se c'è una sessione attiva
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        get(name: string) {
+          return cookieStore.get(name)?.value;
+        },
+        set(name: string, value: string, options: CookieOptions) {
+          try {
+            cookieStore.set({ name, value, ...options });
+          } catch (error) {
+            console.warn(`WARN (layout): Supabase client tried to set cookie '${name}' from a Server Component. This is usually handled by middleware.`);
+          }
+        },
+        remove(name: string, options: CookieOptions) {
+          try {
+            cookieStore.set({ name, value: '', ...options });
+          } catch (error) {
+            console.warn(`WARN (layout): Supabase client tried to remove cookie '${name}' from a Server Component. This is usually handled by middleware.`);
+          }
+        },
+      },
+    }
+  );
+
+  const { data: { user } } = await supabase.auth.getUser();
 
   return (
     <html lang="it">
@@ -37,12 +62,12 @@ export default async function RootLayout({ // La funzione deve essere async
               CyclingApp
             </Link>
             <div className="space-x-4 flex items-center">
-              {user ? ( // Controlla direttamente user invece di session
+              {user ? (
                 <>
                   <Link href="/athletes" className="hover:text-slate-300">
                     Atleti
                   </Link>
-                  {user.email && ( // Verifica che user.email esista
+                  {user.email && (
                     <span className="text-sm text-slate-300 hidden sm:inline">
                       {user.email.split('@')[0]}
                     </span>

@@ -1,11 +1,11 @@
 // src/app/athletes/page.tsx
 import Link from 'next/link';
-import { createServerComponentClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
+// Importa le utility necessarie da @supabase/ssr e next/headers
+import { createServerClient, type CookieOptions } from '@supabase/ssr';
+import { cookies } from 'next/headers'; // L'import rimane lo stesso
 import { redirect } from 'next/navigation';
-import DeleteAthleteButton from '../../components/DeleteAthleteButton'; // Importiamo già il componente per il delete
+import DeleteAthleteButton from '../../components/DeleteAthleteButton';
 
-// Interfaccia Athlete (assicurati che corrisponda alla tua tabella)
 export interface Athlete {
   id: string;
   created_at: string;
@@ -19,7 +19,6 @@ export interface Athlete {
   avatar_url?: string | null;
 }
 
-// Funzione per recuperare gli atleti
 async function getAthletesForCurrentUser(supabaseClient: any, userId: string): Promise<Athlete[]> {
   const { data, error } = await supabaseClient
     .from('athletes')
@@ -35,7 +34,6 @@ async function getAthletesForCurrentUser(supabaseClient: any, userId: string): P
   return data || [];
 }
 
-// Funzione per calcolare l'età
 const calculateAge = (birthDateString: string): number | string => {
   if (!birthDateString) return 'N/D';
   const birthDate = new Date(birthDateString);
@@ -49,7 +47,36 @@ const calculateAge = (birthDateString: string): number | string => {
 };
 
 export default async function AthletesPage() {
-  const supabase = createServerComponentClient({ cookies });
+  // USA AWAIT QUI
+  const cookieStore = await cookies();
+
+  // Inizializza il client Supabase usando createServerClient da @supabase/ssr
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        get(name: string) {
+          return cookieStore.get(name)?.value;
+        },
+        set(name: string, value: string, options: CookieOptions) {
+          try {
+            cookieStore.set({ name, value, ...options });
+          } catch (error) {
+            console.warn(`WARN (athletes page): Supabase client tried to set cookie '${name}' from a Server Component.`);
+          }
+        },
+        remove(name: string, options: CookieOptions) {
+          try {
+            cookieStore.set({ name, value: '', ...options });
+          } catch (error) {
+            console.warn(`WARN (athletes page): Supabase client tried to remove cookie '${name}' from a Server Component.`);
+          }
+        },
+      },
+    }
+  );
+
   const { data: { user }, error: userError } = await supabase.auth.getUser();
 
   if (userError || !user) {
@@ -63,7 +90,7 @@ export default async function AthletesPage() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <h1 className="text-2xl sm:text-3xl font-bold text-slate-800">I Tuoi Atleti</h1>
         <Link
-          href="/athletes/add"
+          href="/athletes/add" // Assicurati che questa rotta esista e sia corretta
           className="bg-green-600 hover:bg-green-700 text-white font-semibold py-2.5 px-5 rounded-lg shadow-md hover:shadow-lg transition-all duration-150 text-sm"
         >
           + Aggiungi Atleta
@@ -101,7 +128,6 @@ export default async function AthletesPage() {
                   <p><strong>Peso:</strong> {athlete.weight_kg ? `${athlete.weight_kg} kg` : 'N/D'}</p>
                 </div>
               </div>
-              {/* SEZIONE MODIFICATA PER INCLUDERE LINK MODIFICA E DELETEBUTTON */}
               <div className="mt-4 pt-3 border-t border-slate-200 text-center flex flex-col space-y-2 sm:space-y-0 sm:flex-row sm:justify-around sm:items-center">
                 <Link
                     href={`/athletes/${athlete.id}/edit`}
@@ -110,8 +136,6 @@ export default async function AthletesPage() {
                     Modifica
                 </Link>
                 <DeleteAthleteButton athlete={athlete} />
-                {/* Potresti aggiungere un link per i dettagli/attività qui se vuoi */}
-                {/* <Link href={`/athletes/${athlete.id}`} className="text-xs text-indigo-600 hover:text-indigo-800 font-medium py-1 px-3">Dettagli</Link> */}
               </div>
             </div>
           ))}

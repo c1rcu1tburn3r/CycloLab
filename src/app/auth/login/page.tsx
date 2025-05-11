@@ -4,11 +4,16 @@
 import { useState, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+// Importa createBrowserClient da @supabase/ssr
+import { createBrowserClient } from '@supabase/ssr';
 
 export default function LoginPage() {
   const router = useRouter();
-  const supabase = createClientComponentClient();
+  // Inizializza il client Supabase per il browser
+  const supabase = createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  );
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -29,8 +34,12 @@ export default function LoginPage() {
     if (signInError) {
       setError(signInError.message);
     } else {
-      router.push('/athletes');
-      router.refresh();
+      // Il middleware dovrebbe gestire il reindirizzamento se il login ha successo
+      // e l'utente prova ad accedere a /auth/login.
+      // Qui potremmo semplicemente fare un refresh per assicurarci che il layout
+      // e il middleware ricarichino lo stato corretto, oppure reindirizzare a una pagina specifica.
+      router.push('/athletes'); // Reindirizza alla dashboard principale dopo il login
+      router.refresh(); // Importante per far sì che i Server Components ricarichino lo stato utente
     }
   };
 

@@ -4,11 +4,16 @@
 import { useState, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+// Importa createBrowserClient da @supabase/ssr
+import { createBrowserClient } from '@supabase/ssr';
 
 export default function SignupPage() {
   const router = useRouter();
-  const supabase = createClientComponentClient();
+  // Inizializza il client Supabase per il browser
+  const supabase = createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  );
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -37,13 +42,24 @@ export default function SignupPage() {
       return;
     }
 
-    const origin = typeof window !== 'undefined' ? window.location.origin : '';
+    // Assicurati che window sia definito prima di accedere a window.location.origin
+    // Questo è importante perché il codice client potrebbe essere pre-renderizzato sul server
+    // anche se è marcato con 'use client'.
+    const origin = typeof window !== 'undefined' && window.location.origin ? window.location.origin : '';
+    if (!origin && process.env.NODE_ENV === 'development') {
+        console.warn("Impossibile determinare l'origine per emailRedirectTo. Assicurati che NEXT_PUBLIC_SITE_URL sia configurata se non in un contesto browser.");
+        // Potresti voler impostare un fallback o un errore se l'origine non è determinabile
+        // e emailRedirectTo è cruciale. Per ora, procediamo sperando che Supabase usi le impostazioni di default.
+    }
+
 
     const { data, error: signUpError } = await supabase.auth.signUp({
       email,
       password,
       options: {
-        emailRedirectTo: `${origin}/auth/callback`,
+        // È buona pratica usare una variabile d'ambiente per l'URL del sito in produzione
+        // e fornire un fallback per lo sviluppo se window.location.origin non è affidabile.
+        emailRedirectTo: origin ? `${origin}/auth/callback` : undefined,
       },
     });
 
@@ -52,15 +68,28 @@ export default function SignupPage() {
     if (signUpError) {
       setError(signUpError.message);
     } else {
+      // Controlla il tipo di utente restituito da Supabase dopo signUp
+      // data.user sarà null se la conferma email è richiesta e non ancora avvenuta
+      // data.session sarà null fino alla conferma dell'email
       if (data.user && data.user.identities && data.user.identities.length > 0 && !data.user.email_confirmed_at) {
+         // Questo caso è quando la conferma email è abilitata in Supabase
          setMessage("Registrazione quasi completata! Controlla la tua email (anche la cartella spam) per confermare l'account.");
-      } else if (data.user) {
+      } else if (data.user && data.user.email_confirmed_at) {
+         // Questo caso è quando la conferma email NON è abilitata (o l'utente è già confermato, meno probabile qui)
          setMessage("Registrazione completata! Sarai reindirizzato al login tra pochi secondi...");
          setTimeout(() => {
-           router.push('/auth/login');
-         }, 3000); // Reindirizza dopo 3 secondi
-      } else {
-        setError("Si è verificato un problema durante la registrazione. Riprova.");
+           router.push('/auth/login'); // Reindirizza dopo che il messaggio è stato mostrato
+         }, 3000);
+      } else if (!data.user && !data.session) {
+         // Caso in cui la conferma email è richiesta ma l'utente non è stato creato (potrebbe succedere se l'email esiste già ma non è confermata)
+         // o se la registrazione è fallita silenziosamente dopo il controllo di `signUpError`.
+         // Il messaggio di Supabase potrebbe essere più specifico.
+         setMessage("Registrazione quasi completata! Controlla la tua email per confermare l'account. Se non la ricevi, l'email potrebbe essere già in uso o esserci un problema.");
+      }
+      else {
+        // Fallback generico
+        setError("Si è verificato un problema durante la registrazione. Riprova o contatta il supporto se il problema persiste.");
+        console.error("Registrazione anomala, data:", data);
       }
     }
   };
