@@ -1,8 +1,9 @@
 // src/app/athletes/page.tsx
 import Link from 'next/link';
-import { createServerComponentClient } from '@supabase/auth-helpers-nextjs'; // Helper corretto
-import { cookies } from 'next/headers'; // Importa cookies da next/headers
+import { createServerComponentClient } from '@supabase/auth-helpers-nextjs';
+import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
+import DeleteAthleteButton from '../../components/DeleteAthleteButton'; // Importiamo già il componente per il delete
 
 // Interfaccia Athlete (assicurati che corrisponda alla tua tabella)
 export interface Athlete {
@@ -48,20 +49,13 @@ const calculateAge = (birthDateString: string): number | string => {
 };
 
 export default async function AthletesPage() {
-  // Crea il client Supabase per Server Components, passando la funzione cookies
   const supabase = createServerComponentClient({ cookies });
-
-  // Usa getUser() per ottenere l'utente autenticato dal server Supabase
-  // Questo è più sicuro di getSession() per i Server Components
   const { data: { user }, error: userError } = await supabase.auth.getUser();
 
   if (userError || !user) {
-    // Se c'è un errore o l'utente non è trovato (non autenticato), reindirizza al login
-    // console.error('AthletesPage: Utente non autenticato o errore nel recupero sessione.', userError);
     redirect('/auth/login');
   }
 
-  // Se l'utente è autenticato, recupera i suoi atleti
   const athletes = await getAthletesForCurrentUser(supabase, user.id);
 
   return (
@@ -107,8 +101,17 @@ export default async function AthletesPage() {
                   <p><strong>Peso:</strong> {athlete.weight_kg ? `${athlete.weight_kg} kg` : 'N/D'}</p>
                 </div>
               </div>
-              <div className="mt-4 pt-3 border-t border-slate-200 text-center">
-                <span className="text-xs text-slate-400">(Dettagli e attività prossimamente)</span>
+              {/* SEZIONE MODIFICATA PER INCLUDERE LINK MODIFICA E DELETEBUTTON */}
+              <div className="mt-4 pt-3 border-t border-slate-200 text-center flex flex-col space-y-2 sm:space-y-0 sm:flex-row sm:justify-around sm:items-center">
+                <Link
+                    href={`/athletes/${athlete.id}/edit`}
+                    className="text-xs text-blue-600 hover:text-blue-800 font-medium py-1 px-3 rounded-md hover:bg-blue-50 transition-colors"
+                >
+                    Modifica
+                </Link>
+                <DeleteAthleteButton athlete={athlete} />
+                {/* Potresti aggiungere un link per i dettagli/attività qui se vuoi */}
+                {/* <Link href={`/athletes/${athlete.id}`} className="text-xs text-indigo-600 hover:text-indigo-800 font-medium py-1 px-3">Dettagli</Link> */}
               </div>
             </div>
           ))}
