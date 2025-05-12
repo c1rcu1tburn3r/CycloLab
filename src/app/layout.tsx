@@ -34,9 +34,7 @@ export default async function RootLayout({
           return cookieStore.getAll();
         },
         setAll(cookiesToSet) {
-          if (cookiesToSet.length > 0) {
-            console.warn(`(Server Component at layout.tsx) Attempted to set cookies via setAll: ${cookiesToSet.map(c => c.name).join(', ')}. This operation has no effect here and should be handled by middleware.`);
-          }
+          // Il console.warn è stato rimosso qui
         }
       },
     }
