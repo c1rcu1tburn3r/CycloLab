@@ -56,6 +56,9 @@ export default async function RootLayout({
                   <Link href="/athletes" className="hover:text-slate-300">
                     Atleti
                   </Link>
+                  <Link href="/activities" className="hover:text-slate-300">
+                    Attività
+                  </Link>
                   {user.email && (
                     <span className="text-sm text-slate-300 hidden sm:inline">
                       {user.email.split('@')[0]}
