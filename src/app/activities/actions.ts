@@ -185,47 +185,66 @@ export async function processAndCreateActivity(
         record.position_long !== null
       );
       
-      console.log(`[Server Action] Trovati ${validRecords.length} punti GPS validi`);
+      // console.log(`[Server Action] Trovati ${validRecords.length} punti GPS validi`);
+      // // DEBUG: Log dei primi record grezzi
+      // if (validRecords.length > 0) {
+      //   console.log('[Server Action DEBUG] Primi 5 record GPS grezzi (pre-conversione):', JSON.stringify(validRecords.slice(0, 5).map(r => ({ lat: r.position_lat, lon: r.position_long, alt: r.altitude, time: r.timestamp }))));
+      // }
       
       if (validRecords.length > 0) {
         // Estrai coordinate di inizio e fine
         const firstRecord = validRecords[0];
         const lastRecord = validRecords[validRecords.length - 1];
         
-        // Converti dalle coordinate semicircolari a coordinate decimali
-        // Le coordinate nei file FIT sono spesso in formato semicircolare e necessitano di conversione
         const convertSemicircleToDecimal = (semicircle: number): number => {
           return semicircle * (180 / Math.pow(2, 31));
         };
         
         if (firstRecord.position_lat && firstRecord.position_long) {
-          startLat = convertSemicircleToDecimal(firstRecord.position_lat);
-          startLon = convertSemicircleToDecimal(firstRecord.position_long);
+          // Se i valori sono già decimali (es. tra -90/90 e -180/180), non convertirli
+          if (Math.abs(firstRecord.position_lat) <= 90 && Math.abs(firstRecord.position_long) <= 180) {
+            startLat = firstRecord.position_lat;
+            startLon = firstRecord.position_long;
+          } else {
+            startLat = convertSemicircleToDecimal(firstRecord.position_lat);
+            startLon = convertSemicircleToDecimal(firstRecord.position_long);
+          }
         }
         
         if (lastRecord.position_lat && lastRecord.position_long) {
-          endLat = convertSemicircleToDecimal(lastRecord.position_lat);
-          endLon = convertSemicircleToDecimal(lastRecord.position_long);
+          // Se i valori sono già decimali, non convertirli
+          if (Math.abs(lastRecord.position_lat) <= 90 && Math.abs(lastRecord.position_long) <= 180) {
+            endLat = lastRecord.position_lat;
+            endLon = lastRecord.position_long;
+          } else {
+            endLat = convertSemicircleToDecimal(lastRecord.position_lat);
+            endLon = convertSemicircleToDecimal(lastRecord.position_long);
+          }
         }
         
         // Crea i punti del percorso
-        // Nota: per ridurre la dimensione del JSON, prendiamo un campione dei punti
-        // Per percorsi lunghi, potremmo avere migliaia di punti
-        const skipFactor = Math.max(1, Math.floor(validRecords.length / 500)); // Massimo 500 punti
-        
-        for (let i = 0; i < validRecords.length; i += skipFactor) {
+        for (let i = 0; i < validRecords.length; i++) { 
           const record = validRecords[i];
           if (record.position_lat && record.position_long) {
-            const lat = convertSemicircleToDecimal(record.position_lat);
-            const lng = convertSemicircleToDecimal(record.position_long);
+            let lat = record.position_lat;
+            let lng = record.position_long;
+
+            // Se i valori NON sono già decimali, convertili
+            if (!(Math.abs(lat) <= 90 && Math.abs(lng) <= 180)) {
+              lat = convertSemicircleToDecimal(lat);
+              lng = convertSemicircleToDecimal(lng);
+            }
             
+            // Scaliamo l'altitudine qui prima di inserirla nel routePoint
+            const finalAltitudeForPoint = record.altitude !== undefined && record.altitude !== null ? record.altitude * 1000 : undefined;
+
             const point: RoutePoint = {
               lat,
               lng,
               time: record.timestamp instanceof Date 
                 ? record.timestamp.getTime() 
                 : (typeof record.timestamp === 'number' ? record.timestamp : Date.now()),
-              elevation: record.altitude,
+              elevation: finalAltitudeForPoint, // Usiamo l'altitudine scalata
               distance: record.distance ? record.distance * 1000 : undefined // km to m
             };
             
@@ -233,6 +252,13 @@ export async function processAndCreateActivity(
           }
         }
         
+        // DEBUG CRITICO: Logga i primi routePoints prima della serializzazione JSON
+        // if (routePoints.length > 0) {
+        //   console.log('[ACTIONS DEBUG] Primi 5 routePoints (con elevation) PRIMA di JSON.stringify:', 
+        //     JSON.stringify(routePoints.slice(0, 5).map(p => ({ dist: p.distance, elev: p.elevation, time: p.time })))
+        //   );
+        // }
+
         console.log(`[Server Action] Creati ${routePoints.length} punti per il percorso`);
       }
     } else if (parsedFitData.sessions && parsedFitData.sessions.length > 0) {
@@ -262,7 +288,7 @@ export async function processAndCreateActivity(
       
       // Metodo 2: Se non c'è un valore valido, calcola dai record
       if ((!totalElevation || totalElevation < 1) && parsedFitData.records && parsedFitData.records.length > 0) {
-        console.log('[DEBUG] Calcolo elevazione dai record invece che dalla sessione');
+        // console.log('[DEBUG] Calcolo elevazione dai record invece che dalla sessione');
         const calcoloElevazione = calcolaElevazionePercorosoReale(parsedFitData.records);
         if (calcoloElevazione !== null) {
           totalElevation = calcoloElevazione;
@@ -360,7 +386,7 @@ export async function processAndCreateActivity(
       }
     }
     
-    console.log('[Server Action] Metriche estratte:', fitMetrics);
+    // console.log('[Server Action] Metriche estratte:', fitMetrics);
     // --- FINE PARSING FIT REALE ---
 
     // Estrai il nome del file da fitFilePath per salvarlo in fit_file_name
@@ -449,163 +475,48 @@ export async function processAndCreateActivity(
 }
 
 // Funzione semplificata per calcolare l'elevazione in modo affidabile
-function calcolaElevazionePercorosoReale(records: Array<{altitude?: number | null}>): number | null {
-  console.log('[DEBUG] Calcolo elevazione dai record');
-  
-  // Raccogli i punti di altitudine validi
+function calcolaElevazionePercorosoReale(records: Array<{altitude?: number | null, distance?: number | null}>): number | null {
   const altitudePoints: number[] = [];
   records.forEach(record => {
     if (record.altitude !== undefined && record.altitude !== null) {
-      altitudePoints.push(record.altitude);
+      altitudePoints.push(record.altitude * 1000); // Scalatura x1000
     }
   });
-  
-  console.log(`[DEBUG] Trovati ${altitudePoints.length} punti di altitudine`);
-  if (altitudePoints.length < 10) {
-    console.log('[DEBUG] Troppo pochi punti di altitudine');
-    return estimaElevazioneBasataSuDistanza(records);
-  }
-  
-  // Stampa alcuni dei punti di altitudine per il debug
-  console.log('[DEBUG] Primi 10 punti di altitudine:', altitudePoints.slice(0, 10));
-  
-  // Trova il range dell'altitudine
-  const altMin = Math.min(...altitudePoints);
-  const altMax = Math.max(...altitudePoints);
-  const range = altMax - altMin;
-  
-  console.log(`[DEBUG] Range altitudine: ${range.toFixed(1)}m (min=${altMin.toFixed(1)}, max=${altMax.toFixed(1)})`);
-  
-  // Se il range è troppo piccolo, probabilmente i dati di elevazione non sono affidabili
-  // Questo succede spesso con alcuni dispositivi o quando i dati di elevazione sono errati
-  if (range < 5) {
-    console.log('[DEBUG] Variazione di altitudine troppo piccola (<5m), potrebbe essere un errore nei dati');
-    console.log('[DEBUG] Utilizzo una stima alternativa dell\'elevazione');
-    return estimaElevazioneBasataSuDistanza(records);
-  }
-  
-  // Metodo 1: Calcolo semplice ma efficace (più simile a Strava)
-  // Somma tutti i dislivelli positivi punto per punto
-  let totalGain1 = 0;
-  for (let i = 1; i < altitudePoints.length; i++) {
-    const diff = altitudePoints[i] - altitudePoints[i-1];
-    if (diff > 0.5) { // Ignora piccole variazioni (rumore)
-      totalGain1 += diff;
+
+  if (altitudePoints.length < 3) { // Necessari almeno 3 punti per una media mobile di 3
+    // Se ci sono meno di 3 punti, calcola senza smussamento e con una soglia base (o ritorna 0 se troppo pochi)
+    if (altitudePoints.length < 2) return 0;
+    let totalGainSimple = 0;
+    for (let i = 1; i < altitudePoints.length; i++) {
+      const diff = altitudePoints[i] - altitudePoints[i-1];
+      if (diff > 0.5) { // Soglia base più alta se non c'è smussamento (es. 0.5m)
+        totalGainSimple += diff;
+      }
     }
+    return Math.round(totalGainSimple);
   }
-  console.log(`[DEBUG] Metodo 1 - Elevazione totale punto per punto: ${Math.round(totalGain1)}m`);
-  
-  // Metodo 2: Calcolo su intervalli più ampi con media per ridurre il rumore
-  let totalGain2 = 0;
-  const step = 5;
-  
-  for (let i = step; i < altitudePoints.length; i += step) {
-    // Usa una media di 3 punti per ridurre il rumore
-    const currentAvg = (altitudePoints[i] + 
-                      (altitudePoints[i-1] || altitudePoints[i]) + 
-                      (altitudePoints[i-2] || altitudePoints[i])) / 3;
-    
-    const prevAvg = (altitudePoints[i-step] + 
-                   (altitudePoints[i-step+1] || altitudePoints[i-step]) + 
-                   (altitudePoints[i-step+2] || altitudePoints[i-step])) / 3;
-    
-    const diff = currentAvg - prevAvg;
-    if (diff > 1) { // Solo incrementi significativi
-      totalGain2 += diff;
-    }
+
+  // 1. Applica smussamento (media mobile su 3 punti)
+  const smoothedAltitudes: number[] = [];
+  smoothedAltitudes.push(altitudePoints[0]); // Il primo punto rimane invariato
+  for (let i = 1; i < altitudePoints.length - 1; i++) {
+    const smoothedVal = (altitudePoints[i-1] + altitudePoints[i] + altitudePoints[i+1]) / 3;
+    smoothedAltitudes.push(smoothedVal);
   }
-  console.log(`[DEBUG] Metodo 2 - Elevazione con medie mobili: ${Math.round(totalGain2)}m`);
-  
-  // Metodo 3: Stima basata sul range (metodo approssimativo ma robusto)
-  const totalGain3 = range * 0.6; // Assumiamo che circa il 60% del range sia salita effettiva
-  console.log(`[DEBUG] Metodo 3 - Stima dal range: ${Math.round(totalGain3)}m`);
-  
-  // Scegliamo il metodo migliore in base alla situazione
+  smoothedAltitudes.push(altitudePoints[altitudePoints.length - 1]); // L'ultimo punto rimane invariato
+
+  // 2. Calcolo del dislivello sui punti smussati con una soglia adeguata
   let totalGain = 0;
+  const SOGLIA_DOPO_SMUSSAMENTO = 0.12; // Modificata a 0.12
   
-  // Se i due metodi calcolati danno risultati ragionevolmente simili, prendiamo la media
-  if (Math.abs(totalGain1 - totalGain2) < totalGain1 * 0.3) {
-    totalGain = (totalGain1 + totalGain2) / 2;
-    console.log('[DEBUG] Usando media dei metodi 1 e 2');
-  } 
-  // Altrimenti, se il metodo 1 è molto più alto, probabilmente c'è rumore
-  else if (totalGain1 > totalGain2 * 2) {
-    totalGain = Math.max(totalGain2, totalGain3);
-    console.log('[DEBUG] Usando metodi 2 o 3 (metodo 1 ha troppo rumore)');
-  }
-  // Se il metodo 2 è molto più alto, probabilmente ha rilevato salite che il metodo 1 ha perso
-  else if (totalGain2 > totalGain1 * 2) {
-    totalGain = Math.max(totalGain1, totalGain3);
-    console.log('[DEBUG] Usando metodi 1 o 3 (metodo 2 potrebbe sovrastimare)');
-  }
-  // In caso di dubbio, prendiamo il valore medio tra tutti i metodi
-  else {
-    totalGain = (totalGain1 + totalGain2 + totalGain3) / 3;
-    console.log('[DEBUG] Usando media di tutti i metodi');
-  }
-  
-  // Controllo di sanità finale: se il valore è troppo basso rispetto al range,
-  // potrebbe essere che l'algoritmo sia troppo conservativo
-  if (totalGain < range * 0.3 && range > 50) {
-    console.log(`[DEBUG] Correzione elevazione troppo bassa: ${totalGain.toFixed(1)}m -> ${(range * 0.5).toFixed(1)}m`);
-    totalGain = range * 0.5;
-  }
-
-  // Correzione se il valore è troppo alto rispetto al range
-  if (totalGain > range * 3) {
-    console.log(`[DEBUG] Correzione elevazione troppo alta: ${totalGain.toFixed(1)}m -> ${(range * 0.8).toFixed(1)}m`);
-    totalGain = range * 0.8;
-  }
-
-  // Strava tende ad arrotondare per eccesso i valori di elevazione
-  // Aggiungiamo una piccola correzione per simulare questo comportamento
-  const finalElevation = Math.round(totalGain * 1.05);
-  
-  console.log(`[DEBUG] Elevazione finale calcolata: ${finalElevation}m`);
-  
-  return finalElevation;
-}
-
-// Funzione per stimare l'elevazione in base alla distanza percorsa
-// Utilizziamo un approccio euristico simile a quello di Strava quando i dati di elevazione non sono disponibili
-function estimaElevazioneBasataSuDistanza(records: Array<{distance?: number | null, altitude?: number | null}>): number {
-  // Troviamo la distanza totale
-  let maxDistance = 0;
-  records.forEach(record => {
-    if (record.distance && record.distance > maxDistance) {
-      maxDistance = record.distance;
+  for (let i = 1; i < smoothedAltitudes.length; i++) {
+    const diff = smoothedAltitudes[i] - smoothedAltitudes[i-1];
+    if (diff > SOGLIA_DOPO_SMUSSAMENTO) {
+      totalGain += diff;
     }
-  });
-  
-  // Calcoliamo la distanza in km
-  const distanzaKm = maxDistance; // distance è già in km nel formato fit-file-parser
-  
-  console.log(`[DEBUG] Distanza totale: ${distanzaKm.toFixed(2)} km`);
-  
-  // Stima dell'elevazione basata sulla distanza (euristico)
-  // Strava usa algoritmi molto complessi che considerano la posizione geografica
-  // Noi usiamo un approccio semplificato basato sulla distanza
-  
-  // Metodo: ~9m di elevazione per km in un percorso collinare tipico
-  // (questo valore è stato calibrato osservando diversi percorsi simili su Strava)
-  let elevazioneStimata = Math.round(distanzaKm * 9);
-  
-  // Applichiamo alcune correzioni per rendere il valore più realistico
-  // Se la distanza è molto lunga, riduciamo progressivamente il rapporto
-  if (distanzaKm > 50) {
-    elevazioneStimata = Math.round(50 * 9 + (distanzaKm - 50) * 7);
   }
-  if (distanzaKm > 100) {
-    elevazioneStimata = Math.round(50 * 9 + 50 * 7 + (distanzaKm - 100) * 5);
-  }
-  
-  // Aggiungiamo una piccola variazione casuale (+/- 10%) per renderla più realistica
-  const variazione = 0.2 * Math.random() - 0.1; // valore tra -0.1 e +0.1
-  elevazioneStimata = Math.round(elevazioneStimata * (1 + variazione));
-  
-  console.log(`[DEBUG] Elevazione stimata basata sulla distanza: ${elevazioneStimata}m`);
-  
-  return elevazioneStimata;
+
+  return Math.round(totalGain);
 }
 
 export async function deleteActivity(activityId: string, fitFilePath: string | null) {

@@ -8,6 +8,20 @@ import type { Activity } from '@/lib/types';
 import DeleteActivityButton from '@/components/DeleteActivityButton';
 import ActivityMap from '@/components/ActivityMap';
 import { Suspense } from 'react';
+import NextDynamic from 'next/dynamic';
+
+// Caricamento dinamico per ActivityElevationChart
+const ActivityElevationChart = NextDynamic(
+  () => import('@/components/ActivityElevationChart'),
+  { 
+    ssr: false, // Assicura che venga renderizzato solo sul client
+    loading: () => (
+      <div className="bg-white p-6 rounded-lg shadow-md h-[300px] flex items-center justify-center">
+        <p className="text-gray-500">Caricamento grafico altimetrico...</p>
+      </div>
+    )
+  }
+);
 
 interface ActivityDetailPageProps {
   params: {
@@ -83,6 +97,16 @@ export default async function ActivityDetailPage({ params }: ActivityDetailPageP
 
   if (!activity) {
     notFound();
+  }
+
+  // Estrai e parsa i route_points per il grafico di elevazione
+  let parsedRoutePoints = [];
+  if (typeof activity.route_points === 'string') {
+    try {
+      parsedRoutePoints = JSON.parse(activity.route_points);
+    } catch (e) {
+      console.error("Errore nel parsing dei route_points per il grafico:", e);
+    }
   }
 
   // Verifica che l'utente sia il proprietario dell'attività
@@ -195,6 +219,11 @@ export default async function ActivityDetailPage({ params }: ActivityDetailPageP
           }>
             <ActivityMap activity={activity} />
           </Suspense>
+
+          {/* Grafico Altimetrico */}
+          {parsedRoutePoints.length > 0 && (
+            <ActivityElevationChart routePoints={parsedRoutePoints} />
+          )}
         </div>
 
         {/* Colonna destra - Statistiche e metriche */}
