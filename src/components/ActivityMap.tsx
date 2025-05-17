@@ -1,22 +1,16 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import dynamic from 'next/dynamic';
-import { Activity } from '@/lib/types';
+import { Activity, RoutePoint } from '@/lib/types';
+// import L from 'leaflet'; // Rimosso import globale di L
 
-// Interfaccia per i punti GPS del percorso
-interface RoutePoint {
-  lat: number;
-  lng: number;
-  elevation?: number;
-  time: number;
-  distance?: number;
-}
-
-// Estendo l'interfaccia Activity per TypeScript
-interface ActivityWithRoutePoints extends Activity {
-  route_points: string | null;
-}
+// Le definizioni delle icone verranno spostate e create dinamicamente nel client
+/*
+const startIcon = new L.Icon({ ... });
+const endIcon = new L.Icon({ ... });
+const hoverIcon = new L.DivIcon({ ... });
+*/
 
 // Caricamento dinamico dei componenti di Leaflet per evitare errori SSR
 const MapContainer = dynamic(
@@ -42,108 +36,109 @@ const Polyline = dynamic(
 
 interface ActivityMapProps {
   activity: Activity;
+  routePoints: RoutePoint[];
+  // hoveredPointIndex: number | null; // Rimosso
 }
 
-const ActivityMap = ({ activity }: ActivityMapProps) => {
+const ActivityMap = ({ activity, routePoints /*, hoveredPointIndex */ }: ActivityMapProps) => { // Rimosso hoveredPointIndex dalle props destrutturate
   const [isMounted, setIsMounted] = useState(false);
-  const [routePoints, setRoutePoints] = useState<RoutePoint[]>([]);
-  
-  // Cast activity al tipo esteso
-  const activityWithRoute = activity as ActivityWithRoutePoints;
-  
-  // Utilizziamo useEffect per assicurarci che il componente venga montato solo lato client
+  const [leaflet, setLeaflet] = useState<typeof import('leaflet') | null>(null);
+
   useEffect(() => {
     setIsMounted(true);
     
-    // Importiamo il CSS di Leaflet solo lato client
-    const loadLeafletCSS = async () => {
-      await import('leaflet/dist/leaflet.css');
-    };
-    loadLeafletCSS();
+    import('leaflet/dist/leaflet.css'); // Importa CSS
     
-    // Aggiorniamo i marker di Leaflet che altrimenti sarebbero rotti
-    const setupLeafletIcons = async () => {
-      const L = await import('leaflet');
-      // Fix per le icone di Leaflet in Next.js
-      delete (L.Icon.Default.prototype as any)._getIconUrl;
-      L.Icon.Default.mergeOptions({
-        iconRetinaUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon-2x.png',
-        iconUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png',
-        shadowUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png',
-      });
-    };
-    setupLeafletIcons();
-    
-    // Estrai i punti del percorso dal JSON
-    if (activityWithRoute.route_points) {
-      try {
-        const parsedPoints = JSON.parse(activityWithRoute.route_points) as RoutePoint[];
-        setRoutePoints(parsedPoints);
-      } catch (error) {
-        console.error('Errore nel parsing dei punti del percorso:', error);
-      }
-    }
-  }, [activityWithRoute.route_points]);
+    // Carica Leaflet (L) dinamicamente solo sul client
+    import('leaflet').then(LModule => {
+      setLeaflet(LModule);
+    });
+  }, []);
 
-  // Verifichiamo se abbiamo le coordinate di partenza
+  // Definisci le icone usando useMemo e lo stato leaflet (che contiene L)
+  const { startIcon, endIcon, hoverIcon } = useMemo(() => {
+    if (!leaflet) return { startIcon: undefined, endIcon: undefined, hoverIcon: undefined };
+
+    const sIcon = new leaflet.Icon({
+      iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
+      shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+      iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41]
+    });
+    const eIcon = new leaflet.Icon({
+      iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
+      shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+      iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41]
+    });
+    const hIcon = new leaflet.DivIcon({
+      className: 'custom-hover-icon',
+      html: '<div style="background-color: #2563eb; width: 12px; height: 12px; border-radius: 50%; border: 2px solid white; box-shadow: 0 0 5px rgba(0,0,0,0.5);"></div>',
+      iconSize: [12, 12], iconAnchor: [6, 6],
+    });
+    return { startIcon: sIcon, endIcon: eIcon, hoverIcon: hIcon };
+  }, [leaflet]); 
+
   const hasStartCoordinates = Boolean(activity.start_lat && activity.start_lon);
-  const hasRoutePoints = routePoints.length > 0;
+  const hasRoutePoints = routePoints && routePoints.length > 0;
   
-  // Centro predefinito della mappa (Milano) se non ci sono coordinate
   const defaultCenter = { lat: 45.464664, lng: 9.188540 };
   
-  // Se abbiamo punti del percorso, usiamo il centro del percorso come centro della mappa
-  let mapCenter: {lat: number, lng: number};
-  let zoomLevel = 13;
-  
-  if (hasRoutePoints) {
-    // Trova il centro del percorso usando i punti minimo e massimo
-    const lats = routePoints.map(p => p.lat);
-    const lngs = routePoints.map(p => p.lng);
-    const minLat = Math.min(...lats);
-    const maxLat = Math.max(...lats);
-    const minLng = Math.min(...lngs);
-    const maxLng = Math.max(...lngs);
-    
-    mapCenter = {
-      lat: (minLat + maxLat) / 2,
-      lng: (minLng + maxLng) / 2
-    };
-    
-    // Calcola uno zoom appropriato in base alle dimensioni del percorso
-    const latDiff = maxLat - minLat;
-    const lngDiff = maxLng - minLng;
-    
-    // Adatta lo zoom in base alle dimensioni del percorso
-    // Valori empirici: più grande è il percorso, minore deve essere lo zoom
-    if (Math.max(latDiff, lngDiff) > 0.05) { // Circa 5-6 km
-      zoomLevel = 12;
+  const { mapCenter, zoomLevel } = useMemo(() => {
+    let center = defaultCenter;
+    let zoom = 13;
+
+    if (hasRoutePoints) {
+      const lats = routePoints.map(p => p.lat);
+      const lngs = routePoints.map(p => p.lng);
+      const minLat = Math.min(...lats);
+      const maxLat = Math.max(...lats);
+      const minLng = Math.min(...lngs);
+      const maxLng = Math.max(...lngs);
+      
+      center = {
+        lat: (minLat + maxLat) / 2,
+        lng: (minLng + maxLng) / 2
+      };
+      
+      const latDiff = maxLat - minLat;
+      const lngDiff = maxLng - minLng;
+      const maxDiff = Math.max(latDiff, lngDiff);
+
+      if (maxDiff === 0) { zoom = 15; }
+      else if (maxDiff < 0.005) zoom = 16;
+      else if (maxDiff < 0.01) zoom = 15;
+      else if (maxDiff < 0.02) zoom = 14;
+      else if (maxDiff < 0.05) zoom = 13;
+      else if (maxDiff < 0.1) zoom = 12;
+      else if (maxDiff < 0.2) zoom = 11;
+      else if (maxDiff < 0.4) zoom = 10;
+      else if (maxDiff < 0.8) zoom = 9;
+      else zoom = 8;
+    } else if (hasStartCoordinates && activity.start_lat && activity.start_lon) {
+      center = { lat: activity.start_lat, lng: activity.start_lon };
+      zoom = 14;
     }
-    if (Math.max(latDiff, lngDiff) > 0.1) { // Circa 10-12 km
-      zoomLevel = 11;
-    }
-    if (Math.max(latDiff, lngDiff) > 0.2) { // Circa 20-25 km
-      zoomLevel = 10;
-    }
-    if (Math.max(latDiff, lngDiff) > 0.4) { // Percorso molto lungo > 40-50 km
-      zoomLevel = 9;
-    }
-  } else if (hasStartCoordinates && activity.start_lat && activity.start_lon) {
-    mapCenter = { lat: activity.start_lat, lng: activity.start_lon };
-  } else {
-    mapCenter = defaultCenter;
-  }
+    return { mapCenter: center, zoomLevel: zoom };
+  }, [routePoints, activity.start_lat, activity.start_lon, hasRoutePoints, hasStartCoordinates]);
     
-  // Se il componente non è ancora montato, non rendiamo nulla
-  if (!isMounted) {
+  // Rimuovi hoveredActualPoint
+  /*
+  const hoveredActualPoint = useMemo(() => {
+    if (hoveredPointIndex !== null && routePoints && hoveredPointIndex >= 0 && hoveredPointIndex < routePoints.length) {
+      return routePoints[hoveredPointIndex];
+    }
+    return null;
+  }, [hoveredPointIndex, routePoints]);
+  */
+
+  // Modificato il controllo per attendere che leaflet e le icone siano caricate
+  if (!isMounted || !leaflet || !startIcon || !endIcon || !hoverIcon) {
     return (
       <div className="bg-white p-6 rounded-lg shadow-md h-[350px] flex items-center justify-center">
-        <p className="text-gray-500">Caricamento mappa...</p>
+        <p className="text-gray-600">Caricamento mappa...</p>
       </div>
     );
   }
 
-  // Se non ci sono coordinate né punti GPS, mostriamo un messaggio
   if (!hasStartCoordinates && !hasRoutePoints) {
     return (
       <div className="bg-white p-6 rounded-lg shadow-md">
@@ -156,7 +151,7 @@ const ActivityMap = ({ activity }: ActivityMapProps) => {
               </svg>
             </div>
             <h3 className="text-lg font-medium text-slate-700 mb-2">Coordinate GPS non disponibili</h3>
-            <p className="text-slate-500 max-w-xs mx-auto">
+            <p className="text-slate-600 max-w-xs mx-auto">
               Le coordinate GPS non sono presenti nel file FIT di questa attività. 
               Prova a caricare un file con dati GPS validi per visualizzare il percorso sulla mappa.
             </p>
@@ -176,73 +171,61 @@ const ActivityMap = ({ activity }: ActivityMapProps) => {
       </h2>
       <div className="h-[400px] rounded-lg overflow-hidden border border-gray-200">
         <MapContainer 
+          key={`${mapCenter.lat}-${mapCenter.lng}-${zoomLevel}`}
           center={[mapCenter.lat, mapCenter.lng]} 
           zoom={zoomLevel} 
           style={{ height: '100%', width: '100%' }}
+          scrollWheelZoom={true}
         >
           <TileLayer
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
           
-          {/* Visualizza i punti del percorso completo se disponibili */}
           {hasRoutePoints && (
             <>
               <Polyline 
                 positions={routePoints.map(point => [point.lat, point.lng] as [number, number])} 
-                color="#0055ff" 
-                weight={4} 
-                opacity={0.7}
+                pathOptions={{ color: '#0055ff', weight: 4, opacity: 0.7 }}
               />
               
-              {/* Mostra il punto di partenza */}
-              <Marker position={[routePoints[0].lat, routePoints[0].lng]}>
-                <Popup>
-                  <div className="text-center">
-                    <strong>Partenza</strong>
-                    <br />
-                    {formatDistance(routePoints[0].distance)} • {formatTime(routePoints[0].time)}
-                  </div>
-                </Popup>
+              <Marker 
+                position={[routePoints[0].lat, routePoints[0].lng]}
+                icon={startIcon}
+              >
+                <Popup>Partenza</Popup>
               </Marker>
-              
-              {/* Mostra il punto di arrivo */}
-              <Marker position={[routePoints[routePoints.length - 1].lat, routePoints[routePoints.length - 1].lng]}>
-                <Popup>
-                  <div className="text-center">
-                    <strong>Arrivo</strong>
-                    <br />
-                    {formatDistance(routePoints[routePoints.length - 1].distance)} • {formatTime(routePoints[routePoints.length - 1].time)}
-                  </div>
-                </Popup>
-              </Marker>
+
+              {routePoints.length > 1 && (
+                <Marker 
+                  position={[routePoints[routePoints.length - 1].lat, routePoints[routePoints.length - 1].lng]}
+                  icon={endIcon}
+                >
+                  <Popup>Arrivo</Popup>
+                </Marker>
+              )}
             </>
           )}
-          
-          {/* Se non abbiamo i punti del percorso ma abbiamo le coordinate di partenza */}
           {!hasRoutePoints && hasStartCoordinates && activity.start_lat && activity.start_lon && (
-            <Marker position={[activity.start_lat, activity.start_lon]}>
-              <Popup>
-                <div className="text-center">
-                  <strong>{activity.title}</strong>
-                  <br />
-                  {activity.activity_type.charAt(0).toUpperCase() + activity.activity_type.slice(1)}
-                </div>
-              </Popup>
-            </Marker>
+             <Marker 
+                position={[activity.start_lat, activity.start_lon]}
+                icon={startIcon}
+              >
+                <Popup>Punto di partenza</Popup>
+              </Marker>
           )}
         </MapContainer>
       </div>
       <div className="mt-3 flex items-center">
         <div className="flex-1">
           {hasRoutePoints ? (
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-gray-600">
               Percorso completo: {routePoints.length} punti GPS 
               {activity.distance_meters ? ` • ${(activity.distance_meters / 1000).toFixed(1)} km` : ''}
               {activity.elevation_gain_meters ? ` • ${activity.elevation_gain_meters}m dislivello` : ''}
             </p>
           ) : (
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-gray-600">
               Solo punto di partenza disponibile. Percorso completo non disponibile.
             </p>
           )}

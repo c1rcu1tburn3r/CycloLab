@@ -4,24 +4,10 @@ import { cookies } from 'next/headers';
 import { redirect, notFound } from 'next/navigation';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
-import type { Activity } from '@/lib/types';
+import type { Activity, RoutePoint } from '@/lib/types';
 import DeleteActivityButton from '@/components/DeleteActivityButton';
-import ActivityMap from '@/components/ActivityMap';
+import ActivityViewClient from '@/components/ActivityViewClient';
 import { Suspense } from 'react';
-import NextDynamic from 'next/dynamic';
-
-// Caricamento dinamico per ActivityElevationChart
-const ActivityElevationChart = NextDynamic(
-  () => import('@/components/ActivityElevationChart'),
-  { 
-    ssr: false, // Assicura che venga renderizzato solo sul client
-    loading: () => (
-      <div className="bg-white p-6 rounded-lg shadow-md h-[300px] flex items-center justify-center">
-        <p className="text-gray-500">Caricamento grafico altimetrico...</p>
-      </div>
-    )
-  }
-);
 
 interface ActivityDetailPageProps {
   params: {
@@ -99,14 +85,18 @@ export default async function ActivityDetailPage({ params }: ActivityDetailPageP
     notFound();
   }
 
-  // Estrai e parsa i route_points per il grafico di elevazione
-  let parsedRoutePoints = [];
+  // Estrai e parsa i route_points
+  let parsedRoutePoints: RoutePoint[] = [];
   if (typeof activity.route_points === 'string') {
     try {
-      parsedRoutePoints = JSON.parse(activity.route_points);
+      parsedRoutePoints = JSON.parse(activity.route_points) as RoutePoint[];
     } catch (e) {
-      console.error("Errore nel parsing dei route_points per il grafico:", e);
+      console.error("Errore nel parsing dei route_points:", e);
+      // Lascia parsedRoutePoints come array vuoto
     }
+  } else if (Array.isArray(activity.route_points)) {
+    // Se per caso route_points è già un array (improbabile dal DB, ma per sicurezza)
+    parsedRoutePoints = activity.route_points as RoutePoint[];
   }
 
   // Verifica che l'utente sia il proprietario dell'attività
@@ -124,6 +114,26 @@ export default async function ActivityDetailPage({ params }: ActivityDetailPageP
   const fitFilePathForDelete = activity.fit_file_name && activity.user_id && activity.athlete_id
     ? `${activity.user_id}/${activity.athlete_id}/${activity.fit_file_name}`
     : null;
+
+  // Prepara le props per ActivityViewClient
+  const activityViewProps = {
+    activityFull: activity,
+    parsedRoutePoints: parsedRoutePoints,
+    activityTitle: activity.title,
+    activityDate: format(new Date(activity.activity_date), 'EEEE d MMMM yyyy', { locale: it }),
+    athleteName: activity.athletes ? `${activity.athletes.name} ${activity.athletes.surname}` : undefined,
+    distanceKm: activity.distance_meters ? (activity.distance_meters / 1000).toFixed(1) + ' km' : undefined,
+    durationFormatted: activity.duration_seconds ? formatDuration(activity.duration_seconds) : undefined,
+    elevationGain: activity.elevation_gain_meters ? activity.elevation_gain_meters + ' m' : undefined,
+    avgSpeed: activity.avg_speed_kph ? activity.avg_speed_kph.toFixed(1) + ' km/h' : undefined,
+    description: activity.description,
+    avgPower: activity.avg_power_watts ? activity.avg_power_watts.toFixed(0) + ' W' : undefined,
+    normalizedPower: activity.normalized_power_watts ? activity.normalized_power_watts.toFixed(0) + ' W' : undefined,
+    avgHeartRate: activity.avg_heart_rate ? activity.avg_heart_rate.toFixed(0) + ' bpm' : undefined,
+    maxHeartRate: activity.max_heart_rate ? activity.max_heart_rate.toFixed(0) + ' bpm' : undefined,
+    avgCadence: activity.avg_cadence ? activity.avg_cadence.toFixed(0) + ' rpm' : undefined,
+    downloadUrl: updatedFileUrl,
+  };
 
   return (
     <div className="space-y-8 pb-8">
@@ -204,26 +214,10 @@ export default async function ActivityDetailPage({ params }: ActivityDetailPageP
             </div>
           )}
           
-          {/* Mappa del percorso */}
-          <Suspense fallback={
-            <div className="bg-white p-6 rounded-lg shadow-md h-64 flex items-center justify-center">
-              <div className="animate-pulse flex space-x-4">
-                <div className="flex-1 space-y-4 py-1">
-                  <div className="h-4 bg-slate-200 rounded w-3/4"></div>
-                  <div className="space-y-2">
-                    <div className="h-32 bg-slate-200 rounded"></div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          }>
-            <ActivityMap activity={activity} />
-          </Suspense>
-
-          {/* Grafico Altimetrico */}
-          {parsedRoutePoints.length > 0 && (
-            <ActivityElevationChart routePoints={parsedRoutePoints} />
-          )}
+          {/* Sostituisci Mappa e Grafico con ActivityViewClient */}
+          {/* Il Suspense qui può avvolgere ActivityViewClient se necessario */}
+          {/* ActivityViewClient gestirà internamente Suspense per i suoi figli se sono caricati dinamicamente */}
+          <ActivityViewClient {...activityViewProps} />
         </div>
 
         {/* Colonna destra - Statistiche e metriche */}
@@ -239,34 +233,34 @@ export default async function ActivityDetailPage({ params }: ActivityDetailPageP
             <div className="space-y-3">
               {activity.avg_power_watts ? (
                 <div>
-                  <p className="text-sm text-slate-500">Potenza Media</p>
-                  <p className="font-medium">{activity.avg_power_watts.toFixed(0)} W</p>
+                  <p className="text-sm text-slate-700">Potenza Media</p>
+                  <p className="font-medium text-slate-900">{activity.avg_power_watts.toFixed(0)} W</p>
                 </div>
               ) : (
-                <p className="text-slate-500">Dati di potenza non disponibili</p>
+                <p className="text-slate-700">Dati di potenza non disponibili</p>
               )}
               {activity.normalized_power_watts && (
                 <div>
-                  <p className="text-sm text-slate-500">Potenza Normalizzata</p>
-                  <p className="font-medium">{activity.normalized_power_watts.toFixed(0)} W</p>
+                  <p className="text-sm text-slate-700">Potenza Normalizzata</p>
+                  <p className="font-medium text-slate-900">{activity.normalized_power_watts.toFixed(0)} W</p>
                 </div>
               )}
               {activity.max_power_watts && (
                 <div>
-                  <p className="text-sm text-slate-500">Potenza Massima</p>
-                  <p className="font-medium">{activity.max_power_watts.toFixed(0)} W</p>
+                  <p className="text-sm text-slate-700">Potenza Massima</p>
+                  <p className="font-medium text-slate-900">{activity.max_power_watts.toFixed(0)} W</p>
                 </div>
               )}
               {activity.intensity_factor && (
                 <div>
-                  <p className="text-sm text-slate-500">Intensity Factor</p>
-                  <p className="font-medium">{activity.intensity_factor.toFixed(2)}</p>
+                  <p className="text-sm text-slate-700">Intensity Factor</p>
+                  <p className="font-medium text-slate-900">{activity.intensity_factor.toFixed(2)}</p>
                 </div>
               )}
               {activity.tss && (
                 <div>
-                  <p className="text-sm text-slate-500">Training Stress Score</p>
-                  <p className="font-medium">{activity.tss.toFixed(0)}</p>
+                  <p className="text-sm text-slate-700">Training Stress Score</p>
+                  <p className="font-medium text-slate-900">{activity.tss.toFixed(0)}</p>
                 </div>
               )}
             </div>
@@ -283,16 +277,16 @@ export default async function ActivityDetailPage({ params }: ActivityDetailPageP
             <div className="space-y-3">
               {activity.avg_heart_rate ? (
                 <div>
-                  <p className="text-sm text-slate-500">Frequenza Cardiaca Media</p>
-                  <p className="font-medium">{activity.avg_heart_rate} bpm</p>
+                  <p className="text-sm text-slate-700">Frequenza Cardiaca Media</p>
+                  <p className="font-medium text-slate-900">{activity.avg_heart_rate} bpm</p>
                 </div>
               ) : (
-                <p className="text-slate-500">Dati cardiaci non disponibili</p>
+                <p className="text-slate-700">Dati cardiaci non disponibili</p>
               )}
               {activity.max_heart_rate && (
                 <div>
-                  <p className="text-sm text-slate-500">Frequenza Cardiaca Massima</p>
-                  <p className="font-medium">{activity.max_heart_rate} bpm</p>
+                  <p className="text-sm text-slate-700">Frequenza Cardiaca Massima</p>
+                  <p className="font-medium text-slate-900">{activity.max_heart_rate} bpm</p>
                 </div>
               )}
             </div>
@@ -309,37 +303,37 @@ export default async function ActivityDetailPage({ params }: ActivityDetailPageP
             <div className="space-y-3">
               {activity.avg_cadence && (
                 <div>
-                  <p className="text-sm text-slate-500">Cadenza Media</p>
-                  <p className="font-medium">{activity.avg_cadence} rpm</p>
+                  <p className="text-sm text-slate-700">Cadenza Media</p>
+                  <p className="font-medium text-slate-900">{activity.avg_cadence} rpm</p>
                 </div>
               )}
               {activity.calories && (
                 <div>
-                  <p className="text-sm text-slate-500">Calorie</p>
-                  <p className="font-medium">{activity.calories} kcal</p>
+                  <p className="text-sm text-slate-700">Calorie</p>
+                  <p className="font-medium text-slate-900">{activity.calories} kcal</p>
                 </div>
               )}
               {activity.temperature_avg_celsius && (
                 <div>
-                  <p className="text-sm text-slate-500">Temperatura Media</p>
-                  <p className="font-medium">{activity.temperature_avg_celsius}°C</p>
+                  <p className="text-sm text-slate-700">Temperatura Media</p>
+                  <p className="font-medium text-slate-900">{activity.temperature_avg_celsius}°C</p>
                 </div>
               )}
               {activity.weather_condition && (
                 <div>
-                  <p className="text-sm text-slate-500">Condizioni Meteo</p>
-                  <p className="font-medium capitalize">{activity.weather_condition}</p>
+                  <p className="text-sm text-slate-700">Condizioni Meteo</p>
+                  <p className="font-medium capitalize text-slate-900">{activity.weather_condition}</p>
                 </div>
               )}
               {(activity.is_indoor !== null) && (
                 <div>
-                  <p className="text-sm text-slate-500">Ambiente</p>
-                  <p className="font-medium">{activity.is_indoor ? 'Indoor' : 'Outdoor'}</p>
+                  <p className="text-sm text-slate-700">Ambiente</p>
+                  <p className="font-medium text-slate-900">{activity.is_indoor ? 'Indoor' : 'Outdoor'}</p>
                 </div>
               )}
               <div>
-                <p className="text-sm text-slate-500">Tipo</p>
-                <p className="font-medium capitalize">{activity.activity_type}</p>
+                <p className="text-sm text-slate-700">Tipo</p>
+                <p className="font-medium capitalize text-slate-900">{activity.activity_type}</p>
               </div>
             </div>
           </div>

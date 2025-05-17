@@ -42,8 +42,12 @@ interface RoutePoint {
   lat: number;
   lng: number;
   elevation?: number;
-  time: number;  // timestamp in millisecondi
+  time: number;  // Secondi trascorsi dall'inizio dell'attività
   distance?: number;  // distanza progressiva in metri
+  speed?: number; // km/h
+  heart_rate?: number; // bpm
+  cadence?: number; // rpm
+  power?: number; // watts
 }
 
 // Interfaccia per i dati parsati dal file FIT
@@ -199,9 +203,9 @@ export async function processAndCreateActivity(
         const convertSemicircleToDecimal = (semicircle: number): number => {
           return semicircle * (180 / Math.pow(2, 31));
         };
-        
-        if (firstRecord.position_lat && firstRecord.position_long) {
-          // Se i valori sono già decimali (es. tra -90/90 e -180/180), non convertirli
+
+        // Ripristino logica per startLat/startLon con controllo formato
+        if (firstRecord.position_lat !== undefined && firstRecord.position_long !== undefined) {
           if (Math.abs(firstRecord.position_lat) <= 90 && Math.abs(firstRecord.position_long) <= 180) {
             startLat = firstRecord.position_lat;
             startLon = firstRecord.position_long;
@@ -210,9 +214,8 @@ export async function processAndCreateActivity(
             startLon = convertSemicircleToDecimal(firstRecord.position_long);
           }
         }
-        
-        if (lastRecord.position_lat && lastRecord.position_long) {
-          // Se i valori sono già decimali, non convertirli
+        // Ripristino logica per endLat/endLon con controllo formato
+        if (lastRecord.position_lat !== undefined && lastRecord.position_long !== undefined) {
           if (Math.abs(lastRecord.position_lat) <= 90 && Math.abs(lastRecord.position_long) <= 180) {
             endLat = lastRecord.position_lat;
             endLon = lastRecord.position_long;
@@ -222,42 +225,76 @@ export async function processAndCreateActivity(
           }
         }
         
-        // Crea i punti del percorso
-        for (let i = 0; i < validRecords.length; i++) { 
-          const record = validRecords[i];
-          if (record.position_lat && record.position_long) {
-            let lat = record.position_lat;
-            let lng = record.position_long;
+        const firstTimestamp = typeof validRecords[0].timestamp === 'number' 
+          ? validRecords[0].timestamp 
+          : (validRecords[0].timestamp instanceof Date ? validRecords[0].timestamp.getTime() : Date.now());
 
-            // Se i valori NON sono già decimali, convertili
+        routePoints = validRecords.map(record => {
+          const currentTimestamp = typeof record.timestamp === 'number'
+            ? record.timestamp
+            : (record.timestamp instanceof Date ? record.timestamp.getTime() : Date.now());
+          
+          let lat = record.position_lat;
+          let lng = record.position_long;
+
+          // Applica conversione solo se necessario
+          if (lat !== undefined && lng !== undefined) {
             if (!(Math.abs(lat) <= 90 && Math.abs(lng) <= 180)) {
               lat = convertSemicircleToDecimal(lat);
               lng = convertSemicircleToDecimal(lng);
             }
-            
-            // Scaliamo l'altitudine qui prima di inserirla nel routePoint
-            const finalAltitudeForPoint = record.altitude !== undefined && record.altitude !== null ? record.altitude * 1000 : undefined;
-
-            const point: RoutePoint = {
-              lat,
-              lng,
-              time: record.timestamp instanceof Date 
-                ? record.timestamp.getTime() 
-                : (typeof record.timestamp === 'number' ? record.timestamp : Date.now()),
-              elevation: finalAltitudeForPoint, // Usiamo l'altitudine scalata
-              distance: record.distance ? record.distance * 1000 : undefined // km to m
-            };
-            
-            routePoints.push(point);
           }
-        }
-        
-        // DEBUG CRITICO: Logga i primi routePoints prima della serializzazione JSON
+
+          const routePoint: any = {
+            lat: lat,
+            lng: lng,
+            time: (currentTimestamp - firstTimestamp) / 1000, 
+          };
+
+          if (typeof record.altitude === 'number') {
+            routePoint.elevation = parseFloat((record.altitude * 1000).toFixed(2)); 
+          }
+          if (typeof record.distance === 'number') {
+            routePoint.distance = parseFloat((record.distance * 1000).toFixed(1)); 
+          }
+          if (typeof record.speed === 'number') {
+            routePoint.speed = parseFloat(record.speed.toFixed(1)); 
+          }
+          if (typeof record.heart_rate === 'number') {
+            routePoint.heart_rate = record.heart_rate;
+          }
+          if (typeof record.power === 'number') {
+            routePoint.power = record.power;
+          }
+          if (typeof record.cadence === 'number') {
+            routePoint.cadence = record.cadence;
+          }
+
+          return routePoint;
+        }).filter(
+          point => point.lat !== undefined && point.lng !== undefined && point.lat !== null && point.lng !== null // Aggiunto controllo per null
+        ) as RoutePoint[];
+
+        // DEBUG: Log dei primi routePoints creati
         // if (routePoints.length > 0) {
-        //   console.log('[ACTIONS DEBUG] Primi 5 routePoints (con elevation) PRIMA di JSON.stringify:', 
-        //     JSON.stringify(routePoints.slice(0, 5).map(p => ({ dist: p.distance, elev: p.elevation, time: p.time })))
-        //   );
+        //   console.log('[Server Action DEBUG] Primi 5 RoutePoints processati:', JSON.stringify(routePoints.slice(0, 5)));
         // }
+
+        // La logica per `applyAltitudeCorrectionAndScaling` e `calcolaElevazionePercorosoReale` 
+        // viene eseguita dopo la creazione dei routePoints base.
+        // Se `applyAltitudeCorrectionAndScaling` modifica l'elevazione IN PLACE sui routePoints, va bene.
+        // Altrimenti, bisogna assicurarsi che i `routePoints` usati per il salvataggio siano quelli aggiornati.
+
+        // COMMENTATO PER RISOLVERE LINTING ERROR - Funzione non trovata
+        /*
+        if(routePoints.length > 0 && parsedFitData.records) { // assicurati che records esista
+            const { correctedElevationGain, scaledRoutePoints } = applyAltitudeCorrectionAndScaling(parsedFitData.records, routePoints);
+            // Se scaledRoutePoints è un nuovo array, assegnalo a routePoints:
+            routePoints = scaledRoutePoints; 
+            // fitMetrics.total_elevation_gain_meters = correctedElevationGain;
+            // Nota: il calcolo del dislivello viene fatto anche dopo, potremmo dover consolidare
+        }
+        */
 
         console.log(`[Server Action] Creati ${routePoints.length} punti per il percorso`);
       }
@@ -479,7 +516,7 @@ function calcolaElevazionePercorosoReale(records: Array<{altitude?: number | nul
   const altitudePoints: number[] = [];
   records.forEach(record => {
     if (record.altitude !== undefined && record.altitude !== null) {
-      altitudePoints.push(record.altitude * 1000); // Scalatura x1000
+      altitudePoints.push(record.altitude * 1000); // Ripristinata scalatura km -> m
     }
   });
 
