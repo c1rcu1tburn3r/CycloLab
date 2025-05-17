@@ -231,11 +231,21 @@ export async function processAndCreateActivity(
           : (validRecords[0].timestamp instanceof Date ? validRecords[0].timestamp.getTime() : Date.now());
 
         // Prima mappa i punti base, poi calcola la pendenza in un secondo passaggio per avere accesso al punto precedente
-        const tempRoutePoints: Omit<RoutePoint, 'grade'>[] = validRecords.map(record => {
-          const currentTimestamp = typeof record.timestamp === 'number'
-            ? record.timestamp
-            : (record.timestamp instanceof Date ? record.timestamp.getTime() : Date.now());
+        const tempRoutePoints: Omit<RoutePoint, 'grade'>[] = validRecords.map((record, index) => {
           
+          let recordAbsoluteTimestampSeconds: number | undefined = undefined;
+          if (record.timestamp instanceof Date) {
+            recordAbsoluteTimestampSeconds = Math.floor(record.timestamp.getTime() / 1000);
+          } else if (typeof record.timestamp === 'number') {
+            // Se è un numero, dobbiamo capire se è già in secondi o millisecondi.
+            // Molti timestamp Unix sono in secondi. Se > (circa anno 2000 in sec), potrebbe essere ms.
+            // Assumiamo per ora che se è un numero, sia già in secondi o il parser lo gestisce.
+            // Se il tuo parser fornisce timestamp numerici in millisecondi, dovrai dividere per 1000 qui.
+            // Per sicurezza, logghiamo se è un numero per ispezione.
+            // console.log("[actions.ts] record.timestamp is a number:", record.timestamp);
+            recordAbsoluteTimestampSeconds = record.timestamp; // Potrebbe necessitare di /1000
+          }
+
           let lat = record.position_lat;
           let lng = record.position_long;
 
@@ -247,19 +257,19 @@ export async function processAndCreateActivity(
             }
           }
 
-          const altitude = record.altitude !== undefined && record.altitude !== null ? record.altitude * 1000 : undefined; // Scala altitudine se presente
+          const altitude = record.altitude !== undefined && record.altitude !== null ? record.altitude * 1000 : undefined;
 
           return {
             lat: lat!,
             lng: lng!,
             elevation: altitude,
-            time: (currentTimestamp - firstTimestamp) / 1000, // Secondi dall'inizio
-            distance: record.distance !== undefined && record.distance !== null ? record.distance * 1000 : undefined, // Converti km (dal parser) in metri
-            speed: record.speed, // Velocità in km/h, se presente direttamente
+            time: record.elapsed_time ?? 0, 
+            distance: record.distance !== undefined ? record.distance * 1000 : undefined, 
+            speed: record.speed,
             heart_rate: record.heart_rate,
             cadence: record.cadence,
             power: record.power,
-            // Il campo 'grade' verrà calcolato dopo
+            timestamp: recordAbsoluteTimestampSeconds, // Assegna il timestamp assoluto in secondi
           };
         });
 

@@ -5,19 +5,7 @@ import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers'; // L'import rimane lo stesso
 import { redirect } from 'next/navigation';
 import DeleteAthleteButton from '../../components/DeleteAthleteButton';
-
-export interface Athlete {
-  id: string;
-  created_at: string;
-  user_id: string;
-  name: string;
-  surname: string;
-  birth_date: string;
-  height_cm?: number | null;
-  weight_kg?: number | null;
-  nationality?: string | null;
-  avatar_url?: string | null;
-}
+import type { Athlete } from '@/lib/types'; // Importa Athlete dal file centralizzato
 
 async function getAthletesForCurrentUser(supabaseClient: any, userId: string): Promise<Athlete[]> {
   const { data, error } = await supabaseClient
@@ -108,7 +96,11 @@ export default async function AthletesPage() {
                     </div>
                   )}
                 </div>
-                <h2 className="text-xl font-semibold text-slate-800 text-center truncate" title={`${athlete.name} ${athlete.surname}`}>{athlete.name} {athlete.surname}</h2>
+                <Link href={`/activities?athleteId=${athlete.id}`} passHref legacyBehavior>
+                  <a className="block text-xl font-semibold text-slate-800 hover:text-blue-600 text-center truncate transition-colors" title={`Visualizza attività di ${athlete.name} ${athlete.surname}`}>
+                    {athlete.name} {athlete.surname}
+                  </a>
+                </Link>
                 <hr className="my-3 border-slate-200" />
                 <div className="text-xs sm:text-sm space-y-1.5 text-slate-600">
                   <p><strong>Nazionalità:</strong> {athlete.nationality || 'N/D'}</p>

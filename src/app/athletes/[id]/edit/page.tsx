@@ -1,17 +1,24 @@
 // src/app/athletes/[id]/edit/page.tsx
-import AthleteForm from '@/components/AthleteForm';
+// Rimuoviamo gli import non più usati direttamente qui
+// import AthleteForm from '@/components/AthleteForm'; 
 import Link from 'next/link';
-// Importa le utility necessarie da @supabase/ssr e next/headers
-import { createServerClient } from '@supabase/ssr';
-import { cookies } from 'next/headers'; // L'import rimane lo stesso
+import { createClient } from '@/utils/supabase/server';
+import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
-import type { Athlete } from '@/app/athletes/page';
+import type { Athlete, AthleteProfileEntry } from '@/lib/types';
+// import AthleteProfileEntryForm from '@/components/AthleteProfileEntryForm';
+// import { format } from 'date-fns';
+// import { it } from 'date-fns/locale';
+
+import EditAthleteClientPage from './EditAthleteClientPage'; // Importiamo il nuovo componente client
 
 interface EditAthletePageProps {
   params: {
     id: string;
   };
 }
+
+// La definizione di AthleteProfileEntry è ora in @/lib/types
 
 async function getAthleteById(supabaseClient: any, athleteId: string, userId: string): Promise<Athlete | null> {
   const { data, error } = await supabaseClient
@@ -25,28 +32,28 @@ async function getAthleteById(supabaseClient: any, athleteId: string, userId: st
     console.error('Errore nel recuperare l_atleta per la modifica:', error.message);
     return null;
   }
-  return data as Athlete | null;
+  return data; // Non serve più il cast as Athlete | null se il tipo Athlete è corretto da @/lib/types
+}
+
+async function getAthleteProfileEntries(supabaseClient: any, athleteId: string): Promise<AthleteProfileEntry[]> {
+  const { data, error } = await supabaseClient
+    .from('athlete_profile_entries')
+    .select('*')
+    .eq('athlete_id', athleteId)
+    .order('effective_date', { ascending: false });
+
+  if (error) {
+    console.error('Errore nel recuperare lo storico profilo atleta:', error.message);
+    return [];
+  }
+  return data || [];
 }
 
 export default async function EditAthletePage({ params }: EditAthletePageProps) {
-  // USA AWAIT QUI, perché TypeScript nel tuo ambiente pensa che cookies() sia async
   const cookieStore = await cookies();
   const { id: athleteId } = params;
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return cookieStore.getAll();
-        },
-        setAll(cookiesToSet) {
-          // Il console.warn è stato rimosso qui
-        }
-      },
-    }
-  );
+  const supabase = createClient(cookieStore);
 
   const { data: { user }, error: userError } = await supabase.auth.getUser();
 
@@ -55,7 +62,7 @@ export default async function EditAthletePage({ params }: EditAthletePageProps) 
   }
 
   const athleteToEdit = await getAthleteById(supabase, athleteId, user.id);
-
+  
   if (!athleteToEdit) {
     return (
       <div className="text-center py-10">
@@ -68,21 +75,15 @@ export default async function EditAthletePage({ params }: EditAthletePageProps) 
     );
   }
 
+  const profileEntries = await getAthleteProfileEntries(supabase, athleteId);
+
+  // Il link "Torna alla lista atleti" potrebbe essere passato a EditAthleteClientPage o gestito qui se necessario un layout diverso
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
-        <h1 className="text-2xl sm:text-3xl font-bold text-slate-800">
-          Modifica Profilo Atleta
-        </h1>
-        <Link href="/athletes" className="text-sm text-blue-600 hover:text-blue-800 hover:underline flex items-center">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4 mr-1">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
-          </svg>
-          Torna alla lista atleti
-        </Link>
-      </div>
-      <AthleteForm initialData={athleteToEdit} />
-    </div>
+    <EditAthleteClientPage 
+      initialAthlete={athleteToEdit} 
+      initialProfileEntries={profileEntries} 
+      athleteId={athleteId} 
+    />
   );
 }
 

@@ -6,12 +6,23 @@ import { formatDistance, parseISO, format } from 'date-fns';
 import { it } from 'date-fns/locale';
 import type { Activity } from '@/lib/types';
 
-async function getActivitiesForCurrentUser(supabaseClient: any, userId: string): Promise<Activity[]> {
-  const { data, error } = await supabaseClient
+async function getActivitiesForCoach(
+  supabaseClient: any, 
+  coachUserId: string, 
+  filterByAthleteId?: string | null
+): Promise<Activity[]> {
+  let query = supabaseClient
     .from('activities')
     .select('*, athletes(name, surname)')
-    .eq('user_id', userId)
-    .order('activity_date', { ascending: false });
+    .eq('user_id', coachUserId);
+
+  if (filterByAthleteId) {
+    query = query.eq('athlete_id', filterByAthleteId);
+  }
+
+  query = query.order('activity_date', { ascending: false });
+
+  const { data, error } = await query;
 
   if (error) {
     console.error('Errore nel recuperare le attività:', error.message);
@@ -20,7 +31,7 @@ async function getActivitiesForCurrentUser(supabaseClient: any, userId: string):
   return data || [];
 }
 
-export default async function ActivitiesPage() {
+export default async function ActivitiesPage({ searchParams }: { searchParams?: { [key: string]: string | string[] | undefined } }) {
   const cookieStore = await cookies();
 
   const supabase = createServerClient(
@@ -42,7 +53,20 @@ export default async function ActivitiesPage() {
     redirect('/auth/login');
   }
 
-  const activities = await getActivitiesForCurrentUser(supabase, user.id);
+  const athleteIdFromQuery = searchParams?.athleteId as string | undefined;
+
+  const activities = await getActivitiesForCoach(supabase, user.id, athleteIdFromQuery);
+
+  let filteringAthleteName: string | null = null;
+  if (athleteIdFromQuery && activities.length > 0) {
+    if (activities[0].athletes) {
+      filteringAthleteName = `${activities[0].athletes.name} ${activities[0].athletes.surname}`;
+    }
+  } else if (athleteIdFromQuery) {
+    // Se non ci sono attività ma c'è un athleteIdFromQuery, potremmo voler fare una query separata
+    // per ottenere il nome dell'atleta da mostrare (es. "Nessuna attività per Luigi Rossi")
+    // Per ora, lo omettiamo per semplicità.
+  }
 
   return (
     <div className="space-y-8 pb-8">
@@ -51,22 +75,39 @@ export default async function ActivitiesPage() {
         <div className="p-6 md:p-8 max-w-7xl mx-auto">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
-              <h1 className="text-3xl md:text-4xl font-bold">Le tue attività</h1>
+              <h1 className="text-3xl md:text-4xl font-bold">
+                {filteringAthleteName ? `Attività di ${filteringAthleteName}` : 'Le tue attività'}
+              </h1>
               <p className="text-blue-100 mt-2">
                 {activities.length > 0 
-                  ? `${activities.length} attività registrate` 
-                  : 'Nessuna attività registrata'}
+                  ? `${activities.length} attività registrate${filteringAthleteName ? ' per questo atleta' : ''}` 
+                  : filteringAthleteName 
+                    ? `Nessuna attività registrata per ${filteringAthleteName}`
+                    : 'Nessuna attività registrata'}
               </p>
             </div>
-            <Link
-              href="/activities/upload"
-              className="bg-white text-indigo-700 font-semibold py-2.5 px-5 rounded-lg shadow-md hover:shadow-lg transition-all duration-150 text-sm flex items-center"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4 mr-2">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-              </svg>
-              Carica nuova attività
-            </Link>
+            <div className="flex flex-col sm:flex-row items-center gap-3 mt-4 sm:mt-0 self-start sm:self-center">
+              {filteringAthleteName && (
+                <Link 
+                  href="/athletes" 
+                  className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold py-2.5 px-5 rounded-lg shadow-md hover:shadow-lg transition-all duration-150 text-sm flex items-center w-full sm:w-auto justify-center"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4 mr-2">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 0 1 0 12h-3" />
+                  </svg>
+                  Elenco Atleti
+                </Link>
+              )}
+              <Link
+                href="/activities/upload"
+                className="bg-white text-indigo-700 font-semibold py-2.5 px-5 rounded-lg shadow-md hover:shadow-lg transition-all duration-150 text-sm flex items-center w-full sm:w-auto justify-center"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4 mr-2">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                </svg>
+                Carica nuova attività
+              </Link>
+            </div>
           </div>
         </div>
       </div>

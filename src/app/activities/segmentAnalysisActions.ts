@@ -1,8 +1,8 @@
 'use server';
 
 import type { RoutePoint, SegmentMetrics } from '@/lib/types';
-// import { createServerClient } from '@supabase/ssr'; // Necessario in futuro per dati atleta
-// import { cookies } from 'next/headers'; // Necessario in futuro
+import { createClient } from '@/utils/supabase/server'; // Corretto per puntare al nuovo helper
+import { cookies } from 'next/headers'; // Decommentato
 
 // Helper function per calcolare la media di un array di numeri, ignorando null/undefined
 function calculateAverage(numbers: (number | undefined | null)[]): number | null {
@@ -59,26 +59,63 @@ function calculateNormalizedPower(powerReadings: (number | undefined | null)[]):
 
 export async function analyzeActivitySegment(
   segmentRoutePoints: RoutePoint[],
-  userId?: string | null, // Aggiunto userId opzionale
+  coachUserId: string | null | undefined, // Rinominato per chiarezza, ID del coach loggato
+  activityDateISO: string | null | undefined,
+  targetAthleteId: string | null | undefined // Nuovo: ID dell'atleta per cui cercare il profilo
 ): Promise<{ data?: SegmentMetrics; error?: string }> {
   if (!segmentRoutePoints || segmentRoutePoints.length < 2) {
     return { error: 'Segmento troppo corto per l\'analisi (minimo 2 punti richiesti).' };
   }
 
-  // --- Mock/Placeholder per Dati Atleta (da sostituire con fetch da DB) ---
   let athleteFTP: number | null = null;
   let athleteWeightKg: number | null = null;
 
-  if (userId) {
-    // TODO: In futuro, recuperare questi dati da Supabase usando userId
-    // console.log(`[analyzeActivitySegment] Analisi per utente: ${userId} - recupero dati profilo...`);
-    // Per ora, usiamo valori mock se un userId è fornito, altrimenti rimangono null
-    athleteFTP = 250; // Esempio FTP
-    athleteWeightKg = 70; // Esempio Peso
+  // Il client Supabase viene inizializzato con i cookie del coachUserId loggato.
+  // Le policy RLS faranno in modo che questo client possa leggere/scrivere
+  // solo i dati consentiti per quel coach.
+  if (coachUserId && activityDateISO && targetAthleteId) {
+    const cookieStore = cookies();
+    const supabase = createClient(cookieStore);
+
+    try {
+      // Ora la query usa targetAthleteId per trovare il profilo corretto.
+      // Le policy RLS sulla tabella athlete_profile_entries verificheranno se
+      // il coach (identificato da supabase client/auth.uid()) ha il permesso
+      // di leggere il profilo per questo targetAthleteId.
+      const { data: profileEntry, error: profileError } = await supabase
+        .from('athlete_profile_entries')
+        .select('ftp_watts, weight_kg')
+        .eq('athlete_id', targetAthleteId) // <<< MODIFICATO QUI: usa targetAthleteId e la colonna si chiama athlete_id
+        .lte('effective_date', activityDateISO)
+        .order('effective_date', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (profileError) {
+        console.warn(`[analyzeActivitySegment] Errore nel recupero del profilo per atleta ${targetAthleteId} (coach: ${coachUserId}, data: ${activityDateISO}):`, profileError.message);
+      } else if (profileEntry) {
+        athleteFTP = profileEntry.ftp_watts;
+        athleteWeightKg = profileEntry.weight_kg;
+        // console.log(`[analyzeActivitySegment] Profilo recuperato per atleta ${targetAthleteId}: FTP=${athleteFTP}, Peso=${athleteWeightKg}`);
+      } else {
+        // console.log(`[analyzeActivitySegment] Nessun profilo atleta trovato per ${targetAthleteId} alla data ${activityDateISO} o precedente.`);
+      }
+    } catch (e: any) {
+      console.error('[analyzeActivitySegment] Eccezione durante il recupero del profilo atleta:', e.message);
+    }
   } else {
-    // console.warn('[analyzeActivitySegment] UserId non fornito, alcune metriche non saranno calcolate.');
+    if (!coachUserId) {
+      console.warn('[analyzeActivitySegment] CoachUserId non fornito.');
+    }
+    if (!activityDateISO) {
+      console.warn('[analyzeActivitySegment] ActivityDateISO non fornita.');
+    }
+    if (!targetAthleteId) {
+      console.warn('[analyzeActivitySegment] TargetAthleteId non fornito.');
+    }
+    // Se mancano info cruciali, le metriche dipendenti da profilo non saranno calcolate.
   }
-  // --- Fine Mock/Placeholder ---
+  // --- Fine Recupero Dati Atleta ---
 
   try {
     const firstPoint = segmentRoutePoints[0];

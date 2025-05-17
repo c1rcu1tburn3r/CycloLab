@@ -84,18 +84,37 @@ const ActivityViewClient: React.FC<ActivityViewClientProps> = ({
   // Effetto per calcolare le statistiche del segmento quando chartDisplayPoints cambia
   // (e quindi quando mapSelectedRouteIndices cambia e produce un segmento valido)
   useEffect(() => {
+    // Prende l'ID dell'atleta dall'oggetto activityFull.
+    // Assicurati che questo campo (activityFull.athlete_id) sia popolato correttamente
+    // quando carichi i dati dell'attività nel server component che usa ActivityViewClient.
+    const targetAthleteIdForProfile = activityFull.athlete_id;
+    const coachUserId = activityFull.user_id; // Questo è l'ID del coach loggato
+
     if (mapSelectedRouteIndices && chartDisplayPoints && chartDisplayPoints.length >= 2) {
-      // Solo se c'è una selezione mappa E il segmento risultante ha almeno 2 punti
       const fetchSegmentStats = async () => {
         setIsSegmentMetricsLoading(true);
         setSegmentMetricsError(null);
-        setSegmentMetrics(null); // Pulisci le metriche precedenti
+        setSegmentMetrics(null);
         try {
-          // console.log(`[ActivityViewClient] Calling analyzeActivitySegment for ${chartDisplayPoints.length} points.`);
-          // Nota: activityFull.athlete_id potrebbe essere null se non espanso,
-          // dovrai assicurarti che sia disponibile o gestire il caso.
-          // Per ora, la server action non usa athleteId.
-          const result = await analyzeActivitySegment(chartDisplayPoints, activityFull.user_id); // Passa activityFull.user_id
+          const firstPointTimestamp = chartDisplayPoints[0]?.timestamp;
+          let activityDateISO: string | undefined = undefined;
+          if (firstPointTimestamp) {
+            activityDateISO = new Date(firstPointTimestamp * 1000).toISOString();
+          }
+
+          if (!targetAthleteIdForProfile) {
+            console.warn("[ActivityViewClient] athlete_id non trovato in activityFull. Impossibile recuperare il profilo atleta.");
+            setSegmentMetricsError("ID atleta mancante per recuperare il profilo.");
+            setIsSegmentMetricsLoading(false);
+            return;
+          }
+          
+          const result = await analyzeActivitySegment(
+            chartDisplayPoints, 
+            coachUserId, 
+            activityDateISO, 
+            targetAthleteIdForProfile
+          );
           if (result.data) {
             setSegmentMetrics(result.data);
           } else if (result.error) {
@@ -116,8 +135,8 @@ const ActivityViewClient: React.FC<ActivityViewClientProps> = ({
       setIsSegmentMetricsLoading(false);
       setSegmentMetricsError(null);
     }
-    // Aggiunto activityFull.user_id alle dipendenze se/quando lo useremo
-  }, [mapSelectedRouteIndices, chartDisplayPoints, activityFull.user_id]);
+    // Aggiorna le dipendenze dell'useEffect
+  }, [mapSelectedRouteIndices, chartDisplayPoints, activityFull.user_id, activityFull.athlete_id]);
 
   const highlightedMapPoint = hoveredDataIndex !== null && chartDisplayPoints && hoveredDataIndex < chartDisplayPoints.length 
     ? chartDisplayPoints[hoveredDataIndex] 
