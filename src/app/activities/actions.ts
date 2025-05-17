@@ -48,6 +48,7 @@ interface RoutePoint {
   heart_rate?: number; // bpm
   cadence?: number; // rpm
   power?: number; // watts
+  grade?: number | null;
 }
 
 // Interfaccia per i dati parsati dal file FIT
@@ -229,7 +230,8 @@ export async function processAndCreateActivity(
           ? validRecords[0].timestamp 
           : (validRecords[0].timestamp instanceof Date ? validRecords[0].timestamp.getTime() : Date.now());
 
-        routePoints = validRecords.map(record => {
+        // Prima mappa i punti base, poi calcola la pendenza in un secondo passaggio per avere accesso al punto precedente
+        const tempRoutePoints: Omit<RoutePoint, 'grade'>[] = validRecords.map(record => {
           const currentTimestamp = typeof record.timestamp === 'number'
             ? record.timestamp
             : (record.timestamp instanceof Date ? record.timestamp.getTime() : Date.now());
@@ -245,39 +247,75 @@ export async function processAndCreateActivity(
             }
           }
 
-          const routePoint: any = {
-            lat: lat,
-            lng: lng,
-            time: (currentTimestamp - firstTimestamp) / 1000, 
+          const altitude = record.altitude !== undefined && record.altitude !== null ? record.altitude * 1000 : undefined; // Scala altitudine se presente
+
+          return {
+            lat: lat!,
+            lng: lng!,
+            elevation: altitude,
+            time: (currentTimestamp - firstTimestamp) / 1000, // Secondi dall'inizio
+            distance: record.distance !== undefined && record.distance !== null ? record.distance * 1000 : undefined, // Converti km (dal parser) in metri
+            speed: record.speed, // Velocità in km/h, se presente direttamente
+            heart_rate: record.heart_rate,
+            cadence: record.cadence,
+            power: record.power,
+            // Il campo 'grade' verrà calcolato dopo
           };
+        });
 
-          if (typeof record.altitude === 'number') {
-            routePoint.elevation = parseFloat((record.altitude * 1000).toFixed(2)); 
+        // Ora calcola la pendenza e finalizza routePoints
+        const MIN_DISTANCE_FOR_GRADE_CALCULATION = 1.5; // metri
+
+        const rawGrades: (number | null)[] = tempRoutePoints.map((currentPoint, index, arr) => {
+          if (index === 0 || !currentPoint.elevation || !currentPoint.distance) {
+            return null; // Pendenza non calcolabile per il primo punto o se mancano dati
           }
-          if (typeof record.distance === 'number') {
-            routePoint.distance = parseFloat((record.distance * 1000).toFixed(1)); 
-          }
-          if (typeof record.speed === 'number') {
-            routePoint.speed = parseFloat(record.speed.toFixed(1)); 
-          }
-          if (typeof record.heart_rate === 'number') {
-            routePoint.heart_rate = record.heart_rate;
-          }
-          if (typeof record.power === 'number') {
-            routePoint.power = record.power;
-          }
-          if (typeof record.cadence === 'number') {
-            routePoint.cadence = record.cadence;
+          const prevPoint = arr[index - 1];
+          if (!prevPoint.elevation || !prevPoint.distance) {
+            return null; // Manca il punto precedente o i suoi dati
           }
 
-          return routePoint;
-        }).filter(
-          point => point.lat !== undefined && point.lng !== undefined && point.lat !== null && point.lng !== null // Aggiunto controllo per null
-        ) as RoutePoint[];
+          const deltaElevation = currentPoint.elevation - prevPoint.elevation;
+          const deltaDistance = currentPoint.distance - prevPoint.distance;
 
-        // DEBUG: Log dei primi routePoints creati
+          if (deltaDistance < MIN_DISTANCE_FOR_GRADE_CALCULATION) { // Modificato: < invece di <=
+            // Se la distanza è troppo piccola, non calcolare una nuova pendenza.
+            // Lasciarla null permette allo smoothing successivo di gestirla meglio.
+            return null; 
+          }
+          
+          // Se deltaDistance è 0 (improbabile se MIN_DISTANCE_FOR_GRADE_CALCULATION > 0) o negativa, pendenza 0.
+          if (deltaDistance <= 0) {
+            return 0; 
+          }
+          return (deltaElevation / deltaDistance) * 100;
+        });
+        
+        // Smoothing della pendenza (media mobile semplice)
+        const smoothedGrades: (number | null)[] = rawGrades.map((grade, index, arr) => {
+          if (grade === null) return null;
+          const windowSize = 5; // Ripristinata finestra di smoothing a 5
+          const halfWindow = Math.floor(windowSize / 2);
+          let sum = 0;
+          let count = 0;
+          for (let i = -halfWindow; i <= halfWindow; i++) {
+            const K = index + i;
+            if (K >= 0 && K < arr.length && arr[K] !== null) {
+              sum += arr[K]!;
+              count++;
+            }
+          }
+          return count > 0 ? parseFloat((sum / count).toFixed(1)) : null; // Arrotonda a 1 decimale
+        });
+
+        routePoints = tempRoutePoints.map((point, index) => ({
+          ...point,
+          grade: smoothedGrades[index],
+        }));
+
+        // DEBUG: Log dei primi punti con pendenza
         // if (routePoints.length > 0) {
-        //   console.log('[Server Action DEBUG] Primi 5 RoutePoints processati:', JSON.stringify(routePoints.slice(0, 5)));
+        //   console.log('[Server Action DEBUG] Primi 5 RoutePoint con pendenza:', JSON.stringify(routePoints.slice(0, 5)));
         // }
 
         // La logica per `applyAltitudeCorrectionAndScaling` e `calcolaElevazionePercorosoReale` 

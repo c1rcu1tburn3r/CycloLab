@@ -30,4 +30,5 @@ export interface RoutePoint {
   cadence?: number; // rpm
   power?: number; // watts
   timestamp?: number; // Potrebbe essere il timestamp originale del record FIT
+  grade?: number;         // Pendenza in % in quel punto (calcolata)
 }

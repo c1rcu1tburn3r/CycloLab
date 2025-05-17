@@ -45,6 +45,7 @@ const metricConfig: Record<string, { name: string, color: string, unit: string, 
   heart_rate: { name: 'Freq. Cardiaca', color: '#ef4444', unit: 'bpm' },
   cadence: { name: 'Cadenza', color: '#f97316', unit: 'rpm' },
   power: { name: 'Potenza', color: '#8b5cf6', unit: 'W' },
+  grade: { name: 'Pendenza', color: '#d946ef', unit: '%' },
 };
 
 const ActivityElevationChart: React.FC<ActivityElevationChartProps> = ({
@@ -145,6 +146,68 @@ const ActivityElevationChart: React.FC<ActivityElevationChartProps> = ({
           animation: false,
           label: { backgroundColor: '#505765' }
         },
+        formatter: (params: any) => {
+          if (!Array.isArray(params) || params.length === 0 || routePoints.length === 0) {
+            return '';
+          }
+
+          const pointIndex = params[0].dataIndex;
+          // Assicurati che pointIndex sia un indice valido per routePoints
+          if (pointIndex < 0 || pointIndex >= routePoints.length) {
+            // console.warn("[Chart Tooltip] Invalid pointIndex:", pointIndex, "RoutePoints length:", routePoints.length);
+            return ''; // Indice non valido
+          }
+          const routePoint = routePoints[pointIndex];
+          
+          if (!routePoint) {
+            // console.warn("[Chart Tooltip] No routePoint found for index:", pointIndex);
+            return ''; // Nessun routePoint trovato
+          }
+
+          let tooltipText = `Distanza: ${params[0].axisValueLabel}<br/>`;
+
+          // Mostra le serie attualmente visibili
+          params.forEach((item: any) => {
+            const seriesName = item.seriesName;
+            const value = item.value; 
+            const marker = item.marker;
+            const metricDef = Object.values(metricConfig).find(m => m.name === seriesName);
+            const unit = metricDef ? metricDef.unit : '';
+            
+            if (value !== undefined && value !== null && seriesName) {
+              // Per le serie attive, il valore formattato è già in item.value, 
+              // ma per consistenza e precisione usiamo il dato originale da routePoint se possibile.
+              let displayValue: number | string;
+              let precision = (metricDef?.unit === 'km/h' || metricDef?.unit === '%') ? 1 : 0;
+
+              // Trova la chiave metrica corrispondente al nome della serie
+              const metricKey = Object.keys(metricConfig).find(key => metricConfig[key].name === seriesName);
+
+              if (metricKey && routePoint.hasOwnProperty(metricKey) && (routePoint as any)[metricKey] !== undefined && (routePoint as any)[metricKey] !== null) {
+                displayValue = (routePoint as any)[metricKey];
+              } else {
+                displayValue = value; // Fallback al valore fornito da ECharts (già processato)
+              }
+              
+              if (typeof displayValue === 'number') {
+                tooltipText += `${marker}${seriesName}: ${displayValue.toFixed(precision)} ${unit}<br/>`;
+              } else {
+                 tooltipText += `${marker}${seriesName}: ${displayValue} ${unit}<br/>`; // Se non è un numero, mostralo com'è
+              }
+            }
+          });
+
+          // Aggiungi sempre la pendenza, se disponibile nel RoutePoint e se non è già mostrata come serie attiva
+          const isGradeSeriesActive = params.some((item:any) => item.seriesName === metricConfig.grade.name);
+          if (!isGradeSeriesActive && routePoint.grade !== undefined && routePoint.grade !== null) {
+            const gradeMetricDef = metricConfig.grade;
+            const gradeMarkerColor = gradeMetricDef.color;
+            const gradeMarker = `<span style="display:inline-block;margin-right:4px;border-radius:10px;width:10px;height:10px;background-color:${gradeMarkerColor};"></span>`;
+            tooltipText += `${gradeMarker}${gradeMetricDef.name}: ${routePoint.grade.toFixed(1)} ${gradeMetricDef.unit}<br/>`;
+          }
+          
+          return tooltipText;
+        }
       },
       legend: {
         data: seriesData.map(s => String(s.name || '')),
@@ -193,8 +256,8 @@ const ActivityElevationChart: React.FC<ActivityElevationChartProps> = ({
           type: 'inside',
           xAxisIndex: 0,
           filterMode: 'filter',
-          start: 0,
-          end: 100,
+          start: 0, // Valori fissi
+          end: 100, // Valori fissi
         },
       ],
       toolbox: {
@@ -230,7 +293,7 @@ const ActivityElevationChart: React.FC<ActivityElevationChartProps> = ({
     }
   };
 
-  const availableMetrics = ['elevation', 'speed', 'heart_rate', 'cadence', 'power'];
+  const availableMetrics = ['elevation', 'speed', 'heart_rate', 'cadence', 'power', 'grade'];
 
   const handleMetricChange = (metric: string) => {
     setSelectedMetrics(prev =>
@@ -266,7 +329,7 @@ const ActivityElevationChart: React.FC<ActivityElevationChartProps> = ({
           echarts={echarts}
           option={chartOptions}
           style={{ height: '100%', width: '100%' }}
-          notMerge={true}
+          notMerge={false}
           lazyUpdate={true}
           onEvents={handleChartEvents}
         />
