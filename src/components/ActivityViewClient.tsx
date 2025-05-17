@@ -1,9 +1,11 @@
 'use client';
 
-import React, { useState, useCallback, Suspense, useMemo } from 'react';
-import type { Activity, RoutePoint } from '@/lib/types';
+import React, { useState, useCallback, Suspense, useMemo, useEffect } from 'react';
+import type { Activity, RoutePoint, SegmentMetrics } from '@/lib/types';
 import ActivityMap from '@/components/ActivityMap';
 import NextDynamic from 'next/dynamic';
+import { analyzeActivitySegment } from '@/app/activities/segmentAnalysisActions';
+import SegmentStats from '@/components/SegmentStats';
 
 // Caricamento dinamico per ActivityElevationChart
 const ActivityElevationChart = NextDynamic(
@@ -50,13 +52,19 @@ const ActivityViewClient: React.FC<ActivityViewClientProps> = ({
   const [hoveredDataIndex, setHoveredDataIndex] = useState<number | null>(null);
   const [mapSelectedRouteIndices, setMapSelectedRouteIndices] = useState<{ startIndex: number; endIndex: number } | null>(null);
 
+  // Stato per le metriche del segmento
+  const [segmentMetrics, setSegmentMetrics] = useState<SegmentMetrics | null>(null);
+  const [isSegmentMetricsLoading, setIsSegmentMetricsLoading] = useState<boolean>(false);
+  const [segmentMetricsError, setSegmentMetricsError] = useState<string | null>(null);
+
   const handleChartHover = useCallback((dataIndex: number | null) => {
     setHoveredDataIndex(dataIndex);
   }, []);
 
   const handleMapSegmentSelect = useCallback((selection: { startIndex: number; endIndex: number } | null) => {
-    console.log("[ActivityViewClient] Map segment selected:", selection);
+    // console.log("[ActivityViewClient] Map segment selected:", selection);
     setMapSelectedRouteIndices(selection);
+    // La logica di fetch è ora nell'useEffect che dipende da mapSelectedRouteIndices e chartDisplayPoints
   }, []);
 
   const mapDisplayPoints = parsedRoutePoints;
@@ -73,6 +81,44 @@ const ActivityViewClient: React.FC<ActivityViewClientProps> = ({
     return parsedRoutePoints; // Ritorna tutti i punti se non c'è selezione o se gli indici non sono validi
   }, [parsedRoutePoints, mapSelectedRouteIndices]);
   
+  // Effetto per calcolare le statistiche del segmento quando chartDisplayPoints cambia
+  // (e quindi quando mapSelectedRouteIndices cambia e produce un segmento valido)
+  useEffect(() => {
+    if (mapSelectedRouteIndices && chartDisplayPoints && chartDisplayPoints.length >= 2) {
+      // Solo se c'è una selezione mappa E il segmento risultante ha almeno 2 punti
+      const fetchSegmentStats = async () => {
+        setIsSegmentMetricsLoading(true);
+        setSegmentMetricsError(null);
+        setSegmentMetrics(null); // Pulisci le metriche precedenti
+        try {
+          // console.log(`[ActivityViewClient] Calling analyzeActivitySegment for ${chartDisplayPoints.length} points.`);
+          // Nota: activityFull.athlete_id potrebbe essere null se non espanso,
+          // dovrai assicurarti che sia disponibile o gestire il caso.
+          // Per ora, la server action non usa athleteId.
+          const result = await analyzeActivitySegment(chartDisplayPoints, activityFull.user_id); // Passa activityFull.user_id
+          if (result.data) {
+            setSegmentMetrics(result.data);
+          } else if (result.error) {
+            console.error("Error from analyzeActivitySegment:", result.error);
+            setSegmentMetricsError(result.error);
+          }
+        } catch (error: any) {
+          console.error("Client-side error calling analyzeActivitySegment:", error);
+          setSegmentMetricsError(error.message || 'Errore imprevisto nell\'analisi del segmento.');
+        } finally {
+          setIsSegmentMetricsLoading(false);
+        }
+      };
+      fetchSegmentStats();
+    } else {
+      // Se non c'è selezione valida, resetta le statistiche
+      setSegmentMetrics(null);
+      setIsSegmentMetricsLoading(false);
+      setSegmentMetricsError(null);
+    }
+    // Aggiunto activityFull.user_id alle dipendenze se/quando lo useremo
+  }, [mapSelectedRouteIndices, chartDisplayPoints, activityFull.user_id]);
+
   const highlightedMapPoint = hoveredDataIndex !== null && chartDisplayPoints && hoveredDataIndex < chartDisplayPoints.length 
     ? chartDisplayPoints[hoveredDataIndex] 
     : null;
@@ -93,6 +139,13 @@ const ActivityViewClient: React.FC<ActivityViewClientProps> = ({
           onSegmentSelect={handleMapSegmentSelect}
         />
       </Suspense>
+
+      {/* Box Statistiche Segmento */}
+      <SegmentStats 
+        metrics={segmentMetrics}
+        isLoading={isSegmentMetricsLoading}
+        error={segmentMetricsError}
+      />
 
       {/* Grafico Altimetrico */}
       {chartDisplayPoints && chartDisplayPoints.length > 0 ? (

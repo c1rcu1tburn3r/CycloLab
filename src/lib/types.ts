@@ -32,3 +32,47 @@ export interface RoutePoint {
   timestamp?: number; // Potrebbe essere il timestamp originale del record FIT
   grade?: number;         // Pendenza in % in quel punto (calcolata)
 }
+
+export interface SegmentMetrics {
+  // Metriche Generali
+  durationSeconds: number | null;
+  distanceMeters: number | null;
+  totalElevationGain: number | null; // Dislivello positivo del segmento
+  totalElevationLoss: number | null; // Dislivello negativo del segmento
+  
+  // Pendenza
+  averageGrade: number | null;
+  maxGrade: number | null;
+  
+  // Velocità
+  averageSpeedKph: number | null;
+  maxSpeedKph: number |null;
+  vam: number | null; // Velocità Ascensionale Media (m/h)
+
+  // Potenza
+  averagePower: number | null; // AP
+  normalizedPower?: number | null; // NP (richiede FTP)
+  maxPower: number | null;
+  wattsPerKg?: number | null; // Richiede peso atleta e AP (o NP)
+  variabilityIndex?: number | null; // VI = NP / AP (richiede FTP)
+  intensityFactor?: number | null; // IF = NP / FTP (richiede FTP)
+  tss?: number | null; // (richiede FTP, NP, IF)
+  workKiloJoules: number | null; // Lavoro totale
+
+  // Frequenza Cardiaca
+  averageHeartRate: number | null;
+  maxHeartRate: number | null;
+  powerToHeartRateDecoupling?: number | null; // Pw:Hr in %
+
+  // Cadenza
+  averageCadence: number | null;
+  maxCadence: number | null;
+
+  // Efficienza Pedalata (se disponibili dai dati FIT)
+  averageTorqueEffectiveness?: number | null;
+  averagePedalSmoothness?: number | null;
+  
+  // Tempo nelle Zone (richiedono definizione zone atleta)
+  timeInPowerZones?: Record<string, number>; // es. { "Z1": 120, "Z2": 300, ... } (secondi)
+  timeInHeartRateZones?: Record<string, number>;
+}
