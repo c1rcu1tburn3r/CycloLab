@@ -4,6 +4,12 @@ import { useState, useTransition } from 'react';
 import { saveAthleteProfileEntry, type SaveAthleteProfileEntryResult } from '../app/athletes/athleteProfileActions'; 
 import { useRouter } from 'next/navigation';
 
+// Importa i componenti Shadcn/ui
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import { Loader2 } from 'lucide-react';
+
 interface AthleteProfileEntryFormProps {
   athleteId: string;
   onEntrySaved?: (result: SaveAthleteProfileEntryResult) => void; // Callback opzionale
@@ -32,7 +38,8 @@ export default function AthleteProfileEntryForm({ athleteId, onEntrySaved }: Ath
         setMessage({ type: 'success', text: 'Voce di profilo salvata con successo!' });
         setFtp('');
         setWeight('');
-        router.refresh();
+        // Non serve più router.refresh() qui, lo fa il componente padre EditAthleteClientPage
+        // router.refresh(); 
         if (onEntrySaved) {
           onEntrySaved(result);
         }
@@ -46,71 +53,81 @@ export default function AthleteProfileEntryForm({ athleteId, onEntrySaved }: Ath
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4 bg-white p-6 rounded-lg shadow border border-slate-200">
-      <h3 className="text-lg font-semibold text-slate-700 mb-3">Aggiungi Nuova Voce al Profilo</h3>
-      <div>
-        <label htmlFor="effectiveDate" className="block text-sm font-medium text-slate-700 mb-1">
+    // Rimuovo le classi dal tag form, dato che sarà dentro CardContent
+    <form onSubmit={handleSubmit} className="space-y-6">
+      {/* Rimuovo il titolo h3 perché ora è gestito da CardHeader nel componente padre */}
+      {/* <h3 className="text-lg font-semibold text-slate-700 mb-3">Aggiungi Nuova Voce al Profilo</h3> */}
+      
+      <div className="space-y-2">
+        <Label htmlFor="effectiveDate">
           Data Inizio Validità*
-        </label>
-        <input
+        </Label>
+        <Input
           type="date"
           id="effectiveDate"
           name="effectiveDate"
           value={effectiveDate}
           onChange={(e) => setEffectiveDate(e.target.value)}
           required
-          className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm disabled:bg-slate-50"
-          disabled={isPending}
-        />
-      </div>
-      <div>
-        <label htmlFor="ftp" className="block text-sm font-medium text-slate-700 mb-1">
-          FTP (watt)
-        </label>
-        <input
-          type="number"
-          id="ftp"
-          name="ftp"
-          value={ftp}
-          onChange={(e) => setFtp(e.target.value)}
-          placeholder="Es. 250"
-          min="0"
-          step="1"
-          className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm disabled:bg-slate-50"
-          disabled={isPending}
-        />
-      </div>
-      <div>
-        <label htmlFor="weight" className="block text-sm font-medium text-slate-700 mb-1">
-          Peso (kg)
-        </label>
-        <input
-          type="number"
-          id="weight"
-          name="weight"
-          value={weight}
-          onChange={(e) => setWeight(e.target.value)}
-          placeholder="Es. 70.5"
-          min="0"
-          step="0.1"
-          className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm disabled:bg-slate-50"
           disabled={isPending}
         />
       </div>
       
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="ftp">
+            FTP (watt)
+          </Label>
+          <Input
+            type="number"
+            id="ftp"
+            name="ftp"
+            value={ftp}
+            onChange={(e) => setFtp(e.target.value)}
+            placeholder="Es. 250"
+            min="0"
+            step="1"
+            disabled={isPending}
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="weight">
+            Peso (kg)
+          </Label>
+          <Input
+            type="number"
+            id="weight"
+            name="weight"
+            value={weight}
+            onChange={(e) => setWeight(e.target.value)}
+            placeholder="Es. 70.5"
+            min="0"
+            step="0.1"
+            disabled={isPending}
+          />
+        </div>
+      </div>
+      
       {message && (
-        <div className={`p-3 rounded-md text-sm ${message.type === 'success' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+        <div className={`p-3 rounded-md text-sm ${message.type === 'success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
           {message.text}
         </div>
       )}
 
-      <button
+      <Button
         type="submit"
         disabled={isPending || !effectiveDate}
-        className="w-full flex justify-center py-2.5 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:bg-slate-400 disabled:cursor-not-allowed"
+        className="w-full"
       >
-        {isPending ? 'Salvataggio...' : 'Salva Voce Profilo'}
-      </button>
+        {isPending ? (
+          <>
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            Salvataggio...
+          </>
+        ) : (
+          'Salva Voce Profilo'
+        )}
+      </Button>
     </form>
   );
 } 

@@ -6,39 +6,64 @@ export type Athlete = Database['public']['Tables']['athletes']['Row'];
 export interface ActivityData {
   id: string;
   file_name: string;
-  user_id: string;
+  user_id: string; // Coach ID
   created_at: string;
   updated_at: string;
   activity_type: string;
-  total_distance?: number;
-  total_duration?: number;
-  total_ascent?: number;
-  total_descent?: number;
-  avg_speed?: number;
-  max_speed?: number;
-  avg_heart_rate?: number;
-  max_heart_rate?: number;
-  avg_power?: number;
-  max_power?: number;
-  normalized_power?: number;
-  avg_cadence?: number;
-  max_cadence?: number;
+  total_distance?: number | null;
+  total_duration?: number | null; // Assumiamo sia in secondi (tempo in movimento)
+  total_ascent?: number | null;
+  total_descent?: number | null;
+  avg_speed?: number | null;
+  max_speed?: number | null;
+  avg_heart_rate?: number | null;
+  max_heart_rate?: number | null;
+  avg_power?: number | null;
+  max_power?: number | null;
+  normalized_power_watts?: number | null;
+  intensity_factor?: number | null; // NUOVO per PMC
+  tss?: number | null;              // NUOVO per PMC
+  avg_cadence?: number | null;
+  max_cadence?: number | null;
   activity_date?: string;
   description?: string | null;
   original_file_url?: string | null;
-  // Aggiungiamo un campo opzionale per l'atleta espanso
   athletes?: { name: string; surname: string } | null;
-  // Aggiunto per referenziare direttamente l'atleta dall'attività
-  athlete_id?: string; // ID dell'atleta che ha svolto l'attività (dalla tabella athletes)
+  athlete_id?: string; 
+  // Campi per Personal Bests della singola attività (potenza)
+  pb_power_5s_watts?: number | null;
+  pb_power_15s_watts?: number | null;
+  pb_power_30s_watts?: number | null;
+  pb_power_60s_watts?: number | null;
+  pb_power_300s_watts?: number | null;
+  pb_power_600s_watts?: number | null;
+  pb_power_1200s_watts?: number | null;
+  pb_power_1800s_watts?: number | null;
+  pb_power_3600s_watts?: number | null;
+  pb_power_5400s_watts?: number | null;
+  // pb_power_1s_watts?: number | null; // Se decidi di aggiungerlo e non usare max_power_watts
 }
 
 export type Activity = Database['public']['Tables']['activities']['Row'] & {
-  // Aggiungiamo route_points come array di RoutePoint se parsato, o stringa/null
   route_points?: RoutePoint[] | string | null;
-  // Aggiungiamo un campo opzionale per l'atleta espanso
   athletes?: { name: string; surname: string } | null; 
-  // NUOVO: ID dell'atleta che ha svolto l'attività (dalla colonna athlete_id della tabella activities)
-  athlete_id?: string | null; // Aggiunto per coerenza, dovrebbe corrispondere alla colonna nel DB
+  athlete_id?: string | null; 
+  normalized_power_watts?: number | null;
+  intensity_factor?: number | null;
+  tss?: number | null;
+  // Aggiungiamo anche qui i campi PB per coerenza, 
+  // dato che 'Row' ora li includerà dopo l'ALTER TABLE.
+  pb_power_5s_watts?: number | null;
+  pb_power_15s_watts?: number | null;
+  pb_power_30s_watts?: number | null;
+  pb_power_60s_watts?: number | null;
+  pb_power_300s_watts?: number | null;
+  pb_power_600s_watts?: number | null;
+  pb_power_1200s_watts?: number | null;
+  pb_power_1800s_watts?: number | null;
+  pb_power_3600s_watts?: number | null;
+  pb_power_5400s_watts?: number | null;
+  // pb_power_1s_watts?: number | null;
 };
 
 // Tipi per l'inserimento di nuovi record
@@ -120,5 +145,11 @@ export interface AthleteProfileEntry {
   updated_at?: string; // Timestamp di ultima modifica della voce
   // user_id?: string; // ID del coach che ha inserito/modificato questa voce, se volessimo tracciarlo qui
 }
+
+// Tipo per la tabella athlete_personal_bests
+export type AthletePersonalBest = Database['public']['Tables']['athlete_personal_bests']['Row'];
+
+// Potremmo anche definire un tipo per l'inserimento se necessario, ma per ora Row basta
+// export type AthletePersonalBestInsert = Database['public']['Tables']['athlete_personal_bests']['Insert'];
 
 // Aggiungeremo qui altri tipi condivisi man mano che servono...

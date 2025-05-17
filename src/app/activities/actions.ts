@@ -4,8 +4,10 @@ import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import type { ActivityInsert } from '@/lib/types'; // Assicurati che ActivityInsert sia esportato da types.ts
+import type { ActivityInsert, RoutePoint } from '@/lib/types';
 import FitParser from 'fit-file-parser';
+import type { SupabaseClient } from '@supabase/supabase-js'; // Aggiunto per tipizzare il client
+import { calculatePowerBests, PowerBests } from '../../lib/fitnessCalculations'; 
 
 // Tipo per i dati del form che ci aspettiamo dal client
 interface ActivityFormData {
@@ -35,20 +37,6 @@ interface FitMetrics {
   max_power_watts?: number | null;
   avg_cadence?: number | null;
   calories?: number | null;
-}
-
-// Interfaccia per i punti GPS del percorso
-interface RoutePoint {
-  lat: number;
-  lng: number;
-  elevation?: number;
-  time: number;  // Secondi trascorsi dall'inizio dell'attività
-  distance?: number;  // distanza progressiva in metri
-  speed?: number; // km/h
-  heart_rate?: number; // bpm
-  cadence?: number; // rpm
-  power?: number; // watts
-  grade?: number | null;
 }
 
 // Interfaccia per i dati parsati dal file FIT
@@ -88,6 +76,46 @@ interface ParsedFitData {
   }>;
 }
 
+// Funzione per recuperare l'FTP più recente di un atleta fino a una certa data
+async function getAthleteFTPOnDate(
+  supabase: SupabaseClient<any, "public", any>, // Tipizzazione più generica se Database non è disponibile qui
+  athleteId: string,
+  activityDate: string // Formato YYYY-MM-DD
+): Promise<number | null> {
+  if (!athleteId || !activityDate) {
+    console.warn('[getAthleteFTPOnDate] athleteId o activityDate mancanti.');
+    return null;
+  }
+
+  try {
+    const { data: profileEntry, error } = await supabase
+      .from('athlete_profile_entries')
+      .select('ftp_watts')
+      .eq('athlete_id', athleteId)
+      .lte('effective_date', activityDate) // Data effettiva minore o uguale alla data dell'attività
+      .order('effective_date', { ascending: false }) // Prendi la più recente
+      .limit(1)
+      .single();
+
+    if (error) {
+      if (error.code === 'PGRST116') { // Codice errore per "single() did not return exactly one row"
+        console.log(`[getAthleteFTPOnDate] Nessun profilo FTP trovato per l'atleta ${athleteId} alla data ${activityDate} o precedente.`);
+        return null;
+      }
+      console.error('[getAthleteFTPOnDate] Errore nel recupero del profilo FTP:', error);
+      return null;
+    }
+
+    if (profileEntry && profileEntry.ftp_watts) {
+      return profileEntry.ftp_watts;
+    }
+    return null;
+  } catch (e: any) {
+    console.error('[getAthleteFTPOnDate] Eccezione nel recupero del profilo FTP:', e.message);
+    return null;
+  }
+}
+
 export async function processAndCreateActivity(
   formData: ActivityFormData,
   fitFilePath: string // es. "user_id/athlete_id/timestamp_filename.fit"
@@ -123,6 +151,10 @@ export async function processAndCreateActivity(
   }
 
   try {
+    // Recupera l'FTP dell'atleta alla data dell'attività
+    const athleteFTP = await getAthleteFTPOnDate(supabase, formData.athlete_id, formData.activity_date);
+    console.log(`[Server Action] FTP recuperato per atleta ${formData.athlete_id} in data ${formData.activity_date}: ${athleteFTP} W`);
+
     // --- INIZIO PARSING FIT REALE ---
     console.log(`[Server Action] Inizio parsing reale per: ${fitFilePath}`);
     
@@ -320,7 +352,7 @@ export async function processAndCreateActivity(
 
         routePoints = tempRoutePoints.map((point, index) => ({
           ...point,
-          grade: smoothedGrades[index],
+          grade: smoothedGrades[index] === null ? undefined : smoothedGrades[index],
         }));
 
         // DEBUG: Log dei primi punti con pendenza
@@ -443,7 +475,7 @@ export async function processAndCreateActivity(
         total_duration_seconds: lastRecord.elapsed_time || 
           (lastRecord.timestamp && firstRecord.timestamp ? 
           (typeof lastRecord.timestamp === 'number' && typeof firstRecord.timestamp === 'number' ?
-            (lastRecord.timestamp - firstRecord.timestamp) / 1000 :
+            (lastRecord.timestamp - firstRecord.timestamp) : // Assumiamo che i timestamp dei record siano in secondi, come per RoutePoint.timestamp
             lastRecord.timestamp instanceof Date && firstRecord.timestamp instanceof Date ?
             (lastRecord.timestamp.getTime() - firstRecord.timestamp.getTime()) / 1000 : null) : null),
         avg_power_watts: powerCount > 0 ? Math.round(sumPower / powerCount) : null,
@@ -473,6 +505,91 @@ export async function processAndCreateActivity(
     
     // console.log('[Server Action] Metriche estratte:', fitMetrics);
     // --- FINE PARSING FIT REALE ---
+
+    // Inizializza le metriche NP, IF, TSS dai dati della sessione se presenti
+    let sessionNP: number | null = null;
+    let sessionIF: number | null = null;
+    let sessionTSS: number | null = null;
+
+    if (parsedFitData.sessions && parsedFitData.sessions.length > 0) {
+      const session = parsedFitData.sessions[0];
+      sessionNP = session.normalized_power ?? null;
+      sessionIF = session.intensity_factor ?? null;
+      sessionTSS = session.training_stress_score ?? null;
+    }
+
+    // --- CALCOLO/RICALCOLO NP, IF, TSS ---
+    let calculatedNP: number | null = fitMetrics.normalized_power_watts ?? null; // CORRETTO: gestisce undefined da fitMetrics
+
+    // Se NP non è nel FIT (o è 0, che è improbabile per NP), prova a calcolarlo dai routePoints
+    if (!calculatedNP || calculatedNP === 0) {
+      if (routePoints && routePoints.length > 0) {
+        const powerDataForNP = routePoints.map(p => p.power);
+        console.log(`[Server Action] Tentativo di calcolo NP da ${powerDataForNP.length} punti di potenza.`);
+        calculatedNP = calculateNormalizedPower(powerDataForNP);
+        if (calculatedNP) {
+          console.log('[Server Action] NP calcolato dai routePoints:', calculatedNP);
+          fitMetrics.normalized_power_watts = parseFloat(calculatedNP.toFixed(0));
+        } else {
+          console.warn('[Server Action] Calcolo NP dai routePoints non riuscito o ha restituito null.');
+        }
+      } else {
+        console.warn('[Server Action] Nessun routePoints disponibile per calcolare NP.');
+      }
+    } else {
+      console.log('[Server Action] NP utilizzato dal file FIT:', calculatedNP);
+    }
+
+    // Ricalcola IF e TSS se abbiamo l'FTP dell'atleta e un NP valido
+    if (athleteFTP && athleteFTP > 0 && calculatedNP && calculatedNP > 0) {
+      console.log(`[Server Action] Ricalcolo IF e TSS con FTP: ${athleteFTP} W, NP: ${calculatedNP} W`);
+      
+      const newIF = calculatedNP / athleteFTP;
+      fitMetrics.intensity_factor = parseFloat(newIF.toFixed(3));
+      console.log('[Server Action] IF ricalcolato:', fitMetrics.intensity_factor);
+
+      if (fitMetrics.total_duration_seconds && fitMetrics.total_duration_seconds > 0) {
+        const newTSS = (fitMetrics.total_duration_seconds * calculatedNP * newIF) / (athleteFTP * 3600) * 100;
+        fitMetrics.tss = parseFloat(newTSS.toFixed(0));
+        console.log('[Server Action] TSS ricalcolato:', fitMetrics.tss);
+      } else {
+        console.warn('[Server Action] Durata totale non disponibile, TSS non ricalcolato.');
+        // Manteniamo il TSS dal FIT se presente, altrimenti sarà null
+        fitMetrics.tss = sessionTSS ?? null;
+      }
+    } else {
+      console.warn('[Server Action] FTP o NP non validi, IF e TSS non saranno ricalcolati. Si utilizzeranno i valori del FIT (se presenti).');
+      // Assicura che se non ricalcoliamo, usiamo quelli della sessione (che dovrebbero già essere number | null)
+      const finalSessionIF: number | null = sessionIF !== undefined ? sessionIF : null;
+      const finalSessionTSS: number | null = sessionTSS !== undefined ? sessionTSS : null;
+      fitMetrics.intensity_factor = finalSessionIF;
+      fitMetrics.tss = finalSessionTSS;
+    }
+    // Arrotonda NP a intero se è stato calcolato o preso dal FIT
+    if (fitMetrics.normalized_power_watts) {
+        fitMetrics.normalized_power_watts = Math.round(fitMetrics.normalized_power_watts);
+    }
+    // Arrotonda IF a 3 decimali e TSS a intero se sono stati calcolati o presi dal FIT
+    if (fitMetrics.intensity_factor) {
+        fitMetrics.intensity_factor = parseFloat(fitMetrics.intensity_factor.toFixed(3));
+    }
+    if (fitMetrics.tss) {
+        fitMetrics.tss = Math.round(fitMetrics.tss);
+    }
+
+    console.log('[Server Action] Metriche finali prima del salvataggio:', JSON.stringify(fitMetrics));
+
+    // --- CALCOLO PERSONAL BESTS DI POTENZA PER L'ATTIVITÀ ---
+    let activityPowerBests: PowerBests | null = null;
+    if (routePoints && routePoints.length > 0) {
+      console.log(`[Server Action] Calcolo Power Bests da ${routePoints.length} route points.`);
+      activityPowerBests = calculatePowerBests(routePoints);
+      console.log("[Server Action] Power Bests calcolati per l'attività:", activityPowerBests);
+    } else {
+      console.warn("[Server Action] Nessun routePoints disponibile per calcolare i Power Bests.");
+    }
+
+    // --- FINE PARSING FIT REALE E CALCOLI AGGIUNTIVI ---
 
     // Estrai il nome del file da fitFilePath per salvarlo in fit_file_name
     const fitFileNameInStorage = fitFilePath.split('/').pop();
@@ -522,6 +639,20 @@ export async function processAndCreateActivity(
       avg_cadence: fitMetrics.avg_cadence,
       calories: fitMetrics.calories,
       status: 'active', // Imposta uno status di default
+
+      // Aggiungi i Personal Bests di potenza dell'attività
+      pb_power_5s_watts: activityPowerBests?.p5s ?? null,
+      pb_power_15s_watts: activityPowerBests?.p15s ?? null,
+      pb_power_30s_watts: activityPowerBests?.p30s ?? null,
+      pb_power_60s_watts: activityPowerBests?.p60s ?? null,
+      pb_power_300s_watts: activityPowerBests?.p300s ?? null,
+      pb_power_600s_watts: activityPowerBests?.p600s ?? null,
+      pb_power_1200s_watts: activityPowerBests?.p1200s ?? null,
+      pb_power_1800s_watts: activityPowerBests?.p1800s ?? null,
+      pb_power_3600s_watts: activityPowerBests?.p3600s ?? null,
+      pb_power_5400s_watts: activityPowerBests?.p5400s ?? null,
+      // Se avessi peak_power separato e una colonna nel DB, lo aggiungeresti qui
+      // max_power_watts: activityPowerBests?.peak_power ?? fitMetrics.max_power_watts, // Sovrascrivi se calcolato
     };
     
     // Rimuovi eventuali campi undefined che potrebbero causare problemi con Supabase
@@ -547,7 +678,76 @@ export async function processAndCreateActivity(
       throw new Error('Creazione attività fallita, nessun dato restituito.');
     }
 
-    // Revalida i percorsi per aggiornare la UI
+    // --- AGGIORNAMENTO PERSONAL BESTS STORICI DELL'ATLETA ---
+    if (activityPowerBests && formData.athlete_id && newActivity.id && newActivity.activity_date) {
+      console.log(`[Server Action] Inizio aggiornamento PB storici per atleta: ${formData.athlete_id}`);
+      const pbsToUpdate = [];
+
+      for (const key in activityPowerBests) {
+        if (key.startsWith('p') && key.endsWith('s')) { // Considera solo pXs (es. p5s, p60s)
+          const durationSeconds = parseInt(key.substring(1, key.length - 1), 10);
+          const newPbValue = activityPowerBests[key as keyof PowerBests] as number | null;
+
+          if (newPbValue !== null && !isNaN(durationSeconds)) {
+            console.log(`[Server Action] Controllo PB per durata ${durationSeconds}s, valore: ${newPbValue}W`);
+            // L'operazione di UPSERT gestirà il confronto implicito.
+            // Se c'è un conflitto su (athlete_id, metric_type, duration_seconds),
+            // aggiornerà solo se il nuovo `value_watts` è maggiore o se `activity_date` è più recente.
+            // Per semplicità, facciamo un upsert che sovrascrive se il nuovo PB è da questa attività.
+            // Il confronto "migliore" lo facciamo prima dell'UPSERT qui.
+
+            // Recupera il PB esistente per questa durata
+            const { data: existingPb, error: fetchError } = await supabase
+              .from('athlete_personal_bests')
+              .select('value_watts')
+              .eq('athlete_id', formData.athlete_id)
+              .eq('metric_type', 'power')
+              .eq('duration_seconds', durationSeconds)
+              .single();
+
+            if (fetchError && fetchError.code !== 'PGRST116') { // PGRST116 = single row not found, che va bene
+              console.error(`[Server Action] Errore nel recuperare PB esistente per ${durationSeconds}s:`, fetchError.message);
+              // continua con le altre durate
+              continue;
+            }
+            
+            if (!existingPb || (existingPb && newPbValue > existingPb.value_watts)) {
+              console.log(`[Server Action] Nuovo PB (${newPbValue}W) migliore o non esistente per ${durationSeconds}s. Preparo UPSERT.`);
+              pbsToUpdate.push({
+                athlete_id: formData.athlete_id,
+                metric_type: 'power',
+                duration_seconds: durationSeconds,
+                value_watts: newPbValue,
+                activity_id: newActivity.id, // ID della nuova attività appena creata
+                activity_date: newActivity.activity_date, // Data della nuova attività
+                achieved_at: new Date().toISOString(), // Ora corrente in cui il record PB viene aggiornato
+              });
+            } else {
+              console.log(`[Server Action] PB esistente (${existingPb?.value_watts}W) per ${durationSeconds}s è uguale o migliore. Non aggiorno.`);
+            }
+          }
+        }
+      }
+
+      if (pbsToUpdate.length > 0) {
+        console.log("[Server Action] Eseguo UPSERT per PB storici:", pbsToUpdate);
+        const { error: upsertError } = await supabase
+          .from('athlete_personal_bests')
+          .upsert(pbsToUpdate, {
+            onConflict: 'athlete_id,metric_type,duration_seconds',
+            // ignoreDuplicates: false // default è false, quindi farà UPDATE in caso di conflitto
+          });
+
+        if (upsertError) {
+          console.error('[Server Action] Errore durante UPSERT dei PB storici:', upsertError.message);
+          // Non bloccare il successo della creazione attività per questo, ma logga l'errore
+        } else {
+          console.log('[Server Action] PB storici aggiornati con successo.');
+        }
+      }
+    }
+    // --- FINE AGGIORNAMENTO PERSONAL BESTS STORICI ---
+
     revalidatePath('/activities');
     revalidatePath(`/activities/${newActivity.id}`);
 
@@ -676,4 +876,44 @@ export async function deleteActivity(activityId: string, fitFilePath: string | n
   revalidatePath('/activities'); // Revalida la pagina dell'elenco attività
   revalidatePath(`/activities/${activityId}`); // Revalida la pagina di dettaglio dell'attività eliminata (porterà a 404 o redirect)
   redirect('/activities');
+}
+
+// Funzione per calcolare la Normalized Power (NP)
+// Basata sull'algoritmo: media mobile a 30s sulla potenza, elevazione alla quarta, media, radice quarta.
+function calculateNormalizedPower(powerReadings: (number | undefined | null)[]): number | null {
+  const validPowerReadings = powerReadings.filter(p => p !== undefined && p !== null && p >= 0) as number[];
+
+  if (validPowerReadings.length < 30) {
+    // Non abbastanza dati per una media mobile a 30s significativa, 
+    // potremmo restituire la media semplice o null.
+    // Per NP, è meglio restituire null se non si può calcolare correttamente.
+    // O, alternativamente, se ci sono dati ma meno di 30, si potrebbe usare la media semplice della potenza.
+    // Per ora, restituiamo null per forzare un calcolo più robusto o l'uso del valore dal FIT.
+    if (validPowerReadings.length > 0) {
+      // Calcola la media semplice come fallback se ci sono meno di 30 punti ma più di 0
+      // return validPowerReadings.reduce((acc, p) => acc + p, 0) / validPowerReadings.length;
+      // Decidiamo di ritornare null se non si può fare il calcolo a 30s
+      console.warn("[calculateNormalizedPower] Non abbastanza dati (<30) per calcolare NP in modo standard. Lunghezza dati:", validPowerReadings.length);
+      return null; 
+    }
+    return null;
+  }
+
+  const thirtySecondRollingAverage: number[] = [];
+  for (let i = 0; i <= validPowerReadings.length - 30; i++) {
+    let sum = 0;
+    for (let j = 0; j < 30; j++) {
+      sum += validPowerReadings[i + j];
+    }
+    thirtySecondRollingAverage.push(sum / 30);
+  }
+
+  if (thirtySecondRollingAverage.length === 0) {
+    return null; // Non dovrebbe succedere se validPowerReadings.length >= 30
+  }
+
+  const fourthPowerValues = thirtySecondRollingAverage.map(p => Math.pow(p, 4));
+  const averageOfFourthPowerValues = fourthPowerValues.reduce((acc, p) => acc + p, 0) / fourthPowerValues.length;
+  
+  return Math.pow(averageOfFourthPowerValues, 0.25);
 } 

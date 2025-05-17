@@ -251,93 +251,101 @@ export default async function ActivityDetailPage({ params }: ActivityDetailPageP
                   <p className="font-medium text-slate-900">{activity.max_power_watts.toFixed(0)} W</p>
                 </div>
               )}
-              {activity.intensity_factor && (
-                <div>
-                  <p className="text-sm text-slate-700">Intensity Factor</p>
-                  <p className="font-medium text-slate-900">{activity.intensity_factor.toFixed(2)}</p>
-                </div>
-              )}
-              {activity.tss && (
-                <div>
-                  <p className="text-sm text-slate-700">Training Stress Score</p>
-                  <p className="font-medium text-slate-900">{activity.tss.toFixed(0)}</p>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Card con le metriche cardiache */}
-          <div className="bg-white p-6 rounded-lg shadow-md">
-            <h2 className="text-xl font-semibold mb-4 text-slate-800 flex items-center">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 mr-2 text-red-500">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
-              </svg>
-              Cardio
-            </h2>
-            <div className="space-y-3">
-              {activity.avg_heart_rate ? (
-                <div>
-                  <p className="text-sm text-slate-700">Frequenza Cardiaca Media</p>
-                  <p className="font-medium text-slate-900">{activity.avg_heart_rate} bpm</p>
-                </div>
-              ) : (
-                <p className="text-slate-700">Dati cardiaci non disponibili</p>
-              )}
-              {activity.max_heart_rate && (
-                <div>
-                  <p className="text-sm text-slate-700">Frequenza Cardiaca Massima</p>
-                  <p className="font-medium text-slate-900">{activity.max_heart_rate} bpm</p>
+              {/* Visualizzazione Personal Bests di Potenza CORRETTAMENTE POSIZIONATA QUI */}
+              {(activity.pb_power_5s_watts || activity.pb_power_15s_watts || activity.pb_power_30s_watts || activity.pb_power_60s_watts || activity.pb_power_300s_watts || activity.pb_power_600s_watts || activity.pb_power_1200s_watts || activity.pb_power_1800s_watts || activity.pb_power_3600s_watts || activity.pb_power_5400s_watts) && (
+                <div className="pt-3 mt-3 border-t border-slate-200">
+                  <p className="text-sm font-semibold text-slate-700 mb-2">Activity's Best Intervals</p>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-2">
+                    {activity.pb_power_5s_watts && renderPbItem("5s", activity.pb_power_5s_watts)}
+                    {activity.pb_power_15s_watts && renderPbItem("15s", activity.pb_power_15s_watts)}
+                    {activity.pb_power_30s_watts && renderPbItem("30s", activity.pb_power_30s_watts)}
+                    {activity.pb_power_60s_watts && renderPbItem("1min", activity.pb_power_60s_watts)}
+                    {activity.pb_power_300s_watts && renderPbItem("5min", activity.pb_power_300s_watts)}
+                    {activity.pb_power_600s_watts && renderPbItem("10min", activity.pb_power_600s_watts)}
+                    {activity.pb_power_1200s_watts && renderPbItem("20min", activity.pb_power_1200s_watts)}
+                    {activity.pb_power_1800s_watts && renderPbItem("30min", activity.pb_power_1800s_watts)}
+                    {activity.pb_power_3600s_watts && renderPbItem("1h", activity.pb_power_3600s_watts)}
+                    {activity.pb_power_5400s_watts && renderPbItem("1h 30min", activity.pb_power_5400s_watts)}
+                  </div>
                 </div>
               )}
             </div>
           </div>
 
-          {/* Card con altre metriche */}
-          <div className="bg-white p-6 rounded-lg shadow-md">
-            <h2 className="text-xl font-semibold mb-4 text-slate-800 flex items-center">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 mr-2 text-green-600">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v17.25m0 0c-1.472 0-2.882.265-4.185.75M12 20.25c1.472 0 2.882.265 4.185.75M18.75 4.97A48.416 48.416 0 0012 4.5c-2.291 0-4.545.16-6.75.47m13.5 0c1.01.143 2.01.317 3 .52m-3-.52l2.62 10.726c.122.499-.106 1.028-.589 1.202a5.988 5.988 0 01-2.031.352 5.988 5.988 0 01-2.031-.352c-.483-.174-.711-.703-.59-1.202L18.75 4.971zm-16.5.52c.99-.203 1.99-.377 3-.52m0 0l2.62 10.726c.122.499-.106 1.028-.589 1.202a5.989 5.989 0 01-2.031.352 5.989 5.989 0 01-2.031-.352c-.483-.174-.711-.703-.59-1.202L5.25 4.971z" />
-              </svg>
-              Altre Metriche
-            </h2>
-            <div className="space-y-3">
-              {activity.avg_cadence && (
-                <div>
-                  <p className="text-sm text-slate-700">Cadenza Media</p>
-                  <p className="font-medium text-slate-900">{activity.avg_cadence} rpm</p>
-                </div>
-              )}
-              {activity.calories && (
-                <div>
-                  <p className="text-sm text-slate-700">Calorie</p>
-                  <p className="font-medium text-slate-900">{activity.calories} kcal</p>
-                </div>
-              )}
-              {activity.temperature_avg_celsius && (
-                <div>
-                  <p className="text-sm text-slate-700">Temperatura Media</p>
-                  <p className="font-medium text-slate-900">{activity.temperature_avg_celsius}°C</p>
-                </div>
-              )}
-              {activity.weather_condition && (
-                <div>
-                  <p className="text-sm text-slate-700">Condizioni Meteo</p>
-                  <p className="font-medium capitalize text-slate-900">{activity.weather_condition}</p>
-                </div>
-              )}
-              {(activity.is_indoor !== null) && (
-                <div>
-                  <p className="text-sm text-slate-700">Ambiente</p>
-                  <p className="font-medium text-slate-900">{activity.is_indoor ? 'Indoor' : 'Outdoor'}</p>
-                </div>
-              )}
-              <div>
-                <p className="text-sm text-slate-700">Tipo</p>
-                <p className="font-medium capitalize text-slate-900">{activity.activity_type}</p>
+          {/* Card con le metriche di Frequenza Cardiaca (esempio, assicurati che esista o sia corretta) */}
+          {(activity.avg_heart_rate || activity.max_heart_rate) && (
+            <div className="bg-white p-6 rounded-lg shadow-md">
+              <h2 className="text-xl font-semibold mb-4 text-slate-800 flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 mr-2 text-red-500">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
+                </svg>
+                Frequenza Cardiaca
+              </h2>
+              <div className="space-y-3">
+                {activity.avg_heart_rate && (
+                  <div>
+                    <p className="text-sm text-slate-700">FC Media</p>
+                    <p className="font-medium text-slate-900">{activity.avg_heart_rate.toFixed(0)} bpm</p>
+                  </div>
+                )}
+                {activity.max_heart_rate && (
+                  <div>
+                    <p className="text-sm text-slate-700">FC Massima</p>
+                    <p className="font-medium text-slate-900">{activity.max_heart_rate.toFixed(0)} bpm</p>
+                  </div>
+                )}
               </div>
             </div>
-          </div>
+          )}
 
+          {/* Card con le metriche di Cadenza (esempio, assicurati che esista o sia corretta) */}
+          {activity.avg_cadence && (
+            <div className="bg-white p-6 rounded-lg shadow-md">
+              <h2 className="text-xl font-semibold mb-4 text-slate-800 flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 mr-2 text-green-500">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M10.343 3.94c.09-.542.56-.94 1.11-.94h1.093c.55 0 1.02.398 1.11.94l.149.894c.07.424.384.764.78.93.398.164.855.142 1.205-.108l.737-.527a1.125 1.125 0 0 1 1.45.12l.773.774c.39.389.44 1.002.12 1.45l-.527.737c-.25.35-.272.806-.108 1.204.165.397.505.71.93.78l.893.15c.543.09.94.56.94 1.11v1.093c0 .55-.397 1.02-.94 1.11l-.893.149c-.425.07-.765.383-.93.78-.165.398-.142.854.107 1.204l.527.738c.32.447.27.96-.12 1.45l-.773.773a1.125 1.125 0 0 1-1.449.12l-.738-.527c-.35-.25-.806-.272-1.203-.107-.398.165-.71.505-.78.93l-.15.894c-.09.542-.56.94-1.11.94h-1.094c-.55 0-1.019-.398-1.11-.94l-.149-.894c-.07-.424-.384-.764-.78-.93-.398-.164-.854-.142-1.204.108l-.738.527a1.125 1.125 0 0 1-1.45-.12l-.773-.774a1.125 1.125 0 0 1-.12-1.45l.527-.737c.25-.35.272-.806.108-1.204-.165-.397-.505-.71-.93-.78l-.894-.15c-.542-.09-.94-.56-.94-1.11v-1.094c0-.55.398-1.019.94-1.11l.894-.149c.424-.07.764-.384.93-.78.164-.398.142-.854-.108-1.204l-.526-.738a1.125 1.125 0 0 1 .12-1.45l.773-.773a1.125 1.125 0 0 1 1.45-.12l.737.527c.35.25.807.272 1.204.107.397-.165.71-.505.78-.93l.15-.893Z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                </svg>
+                Cadenza
+              </h2>
+              <div className="space-y-3">
+                {activity.avg_cadence && (
+                  <div>
+                    <p className="text-sm text-slate-700">Cadenza Media</p>
+                    <p className="font-medium text-slate-900">{activity.avg_cadence.toFixed(0)} rpm</p>
+                  </div>
+                )}
+                {/* Potremmo aggiungere Max Cadence se disponibile e rilevante */}
+              </div>
+            </div>
+          )}
+
+          {/* RIPRISTINO Card Intensità e Stress */}
+          {(activity.intensity_factor || activity.tss) && (
+            <div className="bg-white p-6 rounded-lg shadow-md">
+              <h2 className="text-xl font-semibold mb-4 text-slate-800 flex items-center">
+                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 mr-2 text-orange-500">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.362 5.214A8.252 8.252 0 0 1 12 21 8.25 8.25 0 0 1 6.038 7.047 8.287 8.287 0 0 0 9 9.608c0-.703-.042-1.403-.125-2.092M15.245 7.825A8.25 8.25 0 0 1 18.75 12a8.25 8.25 0 0 1-3.505 6.953A8.289 8.289 0 0 0 15 14.392c0-.703.042-1.403.125-2.092m-2.49-4.542A8.25 8.25 0 0 0 9.75 2.25c-1.582 0-3.04.478-4.275 1.295a8.286 8.286 0 0 0 3.025 2.443c.64.263 1.36.394 2.1.394.285 0 .56-.018.83-.053Z" />
+                </svg>
+                Intensità e Stress
+              </h2>
+              <div className="space-y-3">
+                {activity.intensity_factor && (
+                  <div>
+                    <p className="text-sm text-slate-700">Intensity Factor (IF)</p>
+                    <p className="font-medium text-slate-900">{activity.intensity_factor.toFixed(3)}</p>
+                  </div>
+                )}
+                {activity.tss && (
+                  <div>
+                    <p className="text-sm text-slate-700">Training Stress Score (TSS)</p>
+                    <p className="font-medium text-slate-900">{activity.tss.toFixed(0)}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+          
           {/* Card con il file originale */}
           {updatedFileUrl && activity.fit_file_name && (
             <div className="bg-white p-6 rounded-lg shadow-md">
@@ -378,6 +386,16 @@ function formatDuration(seconds: number): string {
   } else {
     return `${minutes}m ${remainingSeconds}s`;
   }
+}
+
+// Helper function per renderizzare un item dei PB
+function renderPbItem(label: string, value: number) {
+  return (
+    <div>
+      <p className="text-xs text-slate-600">{label}</p>
+      <p className="font-medium text-sm text-slate-800">{Math.round(value)} W</p>
+    </div>
+  );
 }
 
 export const dynamic = 'force-dynamic'; 
