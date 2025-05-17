@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback, Suspense } from 'react';
+import React, { useState, useCallback, Suspense, useMemo } from 'react';
 import type { Activity, RoutePoint } from '@/lib/types';
 import ActivityMap from '@/components/ActivityMap';
 import NextDynamic from 'next/dynamic';
@@ -48,25 +48,33 @@ const ActivityViewClient: React.FC<ActivityViewClientProps> = ({
   // Per ora, ActivityMap riceverà activityFull.
 }) => {
   const [hoveredDataIndex, setHoveredDataIndex] = useState<number | null>(null);
-  // const [brushedRange, setBrushedRange] = useState<{ startIndex: number; endIndex: number } | null>(null); // Commentato perché onBrush è rimosso
-
-  // Rimuovi o commenta handleChartBrush poiché onBrush non viene più passato
-  /*
-  const handleChartBrush = useCallback((startIndex: number, endIndex: number) => {
-    console.log(`[ActivityViewClient] Brush event: ${startIndex} - ${endIndex}`);
-    setBrushedRange({ startIndex, endIndex });
-  }, []);
-  */
+  const [mapSelectedRouteIndices, setMapSelectedRouteIndices] = useState<{ startIndex: number; endIndex: number } | null>(null);
 
   const handleChartHover = useCallback((dataIndex: number | null) => {
     setHoveredDataIndex(dataIndex);
   }, []);
 
+  const handleMapSegmentSelect = useCallback((selection: { startIndex: number; endIndex: number } | null) => {
+    console.log("[ActivityViewClient] Map segment selected:", selection);
+    setMapSelectedRouteIndices(selection);
+  }, []);
+
   const mapDisplayPoints = parsedRoutePoints;
-  const chartDisplayPoints = parsedRoutePoints;
   
-  const highlightedMapPoint = hoveredDataIndex !== null && hoveredDataIndex < parsedRoutePoints.length 
-    ? parsedRoutePoints[hoveredDataIndex] 
+  const chartDisplayPoints = useMemo(() => {
+    if (mapSelectedRouteIndices) {
+      // Assicurati che gli indici siano validi e nell'ordine corretto
+      const start = Math.max(0, mapSelectedRouteIndices.startIndex);
+      const end = Math.min(parsedRoutePoints.length - 1, mapSelectedRouteIndices.endIndex);
+      if (start <= end) {
+        return parsedRoutePoints.slice(start, end + 1);
+      }
+    }
+    return parsedRoutePoints; // Ritorna tutti i punti se non c'è selezione o se gli indici non sono validi
+  }, [parsedRoutePoints, mapSelectedRouteIndices]);
+  
+  const highlightedMapPoint = hoveredDataIndex !== null && chartDisplayPoints && hoveredDataIndex < chartDisplayPoints.length 
+    ? chartDisplayPoints[hoveredDataIndex] 
     : null;
 
   return (
@@ -82,16 +90,22 @@ const ActivityViewClient: React.FC<ActivityViewClientProps> = ({
           activity={activityFull} 
           routePoints={mapDisplayPoints}
           highlightedPoint={highlightedMapPoint}
+          onSegmentSelect={handleMapSegmentSelect}
         />
       </Suspense>
 
       {/* Grafico Altimetrico */}
-      {chartDisplayPoints.length > 0 && (
+      {chartDisplayPoints && chartDisplayPoints.length > 0 ? (
         <ActivityElevationChart
           routePoints={chartDisplayPoints}
           onChartHover={handleChartHover}
-          // onBrush={handleChartBrush} // Rimosso passaggio prop onBrush
         />
+      ) : (
+        <div className="bg-white p-6 rounded-lg shadow-md h-[300px] flex items-center justify-center">
+          <p className="text-gray-600">
+            {mapSelectedRouteIndices ? "Nessun dato nel segmento selezionato per il grafico." : "Caricamento o dati non disponibili per il grafico."}
+          </p>
+        </div>
       )}
     </>
   );

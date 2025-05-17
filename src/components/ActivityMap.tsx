@@ -4,7 +4,7 @@ import { useEffect, useState, useMemo, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import { Activity, RoutePoint } from '@/lib/types';
 // import L from 'leaflet'; // Rimosso import globale di L
-import NextDynamic from 'next/dynamic';
+// import NextDynamic from 'next/dynamic'; // Rimosso import non utilizzato
 
 // Le definizioni delle icone verranno spostate e create dinamicamente nel client
 /*
@@ -34,17 +34,30 @@ const Polyline = dynamic(
   () => import('react-leaflet').then((mod) => mod.Polyline),
   { ssr: false }
 );
+/* Rimosso import dinamico per LayersControl, sarà gestito tramite stato
+const LayersControl = dynamic(
+  () => import('react-leaflet').then((mod) => mod.LayersControl),
+  { ssr: false }
+);
+*/
+/* Rimosso import non utilizzato
+const WMSTileLayer = dynamic( // Potrebbe non essere necessario, ma lo includo se serve per alcuni tile layer
+  () => import('react-leaflet').then((mod) => mod.WMSTileLayer),
+  { ssr: false }
+);
+*/
 
 // Importa il nuovo componente HoverMarker dinamicamente
 const DynamicHoverMarker = dynamic(() => import('./HoverMarker'), { 
   ssr: false, 
-  loading: () => null // O un piccolo placeholder se preferisci, ma null va bene
+  loading: () => null 
 });
 
 interface ActivityMapProps {
   activity: Activity;
   routePoints: RoutePoint[];
   highlightedPoint?: RoutePoint | null;
+  onSegmentSelect?: (selection: { startIndex: number; endIndex: number } | null) => void;
 }
 
 // RIMOZIONE DELLA SEZIONE 'declare global' POICHE' @types/leaflet DOVREBBE FORNIRE I TIPI
@@ -81,11 +94,21 @@ declare global {
 }
 */
 
-const ActivityMap: React.FC<ActivityMapProps> = ({ activity, routePoints, highlightedPoint }) => {
+const ActivityMap: React.FC<ActivityMapProps> = ({ activity, routePoints, highlightedPoint, onSegmentSelect }) => {
   const [isMounted, setIsMounted] = useState(false);
   const [leaflet, setLeaflet] = useState<typeof import('leaflet') | null>(null);
+  const [reactLeafletModule, setReactLeafletModule] = useState<typeof import('react-leaflet') | null>(null); // Stato per il modulo react-leaflet
   // const mapRef = useRef<L.Map | null>(null); // Rimosso perché non più usato per aggiungere layer imperativamente
   // const highlightedMarkerRef = useRef<L.CircleMarker | null>(null); // Rimosso perché il pallino è gestito da HoverMarker
+
+  // Stato per la selezione del segmento
+  const [selectionStartIdx, setSelectionStartIdx] = useState<number | null>(null);
+  const [selectionEndIdx, setSelectionEndIdx] = useState<number | null>(null);
+  const [selectingEndPoint, setSelectingEndPoint] = useState<boolean>(false); // True se stiamo aspettando il secondo click per il punto finale
+
+  // Ref per i marker di selezione (opzionale, ma può servire per stili/popup)
+  const startSelectionMarkerRef = useRef<L.Marker | null>(null);
+  const endSelectionMarkerRef = useRef<L.Marker | null>(null);
 
   useEffect(() => {
     setIsMounted(true);
@@ -95,6 +118,10 @@ const ActivityMap: React.FC<ActivityMapProps> = ({ activity, routePoints, highli
     import('leaflet').then(LModule => {
       // console.log('[ActivityMap] Leaflet module (L) loaded:', LModule); // Rimosso Log
       setLeaflet(LModule);
+    });
+
+    import('react-leaflet').then(mod => { // Carica il modulo react-leaflet
+      setReactLeafletModule(mod);
     });
   }, []);
 
@@ -141,7 +168,39 @@ const ActivityMap: React.FC<ActivityMapProps> = ({ activity, routePoints, highli
     let center = defaultCenter;
     let zoom = 13;
 
-    if (hasRoutePoints) {
+    // Se c'è una selezione attiva, centra la mappa su quel segmento
+    if (selectionStartIdx !== null && selectionEndIdx !== null && routePoints.length > 0) {
+      const selectedPoints = routePoints.slice(Math.min(selectionStartIdx, selectionEndIdx), Math.max(selectionStartIdx, selectionEndIdx) + 1);
+      if (selectedPoints.length > 0) {
+        const lats = selectedPoints.map(p => p.lat);
+        const lngs = selectedPoints.map(p => p.lng);
+        const minLat = Math.min(...lats);
+        const maxLat = Math.max(...lats);
+        const minLng = Math.min(...lngs);
+        const maxLng = Math.max(...lngs);
+        
+        center = {
+          lat: (minLat + maxLat) / 2,
+          lng: (minLng + maxLng) / 2
+        };
+        
+        const latDiff = maxLat - minLat;
+        const lngDiff = maxLng - minLng;
+        const maxDiff = Math.max(latDiff, lngDiff);
+
+        if (maxDiff === 0) { zoom = 16; } // Zoom maggiore se i punti sono coincidenti o molto vicini
+        else if (maxDiff < 0.002) zoom = 17;
+        else if (maxDiff < 0.005) zoom = 16;
+        else if (maxDiff < 0.01) zoom = 15;
+        else if (maxDiff < 0.02) zoom = 14;
+        else if (maxDiff < 0.05) zoom = 13;
+        else if (maxDiff < 0.1) zoom = 12;
+        else if (maxDiff < 0.2) zoom = 11;
+        else if (maxDiff < 0.4) zoom = 10;
+        else if (maxDiff < 0.8) zoom = 9;
+        else zoom = 8;
+      }
+    } else if (hasRoutePoints) {
       const lats = routePoints.map(p => p.lat);
       const lngs = routePoints.map(p => p.lng);
       const minLat = Math.min(...lats);
@@ -173,45 +232,75 @@ const ActivityMap: React.FC<ActivityMapProps> = ({ activity, routePoints, highli
       zoom = 14;
     }
     return { mapCenter: center, zoomLevel: zoom };
-  }, [routePoints, activity.start_lat, activity.start_lon, hasRoutePoints, hasStartCoordinates]);
+  }, [routePoints, activity.start_lat, activity.start_lon, hasRoutePoints, hasStartCoordinates, selectionStartIdx, selectionEndIdx]);
     
-  // Rimuovi hoveredActualPoint
-  /*
-  const hoveredActualPoint = useMemo(() => {
-    if (hoveredPointIndex !== null && routePoints && hoveredPointIndex >= 0 && hoveredPointIndex < routePoints.length) {
-      return routePoints[hoveredPointIndex];
-    }
-    return null;
-  }, [hoveredPointIndex, routePoints]);
-  */
+  const findClosestPointIndex = (latlng: L.LatLng): number | null => {
+    if (!routePoints || routePoints.length === 0) return null;
 
-  // Effetto per gestire il marker evidenziato (pallino)
-  /* // Temporaneamente commentato perche' problematico con react-leaflet e per isolare altri problemi
-  useEffect(() => {
-    if (!mapRef.current || !leaflet) return;
-    const map = mapRef.current;
+    let closestIndex = -1;
+    let minDistanceSq = Infinity;
 
-    // Rimuovi il marker precedente se esiste
-    if (highlightedMarkerRef.current) {
-      highlightedMarkerRef.current.remove();
-      highlightedMarkerRef.current = null;
-    }
+    routePoints.forEach((point, index) => {
+      const distSq = (point.lat - latlng.lat) ** 2 + (point.lng - latlng.lng) ** 2;
+      if (distSq < minDistanceSq) {
+        minDistanceSq = distSq;
+        closestIndex = index;
+      }
+    });
+    return closestIndex !== -1 ? closestIndex : null;
+  };
 
-    // Aggiungi un nuovo marker se highlightedPoint è valido
-    if (highlightedPoint && typeof highlightedPoint.lat === 'number' && typeof highlightedPoint.lng === 'number') {
-      highlightedMarkerRef.current = leaflet.circleMarker([highlightedPoint.lat, highlightedPoint.lng], {
-        radius: 8,
-        fillColor: "#ff7800", // Colore arancione per il pallino
-        color: "#000",
-        weight: 1,
-        opacity: 1,
-        fillOpacity: 0.8
-      }).addTo(map);
-      // Potresti voler portare il marker in primo piano se ci sono altri elementi sopra
-      // highlightedMarkerRef.current.bringToFront(); 
+  const handlePolylineClick = (event: L.LeafletMouseEvent) => {
+    if (!leaflet) return;
+
+    const clickedLatLng = event.latlng;
+    const closestIndex = findClosestPointIndex(clickedLatLng);
+
+    if (closestIndex === null) return;
+
+    if (!selectingEndPoint) {
+      // Primo click: imposta l'inizio della selezione
+      setSelectionStartIdx(closestIndex);
+      setSelectionEndIdx(null); // Resetta la fine precedente
+      setSelectingEndPoint(true);
+      if (onSegmentSelect) onSegmentSelect(null);
+      console.log(`[Map] Selection started at index: ${closestIndex}`);
+    } else {
+      // Secondo click: imposta la fine della selezione
+      let start = selectionStartIdx!;
+      let end = closestIndex;
+
+      if (end < start) {
+        // Se l'utente clicca prima per la fine, scambia gli indici
+        [start, end] = [end, start];
+      }
+      setSelectionEndIdx(end);
+      setSelectingEndPoint(false);
+      if (onSegmentSelect) onSegmentSelect({ startIndex: start, endIndex: end });
+      console.log(`[Map] Selection ended. Start: ${start}, End: ${end}`);
     }
-  }, [leaflet, highlightedPoint]); // Dipende da leaflet e highlightedPoint
-  */
+  };
+
+  const resetSelection = () => {
+    setSelectionStartIdx(null);
+    setSelectionEndIdx(null);
+    setSelectingEndPoint(false);
+    if (onSegmentSelect) {
+      onSegmentSelect(null);
+    }
+    console.log("[Map] Selection Reset");
+  };
+
+  // Icone per i marker di selezione (semplici cerchi per ora)
+  const selectionMarkerIcon = useMemo(() => {
+    if (!leaflet) return undefined;
+    return new leaflet.DivIcon({
+      html: `<div style="background-color: yellow; width: 12px; height: 12px; border-radius: 50%; border: 2px solid black;"></div>`,
+      className: 'selection-marker-icon',
+      iconSize: [12, 12],
+      iconAnchor: [6, 6]
+    });
+  }, [leaflet]);
 
   // Modificato il controllo per attendere che leaflet e le icone siano caricate
   if (!isMounted || !leaflet || !startIcon || !endIcon) {
@@ -254,7 +343,15 @@ const ActivityMap: React.FC<ActivityMapProps> = ({ activity, routePoints, highli
         </svg>
         Percorso
       </h2>
-      <div className="h-[400px] rounded-lg overflow-hidden border border-gray-200">
+      {/* Contenitore per mappa e controlli sovrapposti */}
+      <div className="h-[400px] rounded-lg overflow-hidden border border-gray-200 relative">
+        {/* Info su come selezionare un tratto - mostrata solo se non c'è una selezione attiva */}
+        {(selectionStartIdx === null && routePoints && routePoints.length > 0) && (
+          <div className="absolute top-2 left-1/2 transform -translate-x-1/2 z-[1000] bg-white bg-opacity-75 px-2 py-1 rounded shadow text-xs text-slate-700 pointer-events-none">
+            Clicca due punti sulla traccia per analizzare un segmento.
+          </div>
+        )}
+
         <MapContainer 
           key={`${mapCenter.lat}-${mapCenter.lng}-${zoomLevel}`}
           center={[mapCenter.lat, mapCenter.lng]} 
@@ -262,63 +359,140 @@ const ActivityMap: React.FC<ActivityMapProps> = ({ activity, routePoints, highli
           style={{ height: '100%', width: '100%' }}
           scrollWheelZoom={true}
         >
-          <TileLayer
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          />
+          {/* Uso di un cast per LayersControl per accedere a BaseLayer */}
+          {(isMounted && leaflet && reactLeafletModule && MapContainer && TileLayer) ? (() => {
+            const ActualLayersControl = reactLeafletModule.LayersControl;
+            // TileLayer è quello importato dinamicamente all'inizio del file
+
+            if (!ActualLayersControl || !ActualLayersControl.BaseLayer) {
+              console.error('[Map] ActualLayersControl or ActualLayersControl.BaseLayer is not available from reactLeafletModule.');
+              return null; 
+            }
+            
+            return (
+              <ActualLayersControl position="topright">
+                <ActualLayersControl.BaseLayer checked name="Stradale">
+                  <TileLayer
+                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                  />
+                </ActualLayersControl.BaseLayer>
+                <ActualLayersControl.BaseLayer name="Satelittare (Esri)">
+                  <TileLayer
+                    attribution='&copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
+                    url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+                  />
+                </ActualLayersControl.BaseLayer>
+                <ActualLayersControl.BaseLayer name="Topografica (OpenTopoMap)">
+                  <TileLayer
+                    attribution='Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, <a href="http://viewfinderpanoramas.org">SRTM</a> | Map style: &copy; <a href="https://opentopomap.org">OpenTopoMap</a> (<a href="https://creativecommons.org/licenses/by-sa/3.0/">CC-BY-SA</a>)'
+                    url="https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png"
+                  />
+                </ActualLayersControl.BaseLayer>
+              </ActualLayersControl>
+            );
+          })() : (() => null)()}
           
           {hasRoutePoints && (
             <>
-              <Polyline 
-                positions={routePoints.map(point => [point.lat, point.lng] as [number, number])} 
-                pathOptions={{ color: '#0055ff', weight: 4, opacity: 0.7 }}
-              />
+              {/* Calcola i segmenti della polyline in base alla selezione */}
               {(() => {
-                // console.log('[ActivityMap] Rendering Start Marker. Position:', routePoints[0]?.lat, routePoints[0]?.lng, 'Icon:', startIcon);
-                return null;
-              })()}
-              <Marker 
-                position={[routePoints[0].lat, routePoints[0].lng]}
-                icon={startIcon}
-              >
-                <Popup>Partenza</Popup>
-              </Marker>
+                const allLatLngs = routePoints.map(point => [point.lat, point.lng] as [number, number]);
+                let segments: JSX.Element[] = [];
 
-              {routePoints.length > 1 && (
-                <>
-                  {(() => {
-                    // console.log('[ActivityMap] Rendering End Marker. Position:', routePoints[routePoints.length - 1]?.lat, routePoints[routePoints.length - 1]?.lng, 'Icon:', endIcon);
-                    return null;
-                  })()}
-                  <Marker 
-                    position={[routePoints[routePoints.length - 1].lat, routePoints[routePoints.length - 1].lng]}
-                    icon={endIcon}
+                const defaultPathOptions = { color: '#0055ff', weight: 4, opacity: 0.7 };
+                const selectedPathOptions = { color: '#ff4500', weight: 5, opacity: 0.85 }; // Arancione per la selezione
+
+                if (selectionStartIdx !== null && selectionEndIdx !== null) {
+                  const sIdx = Math.min(selectionStartIdx, selectionEndIdx);
+                  const eIdx = Math.max(selectionStartIdx, selectionEndIdx);
+
+                  // 1. Segmento prima della selezione
+                  if (sIdx > 0) {
+                    segments.push(<Polyline key="pre-selection" positions={allLatLngs.slice(0, sIdx + 1)} pathOptions={defaultPathOptions} />);
+                  }
+                  // 2. Segmento selezionato
+                  segments.push(<Polyline key="selection" positions={allLatLngs.slice(sIdx, eIdx + 1)} pathOptions={selectedPathOptions} eventHandlers={{ click: handlePolylineClick }} />); 
+                  // 3. Segmento dopo la selezione
+                  if (eIdx < allLatLngs.length - 1) {
+                    segments.push(<Polyline key="post-selection" positions={allLatLngs.slice(eIdx, allLatLngs.length)} pathOptions={defaultPathOptions} />);
+                  }
+                } else {
+                  // Nessuna selezione, o selezione in corso (solo startIdx impostato)
+                  // Renderizza l'intera polyline, ma permetti il click per iniziare la selezione
+                  segments.push(<Polyline key="full" positions={allLatLngs} pathOptions={defaultPathOptions} eventHandlers={{ click: handlePolylineClick }} />);
+                }
+                return segments;
+              })()}
+
+              {/* Marker di Inizio e Fine Percorso (originali) */}
+              {startIcon && routePoints[0] && (
+                 <Marker 
+                    position={[routePoints[0].lat, routePoints[0].lng]}
+                    icon={startIcon}
                   >
-                    <Popup>Arrivo</Popup>
+                    <Popup>Partenza</Popup>
                   </Marker>
-                </>
+              )}
+             
+              {endIcon && routePoints.length > 1 && routePoints[routePoints.length -1] && (
+                <Marker 
+                  position={[routePoints[routePoints.length - 1].lat, routePoints[routePoints.length - 1].lng]}
+                  icon={endIcon}
+                >
+                  <Popup>Arrivo</Popup>
+                </Marker>
               )}
             </>
           )}
-          {!hasRoutePoints && hasStartCoordinates && activity.start_lat && activity.start_lon && (
-            <>
-              {(() => {
-                // console.log('[ActivityMap] Rendering Start-Only Marker. Position:', activity.start_lat, activity.start_lon, 'Icon:', startIcon);
-                return null;
-              })()}
-              <Marker 
-                position={[activity.start_lat, activity.start_lon]}
-                icon={startIcon}
-              >
-                <Popup>Punto di partenza</Popup>
-              </Marker>
-            </>
+          {!hasRoutePoints && hasStartCoordinates && activity.start_lat && activity.start_lon && startIcon && (
+            <Marker 
+              position={[activity.start_lat, activity.start_lon]}
+              icon={startIcon}
+            >
+              <Popup>Punto di partenza</Popup>
+            </Marker>
+          )}
+
+          {/* Marker per la selezione del segmento */}
+          {selectionStartIdx !== null && routePoints[selectionStartIdx] && selectionMarkerIcon && (
+            <Marker 
+              position={[routePoints[selectionStartIdx].lat, routePoints[selectionStartIdx].lng]}
+              icon={selectionMarkerIcon}
+            />
+          )}
+          {/* Log di debug per il secondo marker di selezione RIMOSSO*/}
+          {/* {(() => {
+            console.log('[Map] Checking to render EndSelectionMarker:', { 
+              selectionEndIdx, 
+              pointExists: selectionEndIdx !== null && routePoints && selectionEndIdx < routePoints.length ? !!routePoints[selectionEndIdx] : false, 
+              iconExists: !!selectionMarkerIcon 
+            });
+            return null;
+          })()} */}
+          {selectionEndIdx !== null && routePoints[selectionEndIdx] && selectionMarkerIcon && (
+            <Marker 
+              position={[routePoints[selectionEndIdx].lat, routePoints[selectionEndIdx].lng]}
+              icon={selectionMarkerIcon}
+            />
           )}
 
           {/* Aggiungi il HoverMarker qui */}
           <DynamicHoverMarker point={highlightedPoint || null} />
 
         </MapContainer>
+        {(selectionStartIdx !== null) && (
+          <button 
+            onClick={resetSelection} 
+            // Stile migliorato per il pulsante di reset
+            className="absolute top-2 right-2 z-[1000] bg-red-500 text-white px-2.5 py-1 rounded-md shadow-lg hover:bg-red-600 text-xs transition-colors duration-150 flex items-center"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 mr-1">
+              <path fillRule="evenodd" d="M15.322 15.322a8 8 0 111.06-1.06l-1.06 1.06zM10 18a8 8 0 100-16 8 8 0 000 16zM7.25 7.25a.75.75 0 000 1.5h5.5a.75.75 0 000-1.5h-5.5z" clipRule="evenodd" />
+            </svg>
+            Reset
+          </button>
+        )}
       </div>
       <div className="mt-3 flex items-center">
         <div className="flex-1">
