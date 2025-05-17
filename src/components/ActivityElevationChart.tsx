@@ -35,6 +35,7 @@ echarts.use([
 
 interface ActivityElevationChartProps {
   routePoints: RoutePoint[];
+  onChartHover?: (dataIndex: number | null) => void; // Aggiunta prop per l'hover
 }
 
 // Definisco metricConfig fuori dal componente per accessibilità e per evitare ridefinizioni
@@ -48,13 +49,14 @@ const metricConfig: Record<string, { name: string, color: string, unit: string, 
 
 const ActivityElevationChart: React.FC<ActivityElevationChartProps> = ({
   routePoints,
+  onChartHover, // Destruttura la nuova prop
 }) => {
   const [chartOptions, setChartOptions] = useState<EChartsOption>({});
   const [selectedMetrics, setSelectedMetrics] = useState<string[]>(['elevation']);
 
   // Log per debuggare i routePoints in ingresso
   useEffect(() => {
-    console.log('[ActivityElevationChart] Received routePoints:', routePoints);
+    // console.log('[ActivityElevationChart] Received routePoints:', routePoints); // Rimosso Log
   }, [routePoints]);
 
   useEffect(() => {
@@ -211,29 +213,21 @@ const ActivityElevationChart: React.FC<ActivityElevationChartProps> = ({
   }, [routePoints, selectedMetrics]);
 
   const handleChartEvents = {
-    /* // Temporaneamente commentato per testare lo zoom nativo
-    datazoom: (params: any) => {
-      if (onBrush && params.batch && params.batch.length > 0) {
-        const dataZoomEvent = params.batch[0];
-        let startIndex: number | undefined;
-        let endIndex: number | undefined;
-
-        if (dataZoomEvent.startValue !== undefined && dataZoomEvent.endValue !== undefined) {
-          startIndex = Math.floor(dataZoomEvent.startValue);
-          endIndex = Math.ceil(dataZoomEvent.endValue);
-        } else if (dataZoomEvent.start !== undefined && dataZoomEvent.end !== undefined) {
-          const totalPoints = routePoints.length;
-          startIndex = Math.floor(totalPoints * (dataZoomEvent.start / 100));
-          endIndex = Math.ceil(totalPoints * (dataZoomEvent.end / 100)) - 1;
-          if (endIndex < startIndex) endIndex = startIndex; 
-        }
-
-        if (startIndex !== undefined && endIndex !== undefined && startIndex <= endIndex && endIndex < routePoints.length) {
-          onBrush(startIndex, endIndex);
+    updateAxisPointer: (event: any) => {
+      if (onChartHover) {
+        const dataIndex = event.axesInfo && event.axesInfo[0] ? event.axesInfo[0].value : null;
+        if (typeof dataIndex === 'number' && !isNaN(dataIndex) && dataIndex >= 0 && dataIndex < routePoints.length) {
+          onChartHover(Math.floor(dataIndex)); 
+        } else {
+          onChartHover(null);
         }
       }
     },
-    */
+    mouseout: () => { 
+      if (onChartHover) {
+        onChartHover(null);
+      }
+    }
   };
 
   const availableMetrics = ['elevation', 'speed', 'heart_rate', 'cadence', 'power'];
@@ -318,4 +312,4 @@ const ActivityElevationChart: React.FC<ActivityElevationChartProps> = ({
   );
 };
 
-export default ActivityElevationChart; 
+export default React.memo(ActivityElevationChart); 

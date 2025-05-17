@@ -47,6 +47,7 @@ const ActivityViewClient: React.FC<ActivityViewClientProps> = ({
   // se dovessimo spostare più logica di rendering qui.
   // Per ora, ActivityMap riceverà activityFull.
 }) => {
+  const [hoveredDataIndex, setHoveredDataIndex] = useState<number | null>(null);
   // const [brushedRange, setBrushedRange] = useState<{ startIndex: number; endIndex: number } | null>(null); // Commentato perché onBrush è rimosso
 
   // Rimuovi o commenta handleChartBrush poiché onBrush non viene più passato
@@ -57,8 +58,16 @@ const ActivityViewClient: React.FC<ActivityViewClientProps> = ({
   }, []);
   */
 
+  const handleChartHover = useCallback((dataIndex: number | null) => {
+    setHoveredDataIndex(dataIndex);
+  }, []);
+
   const mapDisplayPoints = parsedRoutePoints;
   const chartDisplayPoints = parsedRoutePoints;
+  
+  const highlightedMapPoint = hoveredDataIndex !== null && hoveredDataIndex < parsedRoutePoints.length 
+    ? parsedRoutePoints[hoveredDataIndex] 
+    : null;
 
   return (
     <>
@@ -72,6 +81,7 @@ const ActivityViewClient: React.FC<ActivityViewClientProps> = ({
         <ActivityMap
           activity={activityFull} 
           routePoints={mapDisplayPoints}
+          highlightedPoint={highlightedMapPoint}
         />
       </Suspense>
 
@@ -79,6 +89,7 @@ const ActivityViewClient: React.FC<ActivityViewClientProps> = ({
       {chartDisplayPoints.length > 0 && (
         <ActivityElevationChart
           routePoints={chartDisplayPoints}
+          onChartHover={handleChartHover}
           // onBrush={handleChartBrush} // Rimosso passaggio prop onBrush
         />
       )}

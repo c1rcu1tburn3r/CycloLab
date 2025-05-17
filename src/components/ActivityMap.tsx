@@ -1,9 +1,10 @@
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import { Activity, RoutePoint } from '@/lib/types';
 // import L from 'leaflet'; // Rimosso import globale di L
+import NextDynamic from 'next/dynamic';
 
 // Le definizioni delle icone verranno spostate e create dinamicamente nel client
 /*
@@ -34,52 +35,106 @@ const Polyline = dynamic(
   { ssr: false }
 );
 
+// Importa il nuovo componente HoverMarker dinamicamente
+const DynamicHoverMarker = dynamic(() => import('./HoverMarker'), { 
+  ssr: false, 
+  loading: () => null // O un piccolo placeholder se preferisci, ma null va bene
+});
+
 interface ActivityMapProps {
   activity: Activity;
   routePoints: RoutePoint[];
-  // hoveredPointIndex: number | null; // Rimosso
+  highlightedPoint?: RoutePoint | null;
 }
 
-const ActivityMap = ({ activity, routePoints /*, hoveredPointIndex */ }: ActivityMapProps) => { // Rimosso hoveredPointIndex dalle props destrutturate
+// RIMOZIONE DELLA SEZIONE 'declare global' POICHE' @types/leaflet DOVREBBE FORNIRE I TIPI
+/*
+declare global {
+  namespace L {
+    interface IconOptions {
+      iconUrl: string;
+      iconRetinaUrl?: string;
+      iconSize?: [number, number];
+      iconAnchor?: [number, number];
+      popupAnchor?: [number, number];
+      shadowUrl?: string;
+      shadowRetinaUrl?: string;
+      shadowSize?: [number, number];
+      shadowAnchor?: [number, number];
+      className?: string;
+    }
+    class Icon {
+      constructor(options: IconOptions);
+    }
+    interface DivIconOptions {
+      html: string | HTMLElement;
+      className?: string;
+      iconSize?: [number, number];
+      iconAnchor?: [number, number];
+      popupAnchor?: [number, number];
+      bgPos?: [number, number];
+    }
+    class DivIcon {
+      constructor(options: DivIconOptions);
+    }
+  }
+}
+*/
+
+const ActivityMap: React.FC<ActivityMapProps> = ({ activity, routePoints, highlightedPoint }) => {
   const [isMounted, setIsMounted] = useState(false);
   const [leaflet, setLeaflet] = useState<typeof import('leaflet') | null>(null);
+  // const mapRef = useRef<L.Map | null>(null); // Rimosso perché non più usato per aggiungere layer imperativamente
+  // const highlightedMarkerRef = useRef<L.CircleMarker | null>(null); // Rimosso perché il pallino è gestito da HoverMarker
 
   useEffect(() => {
     setIsMounted(true);
     
-    import('leaflet/dist/leaflet.css'); // Importa CSS
+    import('leaflet/dist/leaflet.css'); 
     
-    // Carica Leaflet (L) dinamicamente solo sul client
     import('leaflet').then(LModule => {
+      // console.log('[ActivityMap] Leaflet module (L) loaded:', LModule); // Rimosso Log
       setLeaflet(LModule);
     });
   }, []);
 
-  // Definisci le icone usando useMemo e lo stato leaflet (che contiene L)
-  const { startIcon, endIcon, hoverIcon } = useMemo(() => {
-    if (!leaflet) return { startIcon: undefined, endIcon: undefined, hoverIcon: undefined };
-
-    const sIcon = new leaflet.Icon({
-      iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
-      shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
-      iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41]
-    });
-    const eIcon = new leaflet.Icon({
-      iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
-      shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
-      iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41]
-    });
-    const hIcon = new leaflet.DivIcon({
-      className: 'custom-hover-icon',
-      html: '<div style="background-color: #2563eb; width: 12px; height: 12px; border-radius: 50%; border: 2px solid white; box-shadow: 0 0 5px rgba(0,0,0,0.5);"></div>',
-      iconSize: [12, 12], iconAnchor: [6, 6],
-    });
-    return { startIcon: sIcon, endIcon: eIcon, hoverIcon: hIcon };
-  }, [leaflet]); 
+  const { startIcon, endIcon } = useMemo(() => {
+    if (!leaflet) {
+      // console.log('[ActivityMap] Leaflet (L) not available for icon creation.'); // Rimosso Log
+      return { startIcon: undefined, endIcon: undefined };
+    }
+    try {
+      const sIcon = new leaflet.Icon({
+        iconUrl: '/marker-icon-green.png', 
+        iconRetinaUrl: '/marker-icon-green-2x.png',
+        shadowUrl: '/marker-shadow.png',
+        iconSize: [25, 41],
+        iconAnchor: [12, 41],
+        popupAnchor: [1, -34],
+        shadowSize: [41, 41]
+      });
+      const eIcon = new leaflet.Icon({
+        iconUrl: '/marker-icon-red.png',
+        iconRetinaUrl: '/marker-icon-red-2x.png',
+        shadowUrl: '/marker-shadow.png',
+        iconSize: [25, 41],
+        iconAnchor: [12, 41],
+        popupAnchor: [1, -34],
+        shadowSize: [41, 41]
+      });
+      // console.log('[ActivityMap] Icons created:', { sIcon, eIcon }); // Rimosso Log
+      return { startIcon: sIcon, endIcon: eIcon };
+    } catch (error) {
+      console.error('[ActivityMap] Error creating icons:', error); // Lascio questo error log, può essere utile
+      return { startIcon: undefined, endIcon: undefined };
+    }
+  }, [leaflet]);
 
   const hasStartCoordinates = Boolean(activity.start_lat && activity.start_lon);
   const hasRoutePoints = routePoints && routePoints.length > 0;
   
+  // Rimosso blocco di log [ActivityMap] Pre-render state
+
   const defaultCenter = { lat: 45.464664, lng: 9.188540 };
   
   const { mapCenter, zoomLevel } = useMemo(() => {
@@ -130,8 +185,37 @@ const ActivityMap = ({ activity, routePoints /*, hoveredPointIndex */ }: Activit
   }, [hoveredPointIndex, routePoints]);
   */
 
+  // Effetto per gestire il marker evidenziato (pallino)
+  /* // Temporaneamente commentato perche' problematico con react-leaflet e per isolare altri problemi
+  useEffect(() => {
+    if (!mapRef.current || !leaflet) return;
+    const map = mapRef.current;
+
+    // Rimuovi il marker precedente se esiste
+    if (highlightedMarkerRef.current) {
+      highlightedMarkerRef.current.remove();
+      highlightedMarkerRef.current = null;
+    }
+
+    // Aggiungi un nuovo marker se highlightedPoint è valido
+    if (highlightedPoint && typeof highlightedPoint.lat === 'number' && typeof highlightedPoint.lng === 'number') {
+      highlightedMarkerRef.current = leaflet.circleMarker([highlightedPoint.lat, highlightedPoint.lng], {
+        radius: 8,
+        fillColor: "#ff7800", // Colore arancione per il pallino
+        color: "#000",
+        weight: 1,
+        opacity: 1,
+        fillOpacity: 0.8
+      }).addTo(map);
+      // Potresti voler portare il marker in primo piano se ci sono altri elementi sopra
+      // highlightedMarkerRef.current.bringToFront(); 
+    }
+  }, [leaflet, highlightedPoint]); // Dipende da leaflet e highlightedPoint
+  */
+
   // Modificato il controllo per attendere che leaflet e le icone siano caricate
-  if (!isMounted || !leaflet || !startIcon || !endIcon || !hoverIcon) {
+  if (!isMounted || !leaflet || !startIcon || !endIcon) {
+    // console.log('[ActivityMap] Rendering loading state due to: !isMounted || !leaflet || !startIcon || !endIcon'); // Rimosso Log
     return (
       <div className="bg-white p-6 rounded-lg shadow-md h-[350px] flex items-center justify-center">
         <p className="text-gray-600">Caricamento mappa...</p>
@@ -140,6 +224,7 @@ const ActivityMap = ({ activity, routePoints /*, hoveredPointIndex */ }: Activit
   }
 
   if (!hasStartCoordinates && !hasRoutePoints) {
+    // console.log('[ActivityMap] Rendering no GPS data state.'); // Rimosso Log
     return (
       <div className="bg-white p-6 rounded-lg shadow-md">
         <h2 className="text-xl font-semibold mb-4 text-slate-800">Percorso</h2>
@@ -188,7 +273,10 @@ const ActivityMap = ({ activity, routePoints /*, hoveredPointIndex */ }: Activit
                 positions={routePoints.map(point => [point.lat, point.lng] as [number, number])} 
                 pathOptions={{ color: '#0055ff', weight: 4, opacity: 0.7 }}
               />
-              
+              {(() => {
+                // console.log('[ActivityMap] Rendering Start Marker. Position:', routePoints[0]?.lat, routePoints[0]?.lng, 'Icon:', startIcon);
+                return null;
+              })()}
               <Marker 
                 position={[routePoints[0].lat, routePoints[0].lng]}
                 icon={startIcon}
@@ -197,23 +285,39 @@ const ActivityMap = ({ activity, routePoints /*, hoveredPointIndex */ }: Activit
               </Marker>
 
               {routePoints.length > 1 && (
-                <Marker 
-                  position={[routePoints[routePoints.length - 1].lat, routePoints[routePoints.length - 1].lng]}
-                  icon={endIcon}
-                >
-                  <Popup>Arrivo</Popup>
-                </Marker>
+                <>
+                  {(() => {
+                    // console.log('[ActivityMap] Rendering End Marker. Position:', routePoints[routePoints.length - 1]?.lat, routePoints[routePoints.length - 1]?.lng, 'Icon:', endIcon);
+                    return null;
+                  })()}
+                  <Marker 
+                    position={[routePoints[routePoints.length - 1].lat, routePoints[routePoints.length - 1].lng]}
+                    icon={endIcon}
+                  >
+                    <Popup>Arrivo</Popup>
+                  </Marker>
+                </>
               )}
             </>
           )}
           {!hasRoutePoints && hasStartCoordinates && activity.start_lat && activity.start_lon && (
-             <Marker 
+            <>
+              {(() => {
+                // console.log('[ActivityMap] Rendering Start-Only Marker. Position:', activity.start_lat, activity.start_lon, 'Icon:', startIcon);
+                return null;
+              })()}
+              <Marker 
                 position={[activity.start_lat, activity.start_lon]}
                 icon={startIcon}
               >
                 <Popup>Punto di partenza</Popup>
               </Marker>
+            </>
           )}
+
+          {/* Aggiungi il HoverMarker qui */}
+          <DynamicHoverMarker point={highlightedPoint || null} />
+
         </MapContainer>
       </div>
       <div className="mt-3 flex items-center">
