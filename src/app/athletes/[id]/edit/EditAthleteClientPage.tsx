@@ -4,6 +4,8 @@ import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import type { Athlete, AthleteProfileEntry } from '@/lib/types';
 import { getAthleteDataForClient, getAthleteProfileEntriesDataForClient, type SaveAthleteProfileEntryResult } from '../../athleteProfileActions'; // Percorso corretto
+import Link from 'next/link';
+import Image from 'next/image';
 
 import AthleteForm from '@/components/AthleteForm';
 import AthleteProfileEntryForm from '@/components/AthleteProfileEntryForm';
@@ -88,148 +90,235 @@ export default function EditAthleteClientPage({
   }
 
   return (
-    <div className="space-y-6 pb-10 p-4 md:p-6">
-      <div className="mb-6">
-        <h1 className="text-2xl sm:text-3xl font-bold text-slate-800">
-          {initialAthlete.name} {initialAthlete.surname}
-        </h1>
+    <div className="min-h-screen bg-[#e9f1f5]">
+      {/* Header/Navbar in stile con la landing page */}
+      <div className="bg-[#1e2e42] text-white py-4 px-4 md:px-8 shadow-md">
+        <div className="container mx-auto flex justify-between items-center">
+          <div className="flex items-center">
+            <div className="w-8 h-8 bg-[#b4cad6] rounded-full flex items-center justify-center mr-2">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-[#1e2e42]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+            </div>
+            <span className="font-bold text-lg">CycloLab</span>
+          </div>
+          <Link href="/athletes" className="text-[#b4cad6] hover:text-white flex items-center transition-colors">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4 mr-1">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 0 1 0 12h-3" />
+            </svg>
+            Tutti gli Atleti
+          </Link>
+        </div>
       </div>
 
-      <Tabs defaultValue="dashboard" className="w-full">
-        <TabsList className="grid w-full grid-cols-3 md:grid-cols-3 gap-2 mb-6">
-          <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
-          <TabsTrigger value="profilo">Profilo Atleta</TabsTrigger>
-          <TabsTrigger value="storico">Storico Dati</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="dashboard">
-          <div className="space-y-6">
-            
-            {/* Sezione Riepilogo Atleta e Statistiche Chiave */}
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-              <div className="lg:col-span-1">
-                <AthleteSummaryCard athlete={athleteData} />
+      <div className="container mx-auto px-4 md:px-8 py-8">
+        {/* Header profilo atleta */}
+        <div className="bg-gradient-to-r from-[#1e2e42] to-[#4a6b85] rounded-xl text-white p-6 mb-8 shadow-lg">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center">
+            <div>
+              <h1 className="text-2xl sm:text-3xl font-bold">
+                {initialAthlete.name} {initialAthlete.surname}
+              </h1>
+              <p className="text-[#b4cad6] mt-1">Dashboard Atleta</p>
+            </div>
+            <div className="mt-4 md:mt-0 flex items-center">
+              <div className="w-12 h-12 rounded-full bg-[#b4cad6] flex items-center justify-center text-[#1e2e42] font-bold text-xl mr-4">
+                {initialAthlete.name.charAt(0)}{initialAthlete.surname.charAt(0)}
               </div>
-              <div className="lg:col-span-2">
-                <CurrentAthleteStats 
-                  currentWeight={currentWeight}
-                  currentFtp={currentFtp}
-                  currentWPerKg={currentWPerKg}
-                />
+              <div className="text-right">
+                <p className="text-sm text-[#b4cad6]">Ultima modifica</p>
+                <p className="text-sm">{latestEntry ? format(new Date(latestEntry.effective_date), 'dd MMMM yyyy', { locale: it }) : 'N/D'}</p>
               </div>
             </div>
+          </div>
+        </div>
 
-            {/* Sezione Zone di Potenza */}
-            {currentFtp && currentFtp > 0 && (
-              <PowerZonesDisplay currentFtp={currentFtp} />
-            )}
+        {/* Tabs con stile aggiornato */}
+        <Tabs defaultValue="dashboard" className="w-full">
+          <TabsList className="grid w-full grid-cols-3 md:grid-cols-3 gap-2 mb-6 bg-white p-1 rounded-lg shadow-md">
+            <TabsTrigger 
+              value="dashboard" 
+              className="data-[state=active]:bg-[#4a6b85] data-[state=active]:text-white transition-all"
+            >
+              Dashboard
+            </TabsTrigger>
+            <TabsTrigger 
+              value="profilo"
+              className="data-[state=active]:bg-[#4a6b85] data-[state=active]:text-white transition-all"
+            >
+              Profilo Atleta
+            </TabsTrigger>
+            <TabsTrigger 
+              value="storico"
+              className="data-[state=active]:bg-[#4a6b85] data-[state=active]:text-white transition-all"
+            >
+              Storico Dati
+            </TabsTrigger>
+          </TabsList>
 
-            {/* Grafico Andamento */}
-            {profileEntriesData.length > 0 ? (
-              <AthletePerformanceChart profileEntries={profileEntriesData} />
-            ) : (
-              <Card className="mt-6"> {/* Aggiunto mt-6 per coerenza se il grafico non c'è ma le stats sì*/}
-                <CardHeader>
-                  <CardTitle>Andamento Peso, FTP & W/kg</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-slate-600">
-                    Nessun dato storico disponibile per visualizzare il grafico. Aggiungi voci nella scheda "Storico Dati".
-                  </p>
+          <TabsContent value="dashboard">
+            <div className="space-y-6">
+              
+              {/* Sezione Riepilogo Atleta e Statistiche Chiave */}
+              <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+                <div className="lg:col-span-1">
+                  <Card className="border-none shadow-lg rounded-xl overflow-hidden">
+                    <div className="bg-gradient-to-r from-[#1e2e42] to-[#4a6b85] px-4 py-3">
+                      <h2 className="text-white text-lg font-semibold">Profilo Atleta</h2>
+                    </div>
+                    <CardContent className="p-5">
+                      <AthleteSummaryCard athlete={athleteData} />
+                    </CardContent>
+                  </Card>
+                </div>
+                
+                <div className="lg:col-span-2">
+                  <Card className="border-none shadow-lg rounded-xl overflow-hidden">
+                    <div className="bg-gradient-to-r from-[#4a6b85] to-[#1e2e42] px-4 py-3">
+                      <h2 className="text-white text-lg font-semibold">Statistiche Attuali</h2>
+                    </div>
+                    <CardContent className="p-5">
+                      <CurrentAthleteStats 
+                        currentWeight={currentWeight}
+                        currentFtp={currentFtp}
+                        currentWPerKg={currentWPerKg}
+                      />
+                    </CardContent>
+                  </Card>
+                </div>
+              </div>
+
+              {/* Sezione Zone di Potenza */}
+              {currentFtp && currentFtp > 0 && (
+                <Card className="border-none shadow-lg rounded-xl overflow-hidden">
+                  <div className="bg-gradient-to-r from-[#1e2e42] to-[#4a6b85] px-4 py-3">
+                    <h2 className="text-white text-lg font-semibold">Zone di Potenza</h2>
+                  </div>
+                  <CardContent className="p-5">
+                    <PowerZonesDisplay currentFtp={currentFtp} />
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Grafico Andamento */}
+              <Card className="border-none shadow-lg rounded-xl overflow-hidden">
+                <div className="bg-gradient-to-r from-[#4a6b85] to-[#1e2e42] px-4 py-3">
+                  <h2 className="text-white text-lg font-semibold">Andamento Peso, FTP & W/kg</h2>
+                </div>
+                <CardContent className="p-5">
+                  {profileEntriesData.length > 0 ? (
+                    <AthletePerformanceChart profileEntries={profileEntriesData} />
+                  ) : (
+                    <p className="text-sm text-[#4a6b85] italic">
+                      Nessun dato storico disponibile per visualizzare il grafico. Aggiungi voci nella scheda "Storico Dati".
+                    </p>
+                  )}
                 </CardContent>
               </Card>
-            )}
 
-            {/* Grafico PMC */}
-            {/* Passiamo athleteId al PmcChart */}
-            {/* Possiamo aggiungere un controllo simile a profileEntriesData.length se il grafico PMC
-                 non dovesse essere mostrato se non ci sono attività, ma la logica interna a PmcChart
-                 già gestisce l'assenza di dati. Lo mostriamo sempre e lui gestirà il suo stato. */}
-            <PmcChart athleteId={athleteId} />
+              {/* Grafico PMC */}
+              <Card className="border-none shadow-lg rounded-xl overflow-hidden">
+                <div className="bg-gradient-to-r from-[#1e2e42] to-[#4a6b85] px-4 py-3">
+                  <h2 className="text-white text-lg font-semibold">Performance Management Chart</h2>
+                </div>
+                <CardContent className="p-5">
+                  <PmcChart athleteId={athleteId} />
+                </CardContent>
+              </Card>
 
-            {/* Tabella Personal Bests Complessivi */}
-            <Card className="mt-6">
-              <CardHeader>
-                <CardTitle>Personal Best Complessivi (Potenza)</CardTitle>
-                <CardDescription>
-                  Migliori prestazioni di potenza registrate per questo atleta.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <OverallPersonalBestsTable athleteId={athleteId} />
+              {/* Tabella Personal Bests Complessivi */}
+              <Card className="border-none shadow-lg rounded-xl overflow-hidden">
+                <div className="bg-gradient-to-r from-[#4a6b85] to-[#1e2e42] px-4 py-3">
+                  <h2 className="text-white text-lg font-semibold">Personal Best Complessivi (Potenza)</h2>
+                </div>
+                <CardContent className="p-5">
+                  <p className="text-sm text-[#4a6b85] mb-4">
+                    Migliori prestazioni di potenza registrate per questo atleta.
+                  </p>
+                  <OverallPersonalBestsTable athleteId={athleteId} />
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="profilo">
+            <Card className="border-none shadow-lg rounded-xl overflow-hidden">
+              <div className="bg-gradient-to-r from-[#1e2e42] to-[#4a6b85] px-4 py-3">
+                <h2 className="text-white text-lg font-semibold">Dettagli Anagrafici</h2>
+              </div>
+              <CardContent className="p-5">
+                <p className="text-sm text-[#4a6b85] mb-4">
+                  Modifica le informazioni personali dell'atleta.
+                </p>
+                {isPendingGlobal && (
+                  <div className="bg-[#e9f1f5] border border-[#b4cad6] text-[#4a6b85] px-4 py-2 mb-4 rounded-md text-sm">
+                    Aggiornamento dati atleta in corso...
+                  </div>
+                )}
+                <AthleteForm initialData={athleteData} key={JSON.stringify(athleteData)} />
               </CardContent>
             </Card>
+          </TabsContent>
 
-          </div>
-        </TabsContent>
-
-        <TabsContent value="profilo">
-          <Card>
-            <CardHeader>
-              <CardTitle>Dettagli Anagrafici</CardTitle>
-              <CardDescription>Modifica le informazioni personali dell'atleta.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {isPendingGlobal && <p className='text-sm text-slate-500 mb-2'>Aggiornamento dati atleta...</p>}
-              <AthleteForm initialData={athleteData} key={JSON.stringify(athleteData)} />
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="storico">
-          <div className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Nuova Voce Storico</CardTitle>
-                <CardDescription>Aggiungi una misurazione di peso e FTP per una data specifica.</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <AthleteProfileEntryForm athleteId={athleteId} onEntrySaved={handleProfileEntrySaved} />
-              </CardContent>
-            </Card>
-
-            {profileEntriesData.length > 0 ? (
-              <Card className="mt-6">
-                <CardHeader>
-                  <CardTitle>Voci Registrate</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <ul className="divide-y divide-slate-200">
-                    {profileEntriesData.map(entry => (
-                      <li key={entry.id} className="py-3 grid grid-cols-1 md:grid-cols-3 gap-2 md:gap-4 items-center text-sm">
-                        <div>
-                          <span className="font-medium text-slate-800">
-                            {format(new Date(entry.effective_date), 'dd MMM yyyy', { locale: it })}
-                          </span>
-                        </div>
-                        <div>
-                          <span className="text-slate-500">FTP: </span>
-                          <span className="font-medium text-slate-800">{entry.ftp_watts !== null ? `${entry.ftp_watts} W` : 'N/D'}</span>
-                        </div>
-                        <div>
-                          <span className="text-slate-500">Peso: </span>
-                          <span className="font-medium text-slate-800">{entry.weight_kg !== null ? `${entry.weight_kg} kg` : 'N/D'}</span>
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                </CardContent>
-              </Card>
-            ) : (
-              <Card className="mt-6">
-                <CardHeader>
-                  <CardTitle>Voci Registrate</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-slate-600">
-                    Nessuna voce di profilo prestativo ancora registrata per questo atleta.
+          <TabsContent value="storico">
+            <div className="space-y-6">
+              <Card className="border-none shadow-lg rounded-xl overflow-hidden">
+                <div className="bg-gradient-to-r from-[#1e2e42] to-[#4a6b85] px-4 py-3">
+                  <h2 className="text-white text-lg font-semibold">Nuova Voce Storico</h2>
+                </div>
+                <CardContent className="p-5">
+                  <p className="text-sm text-[#4a6b85] mb-4">
+                    Aggiungi una misurazione di peso e FTP per una data specifica.
                   </p>
+                  <AthleteProfileEntryForm athleteId={athleteId} onEntrySaved={handleProfileEntrySaved} />
                 </CardContent>
               </Card>
-            )}
-          </div>
-        </TabsContent>
-      </Tabs>
+
+              <Card className="border-none shadow-lg rounded-xl overflow-hidden">
+                <div className="bg-gradient-to-r from-[#4a6b85] to-[#1e2e42] px-4 py-3">
+                  <h2 className="text-white text-lg font-semibold">Voci Registrate</h2>
+                </div>
+                <CardContent className="p-5">
+                  {profileEntriesData.length > 0 ? (
+                    <div className="overflow-hidden rounded-lg border border-[#b4cad6]">
+                      <table className="min-w-full divide-y divide-[#b4cad6]">
+                        <thead className="bg-[#e9f1f5]">
+                          <tr>
+                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-[#1e2e42] uppercase tracking-wider">Data</th>
+                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-[#1e2e42] uppercase tracking-wider">FTP</th>
+                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-[#1e2e42] uppercase tracking-wider">Peso</th>
+                          </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-[#b4cad6]">
+                          {profileEntriesData.map(entry => (
+                            <tr key={entry.id} className="hover:bg-[#e9f1f5] transition-colors">
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <span className="font-medium text-[#1e2e42]">
+                                  {format(new Date(entry.effective_date), 'dd MMM yyyy', { locale: it })}
+                                </span>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <span className="font-medium text-[#4a6b85]">{entry.ftp_watts !== null ? `${entry.ftp_watts} W` : 'N/D'}</span>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <span className="font-medium text-[#4a6b85]">{entry.weight_kg !== null ? `${entry.weight_kg} kg` : 'N/D'}</span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-[#4a6b85] italic">
+                      Nessuna voce di profilo prestativo ancora registrata per questo atleta.
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+        </Tabs>
+      </div>
     </div>
   );
 } 

@@ -227,4 +227,58 @@ export async function associateAthleteToCoach(athleteId: string): Promise<{
   }
 }
 
-// TODO: Implementare dissociateAthleteFromCoach 
+export async function dissociateAthleteFromCoach(athleteId: string): Promise<{
+  success?: boolean;
+  error?: string;
+}> {
+  if (!athleteId) {
+    return { error: 'ID Atleta non fornito.' };
+  }
+
+  const cookieStore = cookies();
+  const supabase = createClient(cookieStore);
+
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
+
+  if (userError || !user) {
+    return { error: 'Utente non autenticato.' };
+  }
+  const coachUserId = user.id;
+
+  try {
+    // Verifica se l'associazione esiste
+    const { data: existingAssociation, error: existingCheckError } = await supabase
+      .from('coach_athletes')
+      .select('*')
+      .eq('coach_user_id', coachUserId)
+      .eq('athlete_id', athleteId)
+      .maybeSingle();
+    
+    if (existingCheckError) {
+      console.error('[dissociateAthleteFromCoach] Errore controllo associazione esistente:', existingCheckError);
+      return { error: 'Errore durante la verifica dell\'associazione esistente.' };
+    }
+
+    if (!existingAssociation) {
+      return { error: 'Atleta non associato a questo coach.' };
+    }
+
+    // Rimuovi l'associazione
+    const { error: deleteError } = await supabase
+      .from('coach_athletes')
+      .delete()
+      .eq('coach_user_id', coachUserId)
+      .eq('athlete_id', athleteId);
+
+    if (deleteError) {
+      console.error('[dissociateAthleteFromCoach] Errore rimozione associazione:', deleteError);
+      return { error: `Impossibile rimuovere l'associazione con l'atleta: ${deleteError.message}` };
+    }
+
+    return { success: true };
+
+  } catch (e: any) {
+    console.error('[dissociateAthleteFromCoach] Eccezione:', e.message);
+    return { error: `Errore imprevisto durante la rimozione dell'associazione: ${e.message}` };
+  }
+} 

@@ -4,6 +4,7 @@
 import { useState, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 // Importa createBrowserClient da @supabase/ssr
 import { createBrowserClient } from '@supabase/ssr';
 
@@ -44,49 +45,86 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex flex-col items-center justify-start pt-12 sm:pt-16 min-h-screen">
-      <div className="p-6 sm:p-8 bg-white shadow-xl rounded-lg w-full max-w-md border border-slate-200">
-        <h1 className="text-2xl sm:text-3xl font-bold mb-6 sm:mb-8 text-center text-slate-700">Login Coach</h1>
-        {error && <p className="bg-red-100 text-red-700 p-3 rounded-md mb-4 text-sm">{error}</p>}
-        <form onSubmit={handleLogin} className="space-y-5 sm:space-y-6">
-          <div>
-            <label htmlFor="email" className="block text-sm font-medium text-slate-700 mb-1">Email</label>
-            <input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm placeholder-slate-500"
-              placeholder="tuamail@esempio.com"
-            />
+    <div className="min-h-screen bg-[#e9f1f5] flex flex-col items-center">
+      {/* Logo e Intestazione */}
+      <div className="w-full bg-[#1e2e42] py-6 mb-8 flex justify-center">
+        <div className="flex items-center">
+          <div className="w-10 h-10 bg-[#b4cad6] rounded-full flex items-center justify-center mr-3">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-[#1e2e42]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+            </svg>
           </div>
-          <div>
-            <label htmlFor="password" className="block text-sm font-medium text-slate-700 mb-1">Password</label>
-            <input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm placeholder-slate-500"
-              placeholder="••••••••"
-            />
+          <span className="font-bold text-2xl text-white">CycloLab</span>
+        </div>
+      </div>
+
+      <div className="container mx-auto px-4 flex flex-col items-center justify-center flex-grow pb-12">
+        <div className="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden">
+          <div className="bg-gradient-to-r from-[#1e2e42] to-[#4a6b85] p-4">
+            <h1 className="text-2xl font-bold text-white text-center">Accedi alla piattaforma</h1>
           </div>
-          <button
-            type="submit"
-            disabled={isLoading}
-            className="w-full flex justify-center py-2.5 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:bg-slate-400 disabled:cursor-not-allowed"
-          >
-            {isLoading ? 'Accesso in corso...' : 'Accedi'}
-          </button>
-        </form>
-        <p className="mt-6 text-center text-sm text-slate-600">
-          Non hai un account?{' '}
-          <Link href="/auth/signup" className="font-medium text-blue-600 hover:text-blue-500">
-            Registrati qui
-          </Link>
-        </p>
+          
+          <div className="p-6 sm:p-8">
+            {error && (
+              <div className="bg-red-50 text-red-700 p-4 rounded-lg mb-6 border border-red-100 text-sm">
+                <div className="flex items-center">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <span>{error}</span>
+                </div>
+              </div>
+            )}
+            
+            <form onSubmit={handleLogin} className="space-y-5">
+              <div>
+                <label htmlFor="email" className="block text-sm font-medium text-[#1e2e42] mb-1">Email</label>
+                <input
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  className="mt-1 block w-full px-3 py-2 border border-[#b4cad6] rounded-md shadow-sm focus:outline-none focus:ring-[#4a6b85] focus:border-[#4a6b85] sm:text-sm"
+                  placeholder="tuamail@esempio.com"
+                />
+              </div>
+              <div>
+                <label htmlFor="password" className="block text-sm font-medium text-[#1e2e42] mb-1">Password</label>
+                <input
+                  id="password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  className="mt-1 block w-full px-3 py-2 border border-[#b4cad6] rounded-md shadow-sm focus:outline-none focus:ring-[#4a6b85] focus:border-[#4a6b85] sm:text-sm"
+                  placeholder="••••••••"
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="w-full flex justify-center py-2.5 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-[#4a6b85] hover:bg-[#1e2e42] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#4a6b85] disabled:bg-[#b4cad6] disabled:cursor-not-allowed transition-colors"
+              >
+                {isLoading ? 'Accesso in corso...' : 'Accedi'}
+              </button>
+            </form>
+            
+            <div className="mt-6 border-t border-[#e9f1f5] pt-6">
+              <p className="text-center text-sm text-[#4a6b85]">
+                Non hai un account?{' '}
+                <Link href="/auth/signup" className="font-medium text-[#4a6b85] hover:text-[#1e2e42] transition-colors">
+                  Registrati qui
+                </Link>
+              </p>
+            </div>
+          </div>
+        </div>
+        
+        {/* Footer */}
+        <div className="mt-12 text-center text-[#4a6b85] text-sm">
+          <p>&copy; {new Date().getFullYear()} CycloLab. Tutti i diritti riservati.</p>
+        </div>
       </div>
     </div>
   );

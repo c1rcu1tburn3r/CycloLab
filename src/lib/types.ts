@@ -64,6 +64,18 @@ export type Activity = Database['public']['Tables']['activities']['Row'] & {
   pb_power_3600s_watts?: number | null;
   pb_power_5400s_watts?: number | null;
   // pb_power_1s_watts?: number | null;
+  
+  // Aggiungo le proprietà power_* usate nella pagina di dettaglio attività
+  power_1s?: number | null;
+  power_5s?: number | null;
+  power_10s?: number | null;
+  power_30s?: number | null;
+  power_1min?: number | null;
+  power_5min?: number | null;
+  power_10min?: number | null;
+  power_20min?: number | null;
+  power_30min?: number | null;
+  power_1h?: number | null;
 };
 
 // Tipi per l'inserimento di nuovi record

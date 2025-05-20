@@ -264,7 +264,7 @@ const ActivityMap: React.FC<ActivityMapProps> = ({ activity, routePoints, highli
       setSelectionEndIdx(null); // Resetta la fine precedente
       setSelectingEndPoint(true);
       if (onSegmentSelect) onSegmentSelect(null);
-      console.log(`[Map] Selection started at index: ${closestIndex}`);
+      // console.log(`[Map] Selection started at index: ${closestIndex}`);
     } else {
       // Secondo click: imposta la fine della selezione
       let start = selectionStartIdx!;
@@ -277,7 +277,7 @@ const ActivityMap: React.FC<ActivityMapProps> = ({ activity, routePoints, highli
       setSelectionEndIdx(end);
       setSelectingEndPoint(false);
       if (onSegmentSelect) onSegmentSelect({ startIndex: start, endIndex: end });
-      console.log(`[Map] Selection ended. Start: ${start}, End: ${end}`);
+      // console.log(`[Map] Selection ended. Start: ${start}, End: ${end}`);
     }
   };
 
@@ -288,7 +288,7 @@ const ActivityMap: React.FC<ActivityMapProps> = ({ activity, routePoints, highli
     if (onSegmentSelect) {
       onSegmentSelect(null);
     }
-    console.log("[Map] Selection Reset");
+    // console.log("[Map] Selection Reset");
   };
 
   // Icone per i marker di selezione (semplici cerchi per ora)

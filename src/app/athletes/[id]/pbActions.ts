@@ -64,11 +64,14 @@ export async function getAthleteOverallPersonalBests(
 
     if (error) {
       console.error('[getAthleteOverallPersonalBests] Errore nel recuperare PB dal DB:', error);
+      if (error.code === 'PGRST116') {
+        return { data: [] };
+      }
       return { error: `Failed to fetch personal bests: ${error.message}` };
     }
 
     if (!data) {
-      console.log(`[getAthleteOverallPersonalBests] Nessun PB trovato per l'atleta ID: ${athleteId}`);
+      // console.log(`[getAthleteOverallPersonalBests] Nessun PB trovato per l'atleta ID: ${athleteId}`);
       return { data: [] };
     }
 

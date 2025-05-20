@@ -66,13 +66,13 @@ export async function getActivitiesForPmc(
       .order('activity_date', { ascending: true }); // Ordina per data crescente
 
     if (error) {
-      console.error('[getActivitiesForPmc] Errore nel recuperare le attività dal DB:', error);
-      return { error: `Failed to fetch activities for PMC: ${error.message}` };
+      console.error('[getActivitiesForPmc] Errore nel recuperare le attività per PMC:', error);
+      return { error: `Failed to fetch activities: ${error.message}` };
     }
 
     if (!data || data.length === 0) {
-        console.log(`[getActivitiesForPmc] Nessuna attività valida trovata per l'atleta con ID: ${athleteId}`);
-        return { data: [] };
+      // console.log(`[getActivitiesForPmc] Nessuna attività valida trovata per l'atleta con ID: ${athleteId}`);
+      return { data: [] };
     }
     
     // Mappiamo i dati al tipo PmcActivity, assicurandoci che tss sia un numero.

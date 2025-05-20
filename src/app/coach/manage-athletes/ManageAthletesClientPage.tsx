@@ -4,11 +4,12 @@ import React, { useState, useEffect, useTransition, useCallback } from 'react';
 import { 
   getManagedAthletes, 
   searchPotentialAthletes, 
-  associateAthleteToCoach, 
+  associateAthleteToCoach,
+  dissociateAthleteFromCoach,
   type ManagedAthlete 
 } from '../athleteManagementActions';
 import type { Athlete } from '@/lib/types';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input'; // Aggiunto Input
 import { PlusCircle, UserMinus, AlertTriangle, Search, XCircle, CheckCircle2 } from 'lucide-react';
@@ -28,7 +29,9 @@ export default function ManageAthletesClientPage() {
   const [errorSearch, setErrorSearch] = useState<string | null>(null);
 
   const [isAssociating, setIsAssociating] = useState<string | null>(null); // ID dell'atleta in corso di associazione
+  const [isRemoving, setIsRemoving] = useState<string | null>(null); // ID dell'atleta in corso di rimozione
   const [associationFeedback, setAssociationFeedback] = useState<{ type: 'success' | 'error', message: string } | null>(null);
+  const [removalFeedback, setRemovalFeedback] = useState<{ type: 'success' | 'error', message: string } | null>(null);
 
   const [isPendingGlobal, startTransitionGlobal] = useTransition(); // Per refresh/azioni globali
 
@@ -103,25 +106,54 @@ export default function ManageAthletesClientPage() {
     });
   };
 
-  // TODO: Implementare handleRemoveAthlete
+  const handleRemoveAthlete = async (athleteId: string, athleteName: string) => {
+    // Chiedi conferma prima di rimuovere
+    if (!window.confirm(`Sei sicuro di voler rimuovere ${athleteName} dalla tua lista atleti?`)) {
+      return;
+    }
+    
+    setIsRemoving(athleteId);
+    setRemovalFeedback(null);
+    startTransitionGlobal(async () => {
+      const result = await dissociateAthleteFromCoach(athleteId);
+      if (result.success) {
+        setRemovalFeedback({
+          type: 'success', 
+          message: `Atleta rimosso con successo.`
+        });
+        await fetchManagedAthletes(); // Aggiorna l'elenco degli atleti gestiti
+      } else {
+        setRemovalFeedback({
+          type: 'error', 
+          message: result.error || "Impossibile rimuovere l'atleta."
+        });
+      }
+      setIsRemoving(null);
+      
+      // Nascondi il feedback dopo 5 secondi
+      setTimeout(() => {
+        setRemovalFeedback(null);
+      }, 5000);
+    });
+  };
 
   return (
     <div className="space-y-8">
       {/* Sezione Aggiungi Atleta */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Associa Nuovo Atleta</CardTitle>
-          <CardDescription>Cerca un atleta per nome o cognome e associalo al tuo profilo coach.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
+      <div className="rounded-xl overflow-hidden shadow-lg border border-[#b4cad6]">
+        <div className="bg-[#1e2e42] p-6 text-white">
+          <h3 className="text-xl font-semibold">Associa Nuovo Atleta</h3>
+          <p className="text-sm text-[#b4cad6] mt-1">Cerca un atleta per nome o cognome e associalo al tuo profilo coach.</p>
+        </div>
+        <div className="bg-white p-6 space-y-4">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-[#4a6b85]" />
             <Input
               type="text"
               placeholder="Cerca atleta per nome o cognome..."
               value={searchTerm}
               onChange={handleSearchChange}
-              className="pl-10"
+              className="pl-10 border-[#b4cad6] focus:border-[#4a6b85] focus:ring-[#4a6b85]"
             />
           </div>
 
@@ -132,7 +164,7 @@ export default function ManageAthletesClientPage() {
             </div>
           )}
 
-          {isLoadingSearch && <p className="text-sm text-slate-500 mt-2">Ricerca in corso...</p>}
+          {isLoadingSearch && <p className="text-sm text-[#4a6b85] mt-2">Ricerca in corso...</p>}
           {errorSearch && 
             <div className="mt-2 p-3 bg-red-50 border border-red-200 text-red-700 rounded-md text-sm flex items-center">
                 <AlertTriangle className="h-5 w-5 mr-2" /> {errorSearch}
@@ -140,18 +172,19 @@ export default function ManageAthletesClientPage() {
           }
           
           {searchResults.length > 0 && !isLoadingSearch && (
-            <div className="mt-4 space-y-2 max-h-60 overflow-y-auto border rounded-md p-2">
-              <p className="text-sm font-medium mb-2">Risultati ({searchResults.length}):</p>
+            <div className="mt-4 space-y-2 max-h-60 overflow-y-auto border border-[#b4cad6] rounded-md p-2">
+              <p className="text-sm font-medium mb-2 text-[#1e2e42]">Risultati ({searchResults.length}):</p>
               {searchResults.map(athlete => (
-                <div key={athlete.id} className="flex items-center justify-between p-2 hover:bg-slate-50 rounded-md">
+                <div key={athlete.id} className="flex items-center justify-between p-2 hover:bg-[#e9f1f5] rounded-md transition-colors">
                   <div>
-                    <p className="font-medium text-slate-800">{athlete.name} {athlete.surname}</p>
-                    <p className="text-xs text-slate-500">ID: {athlete.id} {athlete.birth_date ? ` - Nato il: ${format(new Date(athlete.birth_date), 'dd MMM yyyy', { locale: it })}` : ''}</p>
+                    <p className="font-medium text-[#1e2e42]">{athlete.name} {athlete.surname}</p>
+                    <p className="text-xs text-[#4a6b85]">ID: {athlete.id} {athlete.birth_date ? ` - Nato il: ${format(new Date(athlete.birth_date), 'dd MMM yyyy', { locale: it })}` : ''}</p>
                   </div>
                   <Button 
                     size="sm" 
                     onClick={() => handleAssociateAthlete(athlete.id)}
                     disabled={isAssociating === athlete.id || isPendingGlobal}
+                    className="bg-[#1e2e42] hover:bg-[#4a6b85] text-white transition-colors"
                   >
                     {isAssociating === athlete.id ? 'Associo...' : <><PlusCircle className="mr-2 h-4 w-4" /> Associa</>}
                   </Button>
@@ -160,19 +193,31 @@ export default function ManageAthletesClientPage() {
             </div>
           )}
           {searchResults.length === 0 && searchTerm.length >=2 && !isLoadingSearch && !errorSearch && (
-             <p className="text-sm text-slate-500 mt-2">Nessun atleta trovato per "{searchTerm}" o sono già tutti associati.</p>
+             <p className="text-sm text-[#4a6b85] mt-2">Nessun atleta trovato per "{searchTerm}" o sono già tutti associati.</p>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {/* Elenco Atleti Associati */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Atleti Già Associati ({managedAthletes.length})</CardTitle>
-          <CardDescription>Elenco degli atleti che gestisci attualmente.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {isLoadingManaged && <p>Caricamento atleti associati...</p>}
+      <div className="rounded-xl overflow-hidden shadow-lg border border-[#b4cad6]">
+        <div className="bg-[#1e2e42] p-6 text-white">
+          <h3 className="text-xl font-semibold">Atleti Già Associati ({managedAthletes.length})</h3>
+          <p className="text-sm text-[#b4cad6] mt-1">Elenco degli atleti che gestisci attualmente.</p>
+        </div>
+        <div className="bg-white p-6">
+          {removalFeedback && (
+             <div className={`mb-4 p-3 rounded-md text-sm flex items-center ${removalFeedback.type === 'success' ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>
+              {removalFeedback.type === 'success' ? <CheckCircle2 className="h-5 w-5 mr-2" /> : <AlertTriangle className="h-5 w-5 mr-2" />}
+              {removalFeedback.message}
+            </div>
+          )}
+          
+          {isLoadingManaged && 
+            <div className="flex items-center justify-center p-6">
+              <div className="w-8 h-8 border-4 border-[#b4cad6] border-t-[#1e2e42] rounded-full animate-spin"></div>
+              <p className="ml-4 text-[#4a6b85]">Caricamento atleti associati...</p>
+            </div>
+          }
           {errorManaged && 
             <div className="mb-4 p-4 bg-red-50 border border-red-200 text-red-700 rounded-md flex items-center">
               <AlertTriangle className="h-5 w-5 mr-3" />
@@ -180,38 +225,38 @@ export default function ManageAthletesClientPage() {
             </div>
           }
           {!isLoadingManaged && managedAthletes.length === 0 && !errorManaged && (
-            <p className="text-sm text-slate-600">Nessun atleta associato al momento.</p>
+            <p className="text-sm text-[#4a6b85] p-4">Nessun atleta associato al momento.</p>
           )}
           {!isLoadingManaged && managedAthletes.length > 0 && (
             <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
+              <table className="min-w-full divide-y divide-[#b4cad6]">
+                <thead className="bg-[#e9f1f5]">
                   <tr>
-                    <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nome</th>
-                    <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Associato il</th>
-                    <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Azioni</th>
+                    <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-[#1e2e42] uppercase tracking-wider">Nome</th>
+                    <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-[#1e2e42] uppercase tracking-wider">Associato il</th>
+                    <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-[#1e2e42] uppercase tracking-wider">Azioni</th>
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
+                <tbody className="bg-white divide-y divide-[#b4cad6]">
                   {managedAthletes.map(athlete => (
-                    <tr key={athlete.id}>
-                      <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-blue-600 hover:underline">
-                        <Link href={`/athletes/${athlete.id}/edit`}>
+                    <tr key={athlete.id} className="hover:bg-[#e9f1f5] transition-colors">
+                      <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-[#4a6b85] hover:text-[#1e2e42]">
+                        <Link href={`/athletes/${athlete.id}/edit`} className="hover:underline">
                           {athlete.name} {athlete.surname}
                         </Link>
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-700">
+                      <td className="px-4 py-3 whitespace-nowrap text-sm text-[#4a6b85]">
                         {format(new Date(athlete.assigned_at), 'dd MMM yyyy', { locale: it })}
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap text-sm">
                         <Button 
                           variant="outline"
                           size="sm" 
-                          onClick={() => alert(`TODO: Rimuovi ${athlete.name} ${athlete.surname}`)} 
-                          disabled={isPendingGlobal} // Usare isPendingGlobal o uno stato dedicato per la rimozione
+                          onClick={() => handleRemoveAthlete(athlete.id, `${athlete.name} ${athlete.surname}`)} 
+                          disabled={isRemoving === athlete.id || isPendingGlobal}
                           className="text-red-600 hover:text-red-700 border-red-300 hover:border-red-500"
                         >
-                          <UserMinus className="mr-1 h-4 w-4" /> Rimuovi
+                          {isRemoving === athlete.id ? 'Rimozione...' : <><UserMinus className="mr-1 h-4 w-4" /> Rimuovi</>}
                         </Button>
                       </td>
                     </tr>
@@ -220,8 +265,8 @@ export default function ManageAthletesClientPage() {
               </table>
             </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 } 

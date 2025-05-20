@@ -99,7 +99,7 @@ async function getAthleteFTPOnDate(
 
     if (error) {
       if (error.code === 'PGRST116') { // Codice errore per "single() did not return exactly one row"
-        console.log(`[getAthleteFTPOnDate] Nessun profilo FTP trovato per l'atleta ${athleteId} alla data ${activityDate} o precedente.`);
+        // console.log(`[getAthleteFTPOnDate] Nessun profilo FTP trovato per l'atleta ${athleteId} alla data ${activityDate} o precedente.`);
         return null;
       }
       console.error('[getAthleteFTPOnDate] Errore nel recupero del profilo FTP:', error);
@@ -153,10 +153,10 @@ export async function processAndCreateActivity(
   try {
     // Recupera l'FTP dell'atleta alla data dell'attività
     const athleteFTP = await getAthleteFTPOnDate(supabase, formData.athlete_id, formData.activity_date);
-    console.log(`[Server Action] FTP recuperato per atleta ${formData.athlete_id} in data ${formData.activity_date}: ${athleteFTP} W`);
+    // console.log(`[Server Action] FTP recuperato per atleta ${formData.athlete_id} in data ${formData.activity_date}: ${athleteFTP} W`);
 
     // --- INIZIO PARSING FIT REALE ---
-    console.log(`[Server Action] Inizio parsing reale per: ${fitFilePath}`);
+    // console.log(`[Server Action] Inizio parsing reale per: ${fitFilePath}`);
     
     // 1. Scarica il file FIT da Supabase Storage
     const { data: fitFileData, error: downloadError } = await supabase.storage
@@ -193,7 +193,7 @@ export async function processAndCreateActivity(
       });
     });
     
-    console.log('[Server Action] Dati FIT reali estratti');
+    // console.log('[Server Action] Dati FIT reali estratti');
     
     // 5. Estrai i dati rilevanti dal risultato del parsing
     // Nota: la struttura dei dati dipende dal file FIT, quindi potrebbe essere necessario
@@ -212,7 +212,7 @@ export async function processAndCreateActivity(
     
     // Estrai le coordinate e crea il percorso
     if (parsedFitData.records && parsedFitData.records.length > 0) {
-      console.log(`[Server Action] Elaborazione ${parsedFitData.records.length} punti GPS`);
+      // console.log(`[Server Action] Elaborazione ${parsedFitData.records.length} punti GPS`);
       
       // Filtra solo i record con coordinate valide
       const validRecords = parsedFitData.records.filter(record => 
@@ -376,7 +376,7 @@ export async function processAndCreateActivity(
         }
         */
 
-        console.log(`[Server Action] Creati ${routePoints.length} punti per il percorso`);
+        // console.log(`[Server Action] Creati ${routePoints.length} punti per il percorso`);
       }
     } else if (parsedFitData.sessions && parsedFitData.sessions.length > 0) {
       // Se non ci sono record, prova a ottenere le coordinate dalla sessione
@@ -525,40 +525,40 @@ export async function processAndCreateActivity(
     if (!calculatedNP || calculatedNP === 0) {
       if (routePoints && routePoints.length > 0) {
         const powerDataForNP = routePoints.map(p => p.power);
-        console.log(`[Server Action] Tentativo di calcolo NP da ${powerDataForNP.length} punti di potenza.`);
+        // console.log(`[Server Action] Tentativo di calcolo NP da ${powerDataForNP.length} punti di potenza.`);
         calculatedNP = calculateNormalizedPower(powerDataForNP);
         if (calculatedNP) {
-          console.log('[Server Action] NP calcolato dai routePoints:', calculatedNP);
+          // console.log('[Server Action] NP calcolato dai routePoints:', calculatedNP);
           fitMetrics.normalized_power_watts = parseFloat(calculatedNP.toFixed(0));
         } else {
-          console.warn('[Server Action] Calcolo NP dai routePoints non riuscito o ha restituito null.');
+          // console.warn('[Server Action] Calcolo NP dai routePoints non riuscito o ha restituito null.');
         }
       } else {
-        console.warn('[Server Action] Nessun routePoints disponibile per calcolare NP.');
+        // console.warn('[Server Action] Nessun routePoints disponibile per calcolare NP.');
       }
     } else {
-      console.log('[Server Action] NP utilizzato dal file FIT:', calculatedNP);
+      // console.log('[Server Action] NP utilizzato dal file FIT:', calculatedNP);
     }
 
     // Ricalcola IF e TSS se abbiamo l'FTP dell'atleta e un NP valido
     if (athleteFTP && athleteFTP > 0 && calculatedNP && calculatedNP > 0) {
-      console.log(`[Server Action] Ricalcolo IF e TSS con FTP: ${athleteFTP} W, NP: ${calculatedNP} W`);
+      // console.log(`[Server Action] Ricalcolo IF e TSS con FTP: ${athleteFTP} W, NP: ${calculatedNP} W`);
       
       const newIF = calculatedNP / athleteFTP;
       fitMetrics.intensity_factor = parseFloat(newIF.toFixed(3));
-      console.log('[Server Action] IF ricalcolato:', fitMetrics.intensity_factor);
+      // console.log('[Server Action] IF ricalcolato:', fitMetrics.intensity_factor);
 
       if (fitMetrics.total_duration_seconds && fitMetrics.total_duration_seconds > 0) {
         const newTSS = (fitMetrics.total_duration_seconds * calculatedNP * newIF) / (athleteFTP * 3600) * 100;
         fitMetrics.tss = parseFloat(newTSS.toFixed(0));
-        console.log('[Server Action] TSS ricalcolato:', fitMetrics.tss);
+        // console.log('[Server Action] TSS ricalcolato:', fitMetrics.tss);
       } else {
-        console.warn('[Server Action] Durata totale non disponibile, TSS non ricalcolato.');
+        // console.warn('[Server Action] Durata totale non disponibile, TSS non ricalcolato.');
         // Manteniamo il TSS dal FIT se presente, altrimenti sarà null
         fitMetrics.tss = sessionTSS ?? null;
       }
     } else {
-      console.warn('[Server Action] FTP o NP non validi, IF e TSS non saranno ricalcolati. Si utilizzeranno i valori del FIT (se presenti).');
+      // console.warn('[Server Action] FTP o NP non validi, IF e TSS non saranno ricalcolati. Si utilizzeranno i valori del FIT (se presenti).');
       // Assicura che se non ricalcoliamo, usiamo quelli della sessione (che dovrebbero già essere number | null)
       const finalSessionIF: number | null = sessionIF !== undefined ? sessionIF : null;
       const finalSessionTSS: number | null = sessionTSS !== undefined ? sessionTSS : null;
@@ -577,16 +577,16 @@ export async function processAndCreateActivity(
         fitMetrics.tss = Math.round(fitMetrics.tss);
     }
 
-    console.log('[Server Action] Metriche finali prima del salvataggio:', JSON.stringify(fitMetrics));
+    // console.log('[Server Action] Metriche finali prima del salvataggio:', JSON.stringify(fitMetrics));
 
     // --- CALCOLO PERSONAL BESTS DI POTENZA PER L'ATTIVITÀ ---
     let activityPowerBests: PowerBests | null = null;
     if (routePoints && routePoints.length > 0) {
-      console.log(`[Server Action] Calcolo Power Bests da ${routePoints.length} route points.`);
+      // console.log(`[Server Action] Calcolo Power Bests da ${routePoints.length} route points.`);
       activityPowerBests = calculatePowerBests(routePoints);
-      console.log("[Server Action] Power Bests calcolati per l'attività:", activityPowerBests);
+      // console.log("[Server Action] Power Bests calcolati per l'attività:", activityPowerBests);
     } else {
-      console.warn("[Server Action] Nessun routePoints disponibile per calcolare i Power Bests.");
+      // console.warn("[Server Action] Nessun routePoints disponibile per calcolare i Power Bests.");
     }
 
     // --- FINE PARSING FIT REALE E CALCOLI AGGIUNTIVI ---
@@ -680,7 +680,7 @@ export async function processAndCreateActivity(
 
     // --- AGGIORNAMENTO PERSONAL BESTS STORICI DELL'ATLETA ---
     if (activityPowerBests && formData.athlete_id && newActivity.id && newActivity.activity_date) {
-      console.log(`[Server Action] Inizio aggiornamento PB storici per atleta: ${formData.athlete_id}`);
+      // console.log(`[Server Action] Inizio aggiornamento PB storici per atleta: ${formData.athlete_id}`);
       const pbsToUpdate = [];
 
       for (const key in activityPowerBests) {
@@ -689,7 +689,7 @@ export async function processAndCreateActivity(
           const newPbValue = activityPowerBests[key as keyof PowerBests] as number | null;
 
           if (newPbValue !== null && !isNaN(durationSeconds)) {
-            console.log(`[Server Action] Controllo PB per durata ${durationSeconds}s, valore: ${newPbValue}W`);
+            // console.log(`[Server Action] Controllo PB per durata ${durationSeconds}s, valore: ${newPbValue}W`);
             // L'operazione di UPSERT gestirà il confronto implicito.
             // Se c'è un conflitto su (athlete_id, metric_type, duration_seconds),
             // aggiornerà solo se il nuovo `value_watts` è maggiore o se `activity_date` è più recente.
@@ -706,13 +706,13 @@ export async function processAndCreateActivity(
               .single();
 
             if (fetchError && fetchError.code !== 'PGRST116') { // PGRST116 = single row not found, che va bene
-              console.error(`[Server Action] Errore nel recuperare PB esistente per ${durationSeconds}s:`, fetchError.message);
+              // console.error(`[Server Action] Errore nel recuperare PB esistente per ${durationSeconds}s:`, fetchError.message);
               // continua con le altre durate
               continue;
             }
             
             if (!existingPb || (existingPb && newPbValue > existingPb.value_watts)) {
-              console.log(`[Server Action] Nuovo PB (${newPbValue}W) migliore o non esistente per ${durationSeconds}s. Preparo UPSERT.`);
+              // console.log(`[Server Action] Nuovo PB (${newPbValue}W) migliore o non esistente per ${durationSeconds}s. Preparo UPSERT.`);
               pbsToUpdate.push({
                 athlete_id: formData.athlete_id,
                 metric_type: 'power',
@@ -723,14 +723,14 @@ export async function processAndCreateActivity(
                 achieved_at: new Date().toISOString(), // Ora corrente in cui il record PB viene aggiornato
               });
             } else {
-              console.log(`[Server Action] PB esistente (${existingPb?.value_watts}W) per ${durationSeconds}s è uguale o migliore. Non aggiorno.`);
+              // console.log(`[Server Action] PB esistente (${existingPb?.value_watts}W) per ${durationSeconds}s è uguale o migliore. Non aggiorno.`);
             }
           }
         }
       }
 
       if (pbsToUpdate.length > 0) {
-        console.log("[Server Action] Eseguo UPSERT per PB storici:", pbsToUpdate);
+        // console.log("[Server Action] Eseguo UPSERT per PB storici:", pbsToUpdate);
         const { error: upsertError } = await supabase
           .from('athlete_personal_bests')
           .upsert(pbsToUpdate, {
@@ -739,10 +739,10 @@ export async function processAndCreateActivity(
           });
 
         if (upsertError) {
-          console.error('[Server Action] Errore durante UPSERT dei PB storici:', upsertError.message);
+          // console.error('[Server Action] Errore durante UPSERT dei PB storici:', upsertError.message);
           // Non bloccare il successo della creazione attività per questo, ma logga l'errore
         } else {
-          console.log('[Server Action] PB storici aggiornati con successo.');
+          // console.log('[Server Action] PB storici aggiornati con successo.');
         }
       }
     }
