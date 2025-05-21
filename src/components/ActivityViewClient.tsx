@@ -50,80 +50,119 @@ const ActivityViewClient: React.FC<ActivityViewClientProps> = ({
   // Per ora, ActivityMap riceverà activityFull.
 }) => {
   const [hoveredDataIndex, setHoveredDataIndex] = useState<number | null>(null);
-  const [mapSelectedRouteIndices, setMapSelectedRouteIndices] = useState<{ startIndex: number; endIndex: number } | null>(null);
+  const [selectedSegment, setSelectedSegment] = useState<{ startIndex: number; endIndex: number } | null>(null);
 
   // Stato per le metriche del segmento
   const [segmentMetrics, setSegmentMetrics] = useState<SegmentMetrics | null>(null);
   const [isSegmentMetricsLoading, setIsSegmentMetricsLoading] = useState<boolean>(false);
   const [segmentMetricsError, setSegmentMetricsError] = useState<string | null>(null);
+  const [segmentMetricsWarning, setSegmentMetricsWarning] = useState<string | null>(null);
 
   const handleChartHover = useCallback((dataIndex: number | null) => {
     setHoveredDataIndex(dataIndex);
   }, []);
 
-  const handleMapSegmentSelect = useCallback((selection: { startIndex: number; endIndex: number } | null) => {
-    // console.log("[ActivityViewClient] Map segment selected:", selection);
-    setMapSelectedRouteIndices(selection);
-    // La logica di fetch è ora nell'useEffect che dipende da mapSelectedRouteIndices e chartDisplayPoints
+  // Funzione unificata per la gestione della selezione di segmenti
+  // sia dalla mappa che dal grafico
+  const handleSegmentSelect = useCallback((selection: { startIndex: number; endIndex: number } | null) => {
+    setSelectedSegment(selection);
   }, []);
 
+  // Funzione per resettare la selezione del segmento
+  const resetSelection = useCallback(() => {
+    setSelectedSegment(null);
+  }, []);
+  
+  // Variabile per i punti da visualizzare sulla mappa (sempre tutti)
   const mapDisplayPoints = parsedRoutePoints;
   
+  // I punti da visualizzare sul grafico dipendono dalla selezione
   const chartDisplayPoints = useMemo(() => {
-    if (mapSelectedRouteIndices) {
+    if (selectedSegment) {
       // Assicurati che gli indici siano validi e nell'ordine corretto
-      const start = Math.max(0, mapSelectedRouteIndices.startIndex);
-      const end = Math.min(parsedRoutePoints.length - 1, mapSelectedRouteIndices.endIndex);
+      const start = Math.max(0, selectedSegment.startIndex);
+      const end = Math.min(parsedRoutePoints.length - 1, selectedSegment.endIndex);
       if (start <= end) {
         return parsedRoutePoints.slice(start, end + 1);
       }
     }
     return parsedRoutePoints; // Ritorna tutti i punti se non c'è selezione o se gli indici non sono validi
-  }, [parsedRoutePoints, mapSelectedRouteIndices]);
+  }, [parsedRoutePoints, selectedSegment]);
   
-  // Effetto per calcolare le statistiche del segmento quando chartDisplayPoints cambia
-  // (e quindi quando mapSelectedRouteIndices cambia e produce un segmento valido)
+  // Effetto per calcolare le statistiche del segmento quando la selezione cambia
   useEffect(() => {
     // Prende l'ID dell'atleta dall'oggetto activityFull.
-    // Assicurati che questo campo (activityFull.athlete_id) sia popolato correttamente
-    // quando carichi i dati dell'attività nel server component che usa ActivityViewClient.
     const targetAthleteIdForProfile = activityFull.athlete_id;
     const coachUserId = activityFull.user_id; // Questo è l'ID del coach loggato
 
-    if (mapSelectedRouteIndices && chartDisplayPoints && chartDisplayPoints.length >= 2) {
+    // Log per debug
+    console.log("[ActivityViewClient] Debug IDs:", {
+      targetAthleteIdForProfile,
+      coachUserId,
+      hasSelectedSegment: !!selectedSegment,
+      chartPointsLength: chartDisplayPoints?.length || 0
+    });
+
+    if (selectedSegment && chartDisplayPoints && chartDisplayPoints.length >= 2) {
       const fetchSegmentStats = async () => {
         setIsSegmentMetricsLoading(true);
         setSegmentMetricsError(null);
         setSegmentMetrics(null);
+        setSegmentMetricsWarning(null);
         try {
           const firstPointTimestamp = chartDisplayPoints[0]?.timestamp;
           let activityDateISO: string | undefined = undefined;
           if (firstPointTimestamp) {
             activityDateISO = new Date(firstPointTimestamp * 1000).toISOString();
+          } else {
+            console.warn("[ActivityViewClient] Timestamp mancante nel primo punto. Utilizzo della data dell'attività.");
+            // Fallback alla data dell'attività se disponibile
+            if (activityFull.activity_date) {
+              activityDateISO = new Date(activityFull.activity_date).toISOString();
+            }
           }
 
+          // Verifica di sicurezza per i parametri necessari
           if (!targetAthleteIdForProfile) {
             console.warn("[ActivityViewClient] athlete_id non trovato in activityFull. Impossibile recuperare il profilo atleta.");
             setSegmentMetricsError("ID atleta mancante per recuperare il profilo.");
             setIsSegmentMetricsLoading(false);
             return;
           }
-          
+
+          if (!activityDateISO) {
+            console.warn("[ActivityViewClient] Data attività mancante. Impossibile recuperare il profilo atleta.");
+            setSegmentMetricsError("Data attività mancante per recuperare il profilo.");
+            setIsSegmentMetricsLoading(false);
+            return;
+          }
+
+          // Tutto ok, procedi con l'analisi
           const result = await analyzeActivitySegment(
             chartDisplayPoints, 
             coachUserId, 
             activityDateISO, 
             targetAthleteIdForProfile
           );
+          
           if (result.data) {
             setSegmentMetrics(result.data);
+            // Gestisci il warning se presente
+            if (result.warning) {
+              console.warn("Warning from analyzeActivitySegment:", result.warning);
+              setSegmentMetricsWarning(result.warning);
+            } else {
+              setSegmentMetricsWarning(null);
+            }
           } else if (result.error) {
             console.error("Error from analyzeActivitySegment:", result.error);
             setSegmentMetricsError(result.error);
+            setSegmentMetricsWarning(null);
           }
         } catch (error: any) {
           console.error("Client-side error calling analyzeActivitySegment:", error);
           setSegmentMetricsError(error.message || 'Errore imprevisto nell\'analisi del segmento.');
+          setSegmentMetricsWarning(null);
         } finally {
           setIsSegmentMetricsLoading(false);
         }
@@ -134,18 +173,17 @@ const ActivityViewClient: React.FC<ActivityViewClientProps> = ({
       setSegmentMetrics(null);
       setIsSegmentMetricsLoading(false);
       setSegmentMetricsError(null);
+      setSegmentMetricsWarning(null);
     }
-    // Aggiorna le dipendenze dell'useEffect
-  }, [mapSelectedRouteIndices, chartDisplayPoints, activityFull.user_id, activityFull.athlete_id]);
+  }, [selectedSegment, chartDisplayPoints, activityFull.user_id, activityFull.athlete_id, activityFull.activity_date]);
 
   const highlightedMapPoint = hoveredDataIndex !== null && chartDisplayPoints && hoveredDataIndex < chartDisplayPoints.length 
     ? chartDisplayPoints[hoveredDataIndex] 
     : null;
 
   return (
-    <>
-      {/* Mappa del percorso - Suspense è già gestito nella pagina padre per ActivityMap se caricato dinamicamente lì */}
-      {/* ActivityMap riceve l'activity completa e i punti specifici per il rendering */}
+    <div className="relative">
+      {/* Mappa del percorso */}
       <Suspense fallback={
         <div className="bg-white p-6 rounded-lg shadow-md h-64 flex items-center justify-center">
           <p className="text-gray-600">Caricamento mappa...</p>
@@ -155,31 +193,37 @@ const ActivityViewClient: React.FC<ActivityViewClientProps> = ({
           activity={activityFull} 
           routePoints={mapDisplayPoints}
           highlightedPoint={highlightedMapPoint}
-          onSegmentSelect={handleMapSegmentSelect}
+          onSegmentSelect={handleSegmentSelect}
+          selectedSegment={selectedSegment}
         />
       </Suspense>
 
-      {/* Box Statistiche Segmento */}
-      <SegmentStats 
-        metrics={segmentMetrics}
-        isLoading={isSegmentMetricsLoading}
-        error={segmentMetricsError}
-      />
-
-      {/* Grafico Altimetrico */}
+      {/* Grafico Altimetrico - spostato qui sopra per essere più vicino alla mappa */}
       {chartDisplayPoints && chartDisplayPoints.length > 0 ? (
         <ActivityElevationChart
           routePoints={chartDisplayPoints}
           onChartHover={handleChartHover}
+          selectedSegment={selectedSegment}
+          onSegmentSelect={handleSegmentSelect}
+          isSegmentActive={chartDisplayPoints.length !== parsedRoutePoints.length}
+          originalStartIndex={selectedSegment ? selectedSegment.startIndex : 0}
         />
       ) : (
         <div className="bg-white p-6 rounded-lg shadow-md h-[300px] flex items-center justify-center">
           <p className="text-gray-600">
-            {mapSelectedRouteIndices ? "Nessun dato nel segmento selezionato per il grafico." : "Caricamento o dati non disponibili per il grafico."}
+            {selectedSegment ? "Nessun dato nel segmento selezionato per il grafico." : "Caricamento o dati non disponibili per il grafico."}
           </p>
         </div>
       )}
-    </>
+
+      {/* Box Statistiche Segmento - spostato sotto il grafico */}
+      <SegmentStats 
+        metrics={segmentMetrics}
+        isLoading={isSegmentMetricsLoading}
+        error={segmentMetricsError}
+        warning={segmentMetricsWarning}
+      />
+    </div>
   );
 };
 

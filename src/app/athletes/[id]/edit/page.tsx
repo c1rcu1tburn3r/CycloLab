@@ -62,7 +62,7 @@ export default async function EditAthletePage({ params }: EditAthletePageProps) 
   }
 
   const athleteToEdit = await getAthleteById(supabase, athleteId, user.id);
-  
+
   if (!athleteToEdit) {
     return (
       <div className="text-center py-10">

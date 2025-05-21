@@ -222,9 +222,9 @@ export default async function ActivityDetailPage({ params }: ActivityDetailPageP
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           {/* Colonna sinistra - Descrizione e mappa */}
-          <div className="lg:col-span-2 space-y-6">
+          <div className="lg:col-span-3 space-y-6">
             {/* Card con la descrizione */}
             {activity.description && (
               <div className="bg-white p-6 rounded-xl shadow-lg border border-[#b4cad6]">

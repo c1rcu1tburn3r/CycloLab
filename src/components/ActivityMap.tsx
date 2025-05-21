@@ -58,6 +58,7 @@ interface ActivityMapProps {
   routePoints: RoutePoint[];
   highlightedPoint?: RoutePoint | null;
   onSegmentSelect?: (selection: { startIndex: number; endIndex: number } | null) => void;
+  selectedSegment?: { startIndex: number; endIndex: number } | null;
 }
 
 // RIMOZIONE DELLA SEZIONE 'declare global' POICHE' @types/leaflet DOVREBBE FORNIRE I TIPI
@@ -94,7 +95,7 @@ declare global {
 }
 */
 
-const ActivityMap: React.FC<ActivityMapProps> = ({ activity, routePoints, highlightedPoint, onSegmentSelect }) => {
+const ActivityMap: React.FC<ActivityMapProps> = ({ activity, routePoints, highlightedPoint, onSegmentSelect, selectedSegment }) => {
   const [isMounted, setIsMounted] = useState(false);
   const [leaflet, setLeaflet] = useState<typeof import('leaflet') | null>(null);
   const [reactLeafletModule, setReactLeafletModule] = useState<typeof import('react-leaflet') | null>(null); // Stato per il modulo react-leaflet
@@ -124,6 +125,55 @@ const ActivityMap: React.FC<ActivityMapProps> = ({ activity, routePoints, highli
       setReactLeafletModule(mod);
     });
   }, []);
+
+  // Sincronizza lo stato locale con la prop selectedSegment
+  useEffect(() => {
+    // Se riceviamo selectedSegment dalle props, aggiorniamo lo stato locale
+    if (selectedSegment) {
+      setSelectionStartIdx(selectedSegment.startIndex);
+      setSelectionEndIdx(selectedSegment.endIndex);
+      setSelectingEndPoint(false);
+      
+      // Centriamo la mappa sul segmento selezionato
+      if (reactLeafletModule && routePoints && routePoints.length > 0) {
+        try {
+          const startPoint = routePoints[selectedSegment.startIndex];
+          const endPoint = routePoints[selectedSegment.endIndex];
+          
+          if (startPoint && endPoint && startPoint.lat && startPoint.lng && endPoint.lat && endPoint.lng) {
+            // Calcola il centro e il bounds per zoommare sul segmento
+            const minLat = Math.min(startPoint.lat, endPoint.lat);
+            const maxLat = Math.max(startPoint.lat, endPoint.lat);
+            const minLng = Math.min(startPoint.lng, endPoint.lng);
+            const maxLng = Math.max(startPoint.lng, endPoint.lng);
+            
+            // Aggiungi un po' di padding
+            const latPadding = (maxLat - minLat) * 0.2;
+            const lngPadding = (maxLng - minLng) * 0.2;
+            
+            // Crea un bounds con tutti i punti del segmento
+            const bounds = [];
+            for (let i = selectedSegment.startIndex; i <= selectedSegment.endIndex; i++) {
+              const point = routePoints[i];
+              if (point && point.lat && point.lng) {
+                bounds.push([point.lat, point.lng]);
+              }
+            }
+            
+            // Aggiorniamo lo stato per innescare un re-render della mappa
+            // con i nuovi bounds calcolati
+            if (bounds.length > 0) {
+              // Non facciamo nulla qui, il cambio di selectionStartIdx e selectionEndIdx
+              // già innescherà un re-render con la visualizzazione corretta
+            }
+          }
+        } catch (error) {
+          console.error("Errore nel centrare la mappa sul segmento:", error);
+        }
+      }
+    } 
+    // Non resettiamo quando selectedSegment è null perché potrebbe essere in corso una selezione sulla mappa
+  }, [selectedSegment, routePoints, reactLeafletModule]);
 
   const { startIcon, endIcon } = useMemo(() => {
     if (!leaflet) {
@@ -345,11 +395,25 @@ const ActivityMap: React.FC<ActivityMapProps> = ({ activity, routePoints, highli
       </h2>
       {/* Contenitore per mappa e controlli sovrapposti */}
       <div className="h-[400px] rounded-lg overflow-hidden border border-gray-200 relative">
-        {/* Info su come selezionare un tratto - mostrata solo se non c'è una selezione attiva */}
+        {/* Istruzione migliorata su come selezionare un tratto - mostrata solo se non c'è una selezione attiva */}
         {(selectionStartIdx === null && routePoints && routePoints.length > 0) && (
-          <div className="absolute top-2 left-1/2 transform -translate-x-1/2 z-[1000] bg-white bg-opacity-75 px-2 py-1 rounded shadow text-xs text-slate-700 pointer-events-none">
-            Clicca due punti sulla traccia per analizzare un segmento.
+          <div className="absolute top-0 left-1/2 transform -translate-x-1/2 z-[1000] bg-white bg-opacity-80 px-3 py-1.5 rounded-b-md shadow-md text-sm font-medium text-slate-700 border border-t-0 border-slate-200">
+            Clicca due punti sulla traccia per analizzare un segmento
           </div>
+        )}
+        
+        {/* Pulsante di reset migliorato */}
+        {(selectionStartIdx !== null || selectionEndIdx !== null) && (
+          <button 
+            onClick={resetSelection}
+            className="absolute bottom-3 left-3 z-[1000] px-2.5 py-1 bg-red-600/80 text-white text-xs rounded hover:bg-red-700/80 shadow-sm flex items-center gap-1"
+            title="Azzera selezione"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-3 h-3">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+            </svg>
+            Reset
+          </button>
         )}
 
         <MapContainer 
@@ -401,7 +465,14 @@ const ActivityMap: React.FC<ActivityMapProps> = ({ activity, routePoints, highli
                 let segments: JSX.Element[] = [];
 
                 const defaultPathOptions = { color: '#0055ff', weight: 4, opacity: 0.7 };
-                const selectedPathOptions = { color: '#ff4500', weight: 5, opacity: 0.85 }; // Arancione per la selezione
+                const selectedPathOptions = { 
+                  color: '#ff4500', 
+                  weight: 5, 
+                  opacity: 0.85,
+                  dashArray: undefined, // Rimuove il pattern tratteggiato se presente
+                  lineCap: 'round' as L.LineCapShape, // Arrotonda i finali delle linee con tipizzazione corretta
+                  lineJoin: 'round' as L.LineJoinShape // Arrotonda le giunzioni con tipizzazione corretta
+                }; // Arancione per la selezione
 
                 if (selectionStartIdx !== null && selectionEndIdx !== null) {
                   const sIdx = Math.min(selectionStartIdx, selectionEndIdx);
@@ -481,18 +552,6 @@ const ActivityMap: React.FC<ActivityMapProps> = ({ activity, routePoints, highli
           <DynamicHoverMarker point={highlightedPoint || null} />
 
         </MapContainer>
-        {(selectionStartIdx !== null) && (
-          <button 
-            onClick={resetSelection} 
-            // Stile migliorato per il pulsante di reset
-            className="absolute top-2 right-2 z-[1000] bg-red-500 text-white px-2.5 py-1 rounded-md shadow-lg hover:bg-red-600 text-xs transition-colors duration-150 flex items-center"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 mr-1">
-              <path fillRule="evenodd" d="M15.322 15.322a8 8 0 111.06-1.06l-1.06 1.06zM10 18a8 8 0 100-16 8 8 0 000 16zM7.25 7.25a.75.75 0 000 1.5h5.5a.75.75 0 000-1.5h-5.5z" clipRule="evenodd" />
-            </svg>
-            Reset
-          </button>
-        )}
       </div>
       <div className="mt-3 flex items-center">
         <div className="flex-1">

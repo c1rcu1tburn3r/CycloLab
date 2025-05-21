@@ -177,4 +177,84 @@ export async function getAthleteProfileEntriesDataForClient(athleteId: string): 
     return [];
   }
   return (data || []) as AthleteProfileEntry[];
+}
+
+export async function deleteAthleteProfileEntry(
+  athleteId: string,
+  entryId: string
+): Promise<{ success: boolean; error?: string | null }> {
+  const cookieStore = cookies();
+  const supabase = createClient(cookieStore);
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    return { error: 'Utente non autenticato.', success: false };
+  }
+
+  // Verifica che l'atleta appartenga all'utente corrente
+  const { data: athleteData, error: athleteError } = await supabase
+    .from('athletes')
+    .select('id')
+    .eq('id', athleteId)
+    .eq('user_id', user.id)
+    .single();
+
+  if (athleteError || !athleteData) {
+    return { error: 'Non hai i permessi per gestire questo atleta.', success: false };
+  }
+
+  // Verifica che la voce esista e appartenga all'atleta
+  const { data: entryData, error: entryError } = await supabase
+    .from('athlete_profile_entries')
+    .select('id, effective_date')
+    .eq('id', entryId)
+    .eq('athlete_id', athleteId)
+    .single();
+
+  if (entryError || !entryData) {
+    return { error: 'Voce profilo non trovata o non autorizzata.', success: false };
+  }
+
+  // Esegui l'eliminazione
+  const { error: deleteError } = await supabase
+    .from('athlete_profile_entries')
+    .delete()
+    .eq('id', entryId);
+
+  if (deleteError) {
+    console.error('Errore eliminazione voce profilo atleta:', deleteError);
+    return { error: `Errore database durante eliminazione: ${deleteError.message}`, success: false };
+  }
+
+  // Se l'eliminazione è avvenuta con successo, aggiorniamo la tabella athletes
+  // se necessario (se abbiamo eliminato la voce più recente)
+  const { data: latestEntries, error: latestEntryError } = await supabase
+    .from('athlete_profile_entries')
+    .select('id, weight_kg, effective_date')
+    .eq('athlete_id', athleteId)
+    .order('effective_date', { ascending: false })
+    .limit(1);
+
+  if (!latestEntryError && latestEntries && latestEntries.length > 0) {
+    // Aggiorniamo il peso solo se abbiamo ancora voci
+    const athleteUpdateData: { weight_kg?: number | null } = {
+      weight_kg: latestEntries[0].weight_kg
+    };
+
+    const { error: updateAthleteError } = await supabase
+      .from('athletes')
+      .update(athleteUpdateData)
+      .eq('id', athleteId);
+
+    if (updateAthleteError) {
+      console.warn('Attenzione: Errore aggiornamento tabella athletes dopo eliminazione:', updateAthleteError.message);
+      // Non blocchiamo l'operazione per questo errore
+    }
+  }
+
+  // Invalidiamo le pagine che potrebbero essere influenzate
+  revalidatePath(`/athletes/${athleteId}/edit`);
+  revalidatePath('/activities/[id]', 'page');
+
+  return { success: true };
 } 

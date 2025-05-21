@@ -3,7 +3,7 @@
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import type { Athlete, AthleteProfileEntry } from '@/lib/types';
-import { getAthleteDataForClient, getAthleteProfileEntriesDataForClient, type SaveAthleteProfileEntryResult } from '../../athleteProfileActions'; // Percorso corretto
+import { getAthleteDataForClient, getAthleteProfileEntriesDataForClient, type SaveAthleteProfileEntryResult, deleteAthleteProfileEntry } from '../../athleteProfileActions'; // Percorso corretto
 import Link from 'next/link';
 import Image from 'next/image';
 
@@ -73,6 +73,46 @@ export default function EditAthleteClientPage({
       // Potremmo loggare o gestire ulteriormente se necessario.
       console.error("Errore salvataggio voce profilo riportato al client wrapper:", result.error);
     }
+  };
+
+  // Aggiungo la funzione per gestire l'eliminazione della voce profilo
+  const handleDeleteProfileEntry = async (entryId: string, effectiveDate: string) => {
+    if (!confirm(`Sei sicuro di voler eliminare la voce del ${format(new Date(effectiveDate), 'dd/MM/yyyy')}?`)) {
+      return; // Utente ha annullato
+    }
+
+    setFeedbackMessage(null); // Resetta messaggi precedenti
+    startTransitionGlobal(async () => {
+      const result = await deleteAthleteProfileEntry(athleteId, entryId);
+      
+      if (result.success) {
+        // Aggiorniamo i dati locali senza fare un'altra richiesta
+        setProfileEntriesData(prev => prev.filter(entry => entry.id !== entryId));
+        
+        // Aggiorniamo comunque i dati completi per assicurarci che tutto sia sincronizzato
+        const refreshedAthlete = await getAthleteDataForClient(athleteId);
+        const refreshedEntries = await getAthleteProfileEntriesDataForClient(athleteId);
+
+        if (refreshedAthlete) {
+          setAthleteData(refreshedAthlete);
+        }
+        setProfileEntriesData(refreshedEntries);
+        setFeedbackMessage({ 
+          type: 'success', 
+          text: 'Voce eliminata con successo' 
+        });
+
+        // Nascondi il messaggio dopo 3 secondi
+        setTimeout(() => {
+          setFeedbackMessage(null);
+        }, 3000);
+      } else {
+        setFeedbackMessage({ 
+          type: 'error', 
+          text: result.error || 'Errore durante l\'eliminazione' 
+        });
+      }
+    });
   };
 
   // Estrai i dati più recenti per il cruscotto
@@ -279,6 +319,16 @@ export default function EditAthleteClientPage({
                   <h2 className="text-white text-lg font-semibold">Voci Registrate</h2>
                 </div>
                 <CardContent className="p-5">
+                  {feedbackMessage && (
+                    <div className={`mb-4 p-3 rounded-md ${
+                      feedbackMessage.type === 'success' 
+                        ? 'bg-green-50 border border-green-200 text-green-700' 
+                        : 'bg-red-50 border border-red-200 text-red-700'
+                    }`}>
+                      <p className="text-sm">{feedbackMessage.text}</p>
+                    </div>
+                  )}
+                  
                   {profileEntriesData.length > 0 ? (
                     <div className="overflow-hidden rounded-lg border border-[#b4cad6]">
                       <table className="min-w-full divide-y divide-[#b4cad6]">
@@ -287,6 +337,7 @@ export default function EditAthleteClientPage({
                             <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-[#1e2e42] uppercase tracking-wider">Data</th>
                             <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-[#1e2e42] uppercase tracking-wider">FTP</th>
                             <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-[#1e2e42] uppercase tracking-wider">Peso</th>
+                            <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-[#1e2e42] uppercase tracking-wider">Azioni</th>
                           </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-[#b4cad6]">
@@ -302,6 +353,18 @@ export default function EditAthleteClientPage({
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap">
                                 <span className="font-medium text-[#4a6b85]">{entry.weight_kg !== null ? `${entry.weight_kg} kg` : 'N/D'}</span>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-right">
+                                <button
+                                  onClick={() => handleDeleteProfileEntry(entry.id, entry.effective_date)}
+                                  className="text-red-600 hover:text-red-800 transition-colors focus:outline-none disabled:opacity-50"
+                                  disabled={isPendingGlobal}
+                                  title="Elimina voce"
+                                >
+                                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                  </svg>
+                                </button>
                               </td>
                             </tr>
                           ))}

@@ -62,13 +62,22 @@ export async function analyzeActivitySegment(
   coachUserId: string | null | undefined, // Rinominato per chiarezza, ID del coach loggato
   activityDateISO: string | null | undefined,
   targetAthleteId: string | null | undefined // Nuovo: ID dell'atleta per cui cercare il profilo
-): Promise<{ data?: SegmentMetrics; error?: string }> {
+): Promise<{ data?: SegmentMetrics; error?: string; warning?: string }> {
+  // Debug log dei parametri ricevuti
+  console.log("[analyzeActivitySegment] Parametri ricevuti:", {
+    routePointsCount: segmentRoutePoints?.length || 0,
+    coachUserId,
+    activityDateISO,
+    targetAthleteId
+  });
+
   if (!segmentRoutePoints || segmentRoutePoints.length < 2) {
     return { error: 'Segmento troppo corto per l\'analisi (minimo 2 punti richiesti).' };
   }
 
   let athleteFTP: number | null = null;
   let athleteWeightKg: number | null = null;
+  let warning: string | undefined = undefined;
 
   // Il client Supabase viene inizializzato con i cookie del coachUserId loggato.
   // Le policy RLS faranno in modo che questo client possa leggere/scrivere
@@ -77,28 +86,71 @@ export async function analyzeActivitySegment(
     const cookieStore = cookies();
     const supabase = createClient(cookieStore);
 
+    // Verifichiamo prima se l'atleta esiste e se è associato al coach
     try {
-      // Ora la query usa targetAthleteId per trovare il profilo corretto.
-      // Le policy RLS sulla tabella athlete_profile_entries verificheranno se
-      // il coach (identificato da supabase client/auth.uid()) ha il permesso
-      // di leggere il profilo per questo targetAthleteId.
+      // Verifica che l'atleta appartenga al coach
+      const { data: athleteData, error: athleteError } = await supabase
+        .from('athletes')
+        .select('id, name, surname')
+        .eq('id', targetAthleteId)
+        .eq('user_id', coachUserId)
+        .single();
+      
+      if (athleteError) {
+        console.warn(`[analyzeActivitySegment] Errore nel verificare l'accesso all'atleta ${targetAthleteId} per il coach ${coachUserId}:`, athleteError.message);
+        // Non blocchiamo il flusso, ma logghiamo l'errore
+      } else if (!athleteData) {
+        console.warn(`[analyzeActivitySegment] L'atleta ${targetAthleteId} non esiste o non è associato al coach ${coachUserId}`);
+        // Non blocchiamo il flusso, ma logghiamo l'avviso
+      } else {
+        console.log(`[analyzeActivitySegment] Atleta verificato: ${athleteData.name} ${athleteData.surname} (${athleteData.id})`);
+      }
+    } catch (e: any) {
+      console.error('[analyzeActivitySegment] Eccezione durante la verifica dell\'atleta:', e.message);
+      // Non blocchiamo il flusso, continuiamo con il tentativo di recupero del profilo
+    }
+
+    // Debug log prima della query
+    console.log("[analyzeActivitySegment] Esecuzione query per profilo atleta:", {
+      targetAthleteId,
+      activityDateISO,
+      coachUserId
+    });
+
+    try {
+      // Cerca il profilo più recente antecedente alla data dell'attività
       const { data: profileEntry, error: profileError } = await supabase
         .from('athlete_profile_entries')
         .select('ftp_watts, weight_kg')
-        .eq('athlete_id', targetAthleteId) // <<< MODIFICATO QUI: usa targetAthleteId e la colonna si chiama athlete_id
+        .eq('athlete_id', targetAthleteId)
         .lte('effective_date', activityDateISO)
         .order('effective_date', { ascending: false })
         .limit(1)
         .single();
 
+      // Log dettagliato del risultato della query
+      console.log("[analyzeActivitySegment] Risultato query profilo:", {
+        profileEntry,
+        profileError,
+        queryParams: {
+          athlete_id: targetAthleteId,
+          effective_date_lte: activityDateISO
+        }
+      });
+
       if (profileError) {
-        console.warn(`[analyzeActivitySegment] Errore nel recupero del profilo per atleta ${targetAthleteId} (coach: ${coachUserId}, data: ${activityDateISO}):`, profileError.message);
+        // Se .single() restituisce PGRST116, significa che non c'è un record
+        if (profileError.code === 'PGRST116') {
+          console.log(`[analyzeActivitySegment] Nessun profilo atleta trovato per ${targetAthleteId} alla data ${activityDateISO} o precedente.`);
+        } else {
+          console.warn(`[analyzeActivitySegment] Errore nel recupero del profilo per atleta ${targetAthleteId} (coach: ${coachUserId}, data: ${activityDateISO}):`, profileError.message);
+        }
       } else if (profileEntry) {
         athleteFTP = profileEntry.ftp_watts;
         athleteWeightKg = profileEntry.weight_kg;
-        // console.log(`[analyzeActivitySegment] Profilo recuperato per atleta ${targetAthleteId}: FTP=${athleteFTP}, Peso=${athleteWeightKg}`);
+        console.log(`[analyzeActivitySegment] Profilo recuperato per atleta ${targetAthleteId}: FTP=${athleteFTP}, Peso=${athleteWeightKg}`);
       } else {
-        // console.log(`[analyzeActivitySegment] Nessun profilo atleta trovato per ${targetAthleteId} alla data ${activityDateISO} o precedente.`);
+        console.log(`[analyzeActivitySegment] Nessun profilo atleta trovato per ${targetAthleteId} alla data ${activityDateISO} o precedente.`);
       }
     } catch (e: any) {
       console.error('[analyzeActivitySegment] Eccezione durante il recupero del profilo atleta:', e.message);
@@ -228,7 +280,14 @@ export async function analyzeActivitySegment(
       }
     }
 
-    return { data: metrics };
+    // Se non abbiamo trovato un profilo atleta ma abbiamo comunque dati per l'analisi,
+    // impostiamo un messaggio di avviso ma continuiamo con l'analisi
+    if ((coachUserId && activityDateISO && targetAthleteId) && 
+        (athleteFTP === null || athleteWeightKg === null)) {
+      warning = 'Profilo atleta incompleto o non trovato. Alcune metriche avanzate non sono disponibili.';
+    }
+
+    return { data: metrics, warning };
 
   } catch (error: any) {
     console.error('Errore in analyzeActivitySegment:', error);

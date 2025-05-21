@@ -276,7 +276,7 @@ export default function AthleteForm({ initialData, onFormSubmitSuccess }: Athlet
           />
         </div>
       </div>
-      
+
       <div className="pt-4">
         <Button type="submit" disabled={isLoading} className="w-full md:w-auto">
           {isLoading ? (
