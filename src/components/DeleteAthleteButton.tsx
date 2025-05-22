@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 // Importa createBrowserClient da @supabase/ssr
 import { createBrowserClient } from '@supabase/ssr';
-import type { Athlete } from '@/app/athletes/page'; // Assicurati che il percorso sia corretto
+import type { Athlete } from '@/lib/types'; // MODIFICATO PERCORSO IMPORT
 
 interface DeleteAthleteButtonProps {
   athlete: Athlete;
@@ -94,7 +94,7 @@ export default function DeleteAthleteButton({ athlete, onDeleteSuccess }: Delete
       <button
         onClick={handleDelete}
         disabled={isLoading}
-        className="text-xs text-red-600 hover:text-red-800 font-medium py-1 px-3 rounded-md hover:bg-red-50 transition-colors disabled:opacity-50"
+        className="bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-3 rounded-lg text-xs shadow-sm hover:shadow-md transition-all duration-150 flex items-center justify-center disabled:opacity-70"
         title={`Elimina ${athlete.name} ${athlete.surname}`}
       >
         {isLoading ? 'Eliminazione...' : 'Elimina'}

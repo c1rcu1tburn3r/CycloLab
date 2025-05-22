@@ -136,41 +136,13 @@ export default async function ActivityDetailPage({ params }: ActivityDetailPageP
   };
 
   return (
-    <div className="min-h-screen bg-[#e9f1f5]">
-      {/* Header/Navbar in stile con la landing page */}
-      <div className="bg-[#1e2e42] text-white py-4 px-4 md:px-8 shadow-md">
-        <div className="container mx-auto flex justify-between items-center">
-          <div className="flex items-center">
-            <div className="w-8 h-8 bg-[#b4cad6] rounded-full flex items-center justify-center mr-2">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-[#1e2e42]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-              </svg>
-            </div>
-            <span className="font-bold text-lg">CycloLab</span>
-          </div>
-          <Link href="/athletes" className="text-[#b4cad6] hover:text-white flex items-center transition-colors">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4 mr-1">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 0 1 0 12h-3" />
-            </svg>
-            Tutti gli Atleti
-          </Link>
-        </div>
-      </div>
-
-      <div className="container mx-auto px-4 md:px-8 py-8">
+    <div className="">
+      {/* Contenuto principale della pagina */}
+      <div className="container mx-auto px-0 sm:px-4 py-6">
         {/* Header dell'attività */}
         <div className="bg-gradient-to-r from-[#1e2e42] to-[#4a6b85] rounded-xl text-white p-6 mb-8 shadow-lg">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
             <div>
-              <Link 
-                href="/activities" 
-                className="text-[#b4cad6] hover:text-white flex items-center text-sm mb-2 transition-colors"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4 mr-1">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
-                </svg>
-                Torna alle attività
-              </Link>
               <h1 className="text-2xl md:text-3xl font-bold">{activity.title}</h1>
               <p className="text-[#b4cad6] mt-1">
                 {format(new Date(activity.activity_date), 'EEEE d MMMM yyyy', { locale: it })}
@@ -180,10 +152,13 @@ export default async function ActivityDetailPage({ params }: ActivityDetailPageP
             </div>
             <div className="flex space-x-3">
               <Link
-                href={`/activities/${activity.id}/edit`}
-                className="bg-[#b4cad6] hover:bg-white text-[#1e2e42] font-semibold py-2 px-4 rounded-lg shadow-md text-sm transition-colors"
+                href="/activities"
+                className="bg-[#b4cad6] hover:bg-white text-[#1e2e42] font-semibold py-2 px-4 rounded-lg shadow-md text-sm transition-colors flex items-center"
               >
-                Modifica
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4 mr-2">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+                </svg>
+                Tutte le Attività
               </Link>
               <DeleteActivityButton 
                 activityId={activity.id} 

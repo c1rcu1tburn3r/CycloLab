@@ -44,11 +44,11 @@ export default async function RootLayout({
 
   return (
     <html lang="it">
-      <body className={`${inter.className} bg-gray-100`}>
+      <body className={`${inter.className}`}>
         <header className="bg-slate-800 text-white shadow-md">
           <nav className="container mx-auto px-4 py-3 flex justify-between items-center">
             <Link href="/" className="text-xl font-bold hover:text-slate-300">
-              CyclingApp
+              CycloLab
             </Link>
             <div className="space-x-4 flex items-center">
               {user ? (

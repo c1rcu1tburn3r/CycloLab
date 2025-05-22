@@ -53,6 +53,27 @@ function formatDuration(seconds: number): string {
   }
 }
 
+async function getAthleteById(supabaseClient: any, athleteId: string, userId: string): Promise<{ name: string, surname: string } | null> {
+  if (!athleteId || !userId) { // Controllo aggiunto per evitare query con parametri nulli
+    return null;
+  }
+  const { data, error } = await supabaseClient
+    .from('athletes')
+    .select('name, surname')
+    .eq('id', athleteId)
+    .eq('user_id', userId) // Assicura che il coach possa accedere solo ai propri atleti
+    .single();
+
+  if (error) {
+    // Non logghiamo 'not found' come errore critico, potrebbe essere un caso normale
+    if (error.code !== 'PGRST116') { // PGRST116: "Searched for a single row, but found no rows"
+        console.error(`Errore nel recuperare l'atleta con ID ${athleteId}:`, error.message);
+    }
+    return null;
+  }
+  return data;
+}
+
 export default async function ActivitiesPage({ searchParams }: { searchParams?: { [key: string]: string | string[] | undefined } }) {
   const cookieStore = await cookies();
 
@@ -75,44 +96,32 @@ export default async function ActivitiesPage({ searchParams }: { searchParams?: 
     redirect('/auth/login');
   }
 
-  const athleteIdFromQuery = searchParams?.athleteId as string | undefined;
-
-  const activities = await getActivitiesForCoach(supabase, user.id, athleteIdFromQuery);
-
+  const athleteIdFilter = searchParams?.athleteId as string | undefined;
+  let activities: Activity[] = [];
   let filteringAthleteName: string | null = null;
-  if (athleteIdFromQuery && activities.length > 0) {
-    if (activities[0].athletes) {
-      filteringAthleteName = `${activities[0].athletes.name} ${activities[0].athletes.surname}`;
+
+  if (athleteIdFilter) {
+    // Recupera prima i dettagli dell'atleta per il nome
+    const athlete = await getAthleteById(supabase, athleteIdFilter, user.id);
+    if (athlete) {
+      filteringAthleteName = `${athlete.name} ${athlete.surname}`;
+      // Poi recupera le attività per questo atleta
+      activities = await getActivitiesForCoach(supabase, user.id, athleteIdFilter);
+    } else {
+      // Se l'atleta non viene trovato (o non appartiene al coach),
+      // non mostriamo attività e potremmo voler reindirizzare o mostrare un errore specifico.
+      // Per ora, filteringAthleteName rimarrà null e activities vuoto.
+      // Potremmo anche impostare un messaggio di errore specifico qui se necessario.
+      console.warn(`Atleta con ID ${athleteIdFilter} non trovato per l'utente ${user.id}.`);
     }
-  } else if (athleteIdFromQuery) {
-    // Se non ci sono attività ma c'è un athleteIdFromQuery, potremmo voler fare una query separata
-    // per ottenere il nome dell'atleta da mostrare (es. "Nessuna attività per Luigi Rossi")
-    // Per ora, lo omettiamo per semplicità.
+  } else {
+    // Nessun filtro per atleta, recupera tutte le attività per il coach
+    activities = await getActivitiesForCoach(supabase, user.id);
   }
 
   return (
-    <div className="min-h-screen bg-[#e9f1f5]">
-      {/* Header/Navbar in stile con la landing page */}
-      <div className="bg-[#1e2e42] text-white py-4 px-4 md:px-8 shadow-md">
-        <div className="container mx-auto flex justify-between items-center">
-          <div className="flex items-center">
-            <div className="w-8 h-8 bg-[#b4cad6] rounded-full flex items-center justify-center mr-2">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-[#1e2e42]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-              </svg>
-            </div>
-            <span className="font-bold text-lg">CycloLab</span>
-          </div>
-          <Link href="/athletes" className="text-[#b4cad6] hover:text-white flex items-center transition-colors">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4 mr-1">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 0 1 0 12h-3" />
-            </svg>
-            Tutti gli Atleti
-          </Link>
-        </div>
-      </div>
-
-      <div className="container mx-auto px-4 md:px-8 py-8">
+    <div className="">
+      <div className="container mx-auto px-4 pt-6 pb-12">
         {/* Header della pagina */}
         <div className="bg-gradient-to-r from-[#1e2e42] to-[#4a6b85] rounded-xl text-white p-6 mb-8 shadow-lg">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -247,8 +256,8 @@ export default async function ActivitiesPage({ searchParams }: { searchParams?: 
                         <td className="py-4 px-6 text-[#1e2e42]">
                           {activity.duration_seconds ? formatDuration(activity.duration_seconds) : 'N/D'}
                         </td>
-                        <td className="py-4 px-6 text-center">
-                           <div className="flex items-center justify-center space-x-2">
+                        <td className="py-4 px-6">
+                           <div className="flex items-center justify-end space-x-2">
                             <Link
                               href={`/activities/${activity.id}`}
                               className="bg-[#4a6b85] hover:bg-[#1e2e42] text-white font-medium py-2 px-4 rounded-lg text-sm shadow-sm hover:shadow-md transition-all duration-150"

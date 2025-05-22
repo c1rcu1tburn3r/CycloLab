@@ -60,22 +60,8 @@ export default async function AthletesPage() {
   const athletes = await getAthletesForCurrentUser(supabase, user.id);
 
   return (
-    <div className="min-h-screen bg-[#e9f1f5]">
-      {/* Header/Navbar in stile con la landing page */}
-      <div className="bg-[#1e2e42] text-white py-4 px-4 md:px-8 shadow-md">
-        <div className="container mx-auto flex justify-between items-center">
-          <div className="flex items-center">
-            <div className="w-8 h-8 bg-[#b4cad6] rounded-full flex items-center justify-center mr-2">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-[#1e2e42]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-              </svg>
-            </div>
-            <span className="font-bold text-lg">CycloLab</span>
-          </div>
-        </div>
-      </div>
-
-      <div className="container mx-auto px-4 md:px-8 py-8">
+    <div className="">
+      <div className="container mx-auto px-4 pt-6 pb-12">
         {/* Header della pagina */}
         <div className="bg-gradient-to-r from-[#1e2e42] to-[#4a6b85] rounded-xl text-white p-6 mb-8 shadow-lg">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -154,7 +140,7 @@ export default async function AthletesPage() {
                 <div className="mt-4 pt-3 border-t border-[#e9f1f5] text-center flex flex-col space-y-2 sm:space-y-0 sm:flex-row sm:justify-around sm:items-center">
                   <Link
                     href={`/activities?athleteId=${athlete.id}`}
-                    className="text-xs text-[#4a6b85] hover:text-[#1e2e42] font-medium py-1 px-3 rounded-md hover:bg-[#e9f1f5] transition-colors"
+                    className="bg-[#4a6b85] hover:bg-[#1e2e42] text-white font-semibold py-2 px-3 rounded-lg text-xs shadow-sm hover:shadow-md transition-all duration-150 flex items-center justify-center"
                   >
                     Attività
                   </Link>
