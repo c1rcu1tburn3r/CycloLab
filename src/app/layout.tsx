@@ -50,7 +50,7 @@ export default async function RootLayout({
 
   return (
     <html lang="it" className="h-full">
-      <body className={`${inter.className} h-full overflow-hidden`}>
+      <body className={`${inter.className} h-full`}>
         <div className="flex h-full bg-gray-50 dark:bg-gray-900">
           {user ? (
             <>
@@ -106,7 +106,7 @@ export default async function RootLayout({
                 </header>
 
                 {/* Contenuto principale */}
-                <main className="flex-1 overflow-auto">
+                <main className="flex-1 overflow-y-auto">
                   {children}
                 </main>
               </div>
@@ -165,7 +165,7 @@ export default async function RootLayout({
               </header>
 
               {/* Contenuto pubblico */}
-              <main className="pt-20">
+              <main className="pt-20 overflow-y-auto">
                 {children}
               </main>
 
