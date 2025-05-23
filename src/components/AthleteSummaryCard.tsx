@@ -1,9 +1,8 @@
 'use client';
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { Athlete } from "@/lib/types";
 import { differenceInYears, parseISO } from 'date-fns';
-import { UserCircle2 } from 'lucide-react'; // Icona utente
+import { UserCircle2 } from 'lucide-react';
 
 interface AthleteSummaryCardProps {
   athlete: Athlete | null;
@@ -12,21 +11,17 @@ interface AthleteSummaryCardProps {
 const AthleteSummaryCard: React.FC<AthleteSummaryCardProps> = ({ athlete }) => {
   if (!athlete) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base font-medium text-slate-600">Riepilogo Atleta</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-slate-500">Dati atleta non disponibili.</p>
-        </CardContent>
-      </Card>
+      <div className="text-center py-8">
+        <UserCircle2 className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
+        <p className="text-gray-500 dark:text-gray-400 mb-2">Dati non disponibili</p>
+        <p className="text-sm text-gray-400 dark:text-gray-500">Informazioni atleta non caricate</p>
+      </div>
     );
   }
 
   const calculateAge = (birthDate: string | null): string => {
     if (!birthDate) return "N/D";
     try {
-      // Assumiamo che birthDate sia in formato YYYY-MM-DD come da input type="date"
       const age = differenceInYears(new Date(), parseISO(birthDate));
       return age >= 0 ? `${age} anni` : "N/D";
     } catch (error) {
@@ -38,38 +33,45 @@ const AthleteSummaryCard: React.FC<AthleteSummaryCardProps> = ({ athlete }) => {
   const age = calculateAge(athlete.birth_date);
 
   return (
-    <Card>
-      <CardHeader className="pb-3">
-        <div className="flex items-center space-x-3">
-          {athlete.avatar_url ? (
-            <img src={athlete.avatar_url} alt={`Avatar di ${athlete.name}`} className="h-12 w-12 rounded-full object-cover" />
-          ) : (
-            <UserCircle2 className="h-12 w-12 text-slate-400" />
+    <div className="space-y-4">
+      {/* Avatar e Nome */}
+      <div className="flex items-center gap-4">
+        {athlete.avatar_url ? (
+          <img 
+            src={athlete.avatar_url} 
+            alt={`Avatar di ${athlete.name}`} 
+            className="w-12 h-12 rounded-2xl object-cover border-2 border-gray-200 dark:border-gray-700" 
+          />
+        ) : (
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
+            <UserCircle2 className="w-6 h-6 text-white" />
+          </div>
+        )}
+        <div>
+          <h3 className="font-semibold text-gray-900 dark:text-white">
+            {athlete.name} {athlete.surname}
+          </h3>
+          {athlete.nationality && (
+            <p className="text-sm text-gray-500 dark:text-gray-400">{athlete.nationality}</p>
           )}
-          <div>
-            <CardTitle className="text-lg font-semibold text-slate-800">
-              {athlete.name} {athlete.surname}
-            </CardTitle>
-            {athlete.nationality && (
-                 <p className="text-xs text-slate-500">{athlete.nationality}</p>
-            )}
-          </div>
         </div>
-      </CardHeader>
-      <CardContent className="pt-0">
-        <dl className="grid grid-cols-1 gap-x-4 gap-y-2 text-sm md:grid-cols-2">
-          <div className="flex justify-between py-1 border-b border-slate-100 md:border-none">
-            <dt className="text-slate-500">Età:</dt>
-            <dd className="text-slate-700 font-medium">{age}</dd>
-          </div>
-          {/* Aggiungere altre info qui se necessario, es. altezza/peso più recenti se non sono nel cruscotto stats */}
-          {/* <div className="flex justify-between py-1 border-b border-slate-100 md:border-none">
-            <dt className="text-slate-500">Altezza:</dt>
-            <dd className="text-slate-700 font-medium">{athlete.height_cm ? `${athlete.height_cm} cm` : 'N/D'}</dd>
-          </div> */}
-        </dl>
-      </CardContent>
-    </Card>
+      </div>
+
+      {/* Informazioni Principali */}
+      <div className="grid grid-cols-2 gap-3">
+        <div className="bg-gray-50/50 dark:bg-gray-800/50 rounded-xl p-3">
+          <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Età</p>
+          <p className="font-semibold text-gray-900 dark:text-white">{age}</p>
+        </div>
+        
+        <div className="bg-gray-50/50 dark:bg-gray-800/50 rounded-xl p-3">
+          <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Altezza</p>
+          <p className="font-semibold text-gray-900 dark:text-white">
+            {athlete.height_cm ? `${athlete.height_cm} cm` : 'N/D'}
+          </p>
+        </div>
+      </div>
+    </div>
   );
 };
 

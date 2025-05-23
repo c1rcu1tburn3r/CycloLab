@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { createClient } from '@/utils/supabase/server';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
-import type { Athlete, AthleteProfileEntry } from '@/lib/types';
+import type { Athlete, AthleteProfileEntry, Activity } from '@/lib/types';
 // import AthleteProfileEntryForm from '@/components/AthleteProfileEntryForm';
 // import { format } from 'date-fns';
 // import { it } from 'date-fns/locale';
@@ -49,6 +49,21 @@ async function getAthleteProfileEntries(supabaseClient: any, athleteId: string):
   return data || [];
 }
 
+async function getAthleteActivities(supabaseClient: any, athleteId: string, userId: string): Promise<Activity[]> {
+  const { data, error } = await supabaseClient
+    .from('activities')
+    .select('*')
+    .eq('athlete_id', athleteId)
+    .eq('user_id', userId) // Assicurati che solo il coach corretto possa vedere le attività
+    .order('activity_date', { ascending: false });
+
+  if (error) {
+    console.error('Errore nel recuperare le attività dell_atleta:', error.message);
+    return [];
+  }
+  return data || [];
+}
+
 export default async function EditAthletePage({ params }: EditAthletePageProps) {
   const cookieStore = await cookies();
   const { id: athleteId } = params;
@@ -76,12 +91,14 @@ export default async function EditAthletePage({ params }: EditAthletePageProps) 
   }
 
   const profileEntries = await getAthleteProfileEntries(supabase, athleteId);
+  const activities = await getAthleteActivities(supabase, athleteId, user.id); // Recupera le attività
 
   // Il link "Torna alla lista atleti" potrebbe essere passato a EditAthleteClientPage o gestito qui se necessario un layout diverso
   return (
     <EditAthleteClientPage 
       initialAthlete={athleteToEdit} 
       initialProfileEntries={profileEntries} 
+      initialActivities={activities} // Passa le attività al componente client
       athleteId={athleteId} 
     />
   );

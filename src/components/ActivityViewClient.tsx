@@ -198,6 +198,9 @@ const ActivityViewClient: React.FC<ActivityViewClientProps> = ({
         />
       </Suspense>
 
+      {/* Spazio aggiunto tra mappa e grafico */}
+      <div className="my-6" /> 
+
       {/* Grafico Altimetrico - spostato qui sopra per essere più vicino alla mappa */}
       {chartDisplayPoints && chartDisplayPoints.length > 0 ? (
         <ActivityElevationChart

@@ -1,7 +1,6 @@
 'use client';
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Zap } from 'lucide-react'; // Icona per potenza
+import { Zap } from 'lucide-react';
 
 interface PowerZonesDisplayProps {
   currentFtp: number | null;
@@ -11,36 +10,33 @@ interface PowerZone {
   name: string;
   description: string;
   minPercent: number;
-  maxPercent: number | null; // Null per l'ultima zona (es. >150%)
+  maxPercent: number | null;
   wattsLow: number;
-  wattsHigh: string; // Può essere un numero o un formato tipo " > X W"
+  wattsHigh: string;
+  color: string;
 }
 
 const PowerZonesDisplay: React.FC<PowerZonesDisplayProps> = ({ currentFtp }) => {
   if (currentFtp === null || currentFtp <= 0) {
     return (
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-base font-medium text-slate-600">Zone di Potenza</CardTitle>
-          <Zap className="h-5 w-5 text-amber-500" />
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-slate-500">
-            FTP non disponibile o non valido per calcolare le zone di potenza.
-          </p>
-        </CardContent>
-      </Card>
+      <div className="text-center py-8">
+        <Zap className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
+        <p className="text-gray-500 dark:text-gray-400 mb-2">FTP non disponibile</p>
+        <p className="text-sm text-gray-400 dark:text-gray-500">
+          Aggiungi un valore FTP per visualizzare le zone di potenza
+        </p>
+      </div>
     );
   }
 
   const zonesDefinition = [
-    { name: "Z1", description: "Recupero Attivo", minPercent: 0, maxPercent: 55 },
-    { name: "Z2", description: "Resistenza", minPercent: 56, maxPercent: 75 },
-    { name: "Z3", description: "Tempo", minPercent: 76, maxPercent: 90 },
-    { name: "Z4", description: "Soglia Lattacida", minPercent: 91, maxPercent: 105 },
-    { name: "Z5", description: "VO2 Max", minPercent: 106, maxPercent: 120 },
-    { name: "Z6", description: "Capacità Anaerobica", minPercent: 121, maxPercent: 150 },
-    { name: "Z7", description: "Potenza Neuromuscolare", minPercent: 151, maxPercent: null },
+    { name: "Z1", description: "Recupero Attivo", minPercent: 0, maxPercent: 55, color: "text-gray-500" },
+    { name: "Z2", description: "Resistenza", minPercent: 56, maxPercent: 75, color: "text-blue-500" },
+    { name: "Z3", description: "Tempo", minPercent: 76, maxPercent: 90, color: "text-green-500" },
+    { name: "Z4", description: "Soglia Lattacida", minPercent: 91, maxPercent: 105, color: "text-yellow-500" },
+    { name: "Z5", description: "VO2 Max", minPercent: 106, maxPercent: 120, color: "text-orange-500" },
+    { name: "Z6", description: "Capacità Anaerobica", minPercent: 121, maxPercent: 150, color: "text-red-500" },
+    { name: "Z7", description: "Potenza Neuromuscolare", minPercent: 151, maxPercent: null, color: "text-purple-500" },
   ];
 
   const calculatedZones: PowerZone[] = zonesDefinition.map(zone => {
@@ -49,32 +45,41 @@ const PowerZonesDisplay: React.FC<PowerZonesDisplayProps> = ({ currentFtp }) => 
     return {
       ...zone,
       wattsLow: low,
-      wattsHigh: high ? `${high} W` : `> ${low -1} W` // Per l'ultima zona mostriamo > X
+      wattsHigh: high ? `${high} W` : `> ${low - 1} W`
     };
   });
 
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-base font-medium text-slate-600">Zone di Potenza (FTP: {currentFtp}W)</CardTitle>
-        <Zap className="h-5 w-5 text-amber-500" />
-      </CardHeader>
-      <CardContent>
-        <ul className="space-y-1 text-sm">
-          {calculatedZones.map((zone) => (
-            <li key={zone.name} className="flex justify-between items-center py-1.5 px-2 rounded-md hover:bg-slate-50">
-              <div className="flex items-center">
-                <span className="font-semibold text-slate-700 w-8">{zone.name}</span>
-                <span className="text-slate-500 text-xs md:text-sm truncate" title={zone.description}>{zone.description}</span>
-              </div>
-              <span className="font-medium text-slate-700 whitespace-nowrap">
-                {zone.wattsLow} - {zone.wattsHigh}
+    <div className="space-y-3">
+      {calculatedZones.map((zone, index) => (
+        <div 
+          key={zone.name} 
+          className="flex items-center justify-between p-4 rounded-xl bg-gray-50/50 dark:bg-gray-800/50 hover:bg-gray-100/50 dark:hover:bg-gray-700/50 transition-all duration-200 group"
+        >
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3">
+              <span className={`font-bold text-lg w-8 ${zone.color} group-hover:scale-110 transition-transform`}>
+                {zone.name}
               </span>
-            </li>
-          ))}
-        </ul>
-      </CardContent>
-    </Card>
+              <div>
+                <p className="font-medium text-gray-900 dark:text-white text-sm">
+                  {zone.description}
+                </p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  {zone.minPercent}% - {zone.maxPercent ? `${zone.maxPercent}%` : '150%+'} FTP
+                </p>
+              </div>
+            </div>
+          </div>
+          
+          <div className="text-right">
+            <p className="font-bold text-gray-900 dark:text-white">
+              {zone.wattsLow} - {zone.wattsHigh}
+            </p>
+          </div>
+        </div>
+      ))}
+    </div>
   );
 };
 

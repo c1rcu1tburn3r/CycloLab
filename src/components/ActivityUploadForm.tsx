@@ -145,39 +145,40 @@ export default function ActivityUploadForm({ userId, athletes }: ActivityUploadF
   const isSubmitDisabled = isUploading || isPending;
 
   return (
-    <form onSubmit={handleSubmit} className="bg-white p-6 rounded-lg shadow-md">
+    <form onSubmit={handleSubmit} className="space-y-6">
       {error && (
-        <div className="mb-4 p-3 bg-red-50 text-red-700 border border-red-200 rounded-md">
+        <div className="mb-4 p-3 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 border border-red-300 dark:border-red-700 rounded-lg">
           {error}
         </div>
       )}
       
       {successMessage && (
-        <div className="mb-4 p-3 bg-green-50 text-green-700 border border-green-200 rounded-md">
+        <div className="mb-4 p-3 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 border border-green-300 dark:border-green-700 rounded-lg">
           {successMessage}
         </div>
       )}
       
-      <div className="mb-6">
-        <label className="block text-slate-700 font-medium mb-2">
+      <div>
+        <label htmlFor="fit_file" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
           File FIT <span className="text-red-500">*</span>
         </label>
         <input
           type="file"
+          id="fit_file"
           accept=".fit"
           onChange={handleFileChange}
-          className="w-full p-2 border border-slate-300 rounded-md"
+          className="w-full px-3 py-2 text-sm bg-white/80 dark:bg-gray-800/80 border border-gray-300 dark:border-gray-700/50 rounded-xl focus:outline-none focus:ring-1 focus:ring-blue-500/70 placeholder:text-gray-400 dark:placeholder:text-gray-500 transition-all stats-card-bg-input"
           required
           disabled={isSubmitDisabled}
         />
-        <p className="text-xs text-slate-500 mt-1">
+        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
           Seleziona un file .fit esportato da Garmin, Wahoo, Strava o altri dispositivi compatibili.
         </p>
       </div>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div>
-          <label htmlFor="athlete_id" className="block text-slate-700 font-medium mb-2">
+          <label htmlFor="athlete_id" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
             Atleta <span className="text-red-500">*</span>
           </label>
           <select
@@ -185,7 +186,7 @@ export default function ActivityUploadForm({ userId, athletes }: ActivityUploadF
             name="athlete_id"
             value={formData.athlete_id}
             onChange={handleInputChange}
-            className="w-full p-2 border border-slate-300 rounded-md"
+            className="w-full px-3 py-2 text-sm bg-white/80 dark:bg-gray-800/80 border border-gray-300 dark:border-gray-700/50 rounded-xl focus:outline-none focus:ring-1 focus:ring-blue-500/70 placeholder:text-gray-400 dark:placeholder:text-gray-500 transition-all appearance-none stats-card-bg-input pr-8"
             required
             disabled={isSubmitDisabled}
           >
@@ -199,7 +200,7 @@ export default function ActivityUploadForm({ userId, athletes }: ActivityUploadF
         </div>
         
         <div>
-          <label htmlFor="activity_date" className="block text-slate-700 font-medium mb-2">
+          <label htmlFor="activity_date" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
             Data <span className="text-red-500">*</span>
           </label>
           <input
@@ -208,15 +209,15 @@ export default function ActivityUploadForm({ userId, athletes }: ActivityUploadF
             name="activity_date"
             value={formData.activity_date}
             onChange={handleInputChange}
-            className="w-full p-2 border border-slate-300 rounded-md"
+            className="w-full px-3 py-2 text-sm bg-white/80 dark:bg-gray-800/80 border border-gray-300 dark:border-gray-700/50 rounded-xl focus:outline-none focus:ring-1 focus:ring-blue-500/70 placeholder:text-gray-400 dark:placeholder:text-gray-500 transition-all stats-card-bg-input"
             required
             disabled={isSubmitDisabled}
           />
         </div>
       </div>
       
-      <div className="mb-4">
-        <label htmlFor="title" className="block text-slate-700 font-medium mb-2">
+      <div>
+        <label htmlFor="title" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
           Titolo <span className="text-red-500">*</span>
         </label>
         <input
@@ -225,14 +226,14 @@ export default function ActivityUploadForm({ userId, athletes }: ActivityUploadF
           name="title"
           value={formData.title}
           onChange={handleInputChange}
-          className="w-full p-2 border border-slate-300 rounded-md"
+          className="w-full px-3 py-2 text-sm bg-white/80 dark:bg-gray-800/80 border border-gray-300 dark:border-gray-700/50 rounded-xl focus:outline-none focus:ring-1 focus:ring-blue-500/70 placeholder:text-gray-400 dark:placeholder:text-gray-500 transition-all stats-card-bg-input"
           required
           disabled={isSubmitDisabled}
         />
       </div>
       
-      <div className="mb-4">
-        <label htmlFor="description" className="block text-slate-700 font-medium mb-2">
+      <div>
+        <label htmlFor="description" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
           Descrizione
         </label>
         <textarea
@@ -240,15 +241,15 @@ export default function ActivityUploadForm({ userId, athletes }: ActivityUploadF
           name="description"
           value={formData.description}
           onChange={handleInputChange}
-          className="w-full p-2 border border-slate-300 rounded-md"
+          className="w-full px-3 py-2 text-sm bg-white/80 dark:bg-gray-800/80 border border-gray-300 dark:border-gray-700/50 rounded-xl focus:outline-none focus:ring-1 focus:ring-blue-500/70 placeholder:text-gray-400 dark:placeholder:text-gray-500 transition-all stats-card-bg-input"
           rows={3}
           disabled={isSubmitDisabled}
         ></textarea>
       </div>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div>
-          <label htmlFor="activity_type" className="block text-slate-700 font-medium mb-2">
+          <label htmlFor="activity_type" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
             Tipo di attività <span className="text-red-500">*</span>
           </label>
           <select
@@ -256,18 +257,20 @@ export default function ActivityUploadForm({ userId, athletes }: ActivityUploadF
             name="activity_type"
             value={formData.activity_type}
             onChange={handleInputChange}
-            className="w-full p-2 border border-slate-300 rounded-md"
+            className="w-full px-3 py-2 text-sm bg-white/80 dark:bg-gray-800/80 border border-gray-300 dark:border-gray-700/50 rounded-xl focus:outline-none focus:ring-1 focus:ring-blue-500/70 placeholder:text-gray-400 dark:placeholder:text-gray-500 transition-all appearance-none stats-card-bg-input pr-8"
             required
             disabled={isSubmitDisabled}
           >
             <option value="cycling">Ciclismo</option>
             <option value="running">Corsa</option>
+            <option value="swimming">Nuoto</option>
+            <option value="strength">Forza</option>
             <option value="other">Altro</option>
           </select>
         </div>
       </div>
       
-      <div className="flex flex-wrap gap-4 mb-6">
+      <div className="space-y-3 md:space-y-0 md:flex md:flex-wrap md:items-center md:gap-6">
         <div className="flex items-center">
           <input
             type="checkbox"
@@ -275,10 +278,10 @@ export default function ActivityUploadForm({ userId, athletes }: ActivityUploadF
             name="is_indoor"
             checked={formData.is_indoor}
             onChange={handleInputChange}
-            className="mr-2"
+            className="h-4 w-4 text-blue-600 border-gray-300 dark:border-gray-600 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 dark:bg-gray-700 mr-2 cursor-pointer"
             disabled={isSubmitDisabled}
           />
-          <label htmlFor="is_indoor" className="text-slate-700">
+          <label htmlFor="is_indoor" className="text-sm font-medium text-gray-700 dark:text-gray-300 cursor-pointer">
             Attività indoor
           </label>
         </div>
@@ -290,22 +293,34 @@ export default function ActivityUploadForm({ userId, athletes }: ActivityUploadF
             name="is_public"
             checked={formData.is_public}
             onChange={handleInputChange}
-            className="mr-2"
+            className="h-4 w-4 text-blue-600 border-gray-300 dark:border-gray-600 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 dark:bg-gray-700 mr-2 cursor-pointer"
             disabled={isSubmitDisabled}
           />
-          <label htmlFor="is_public" className="text-slate-700">
+          <label htmlFor="is_public" className="text-sm font-medium text-gray-700 dark:text-gray-300 cursor-pointer">
             Attività pubblica
           </label>
         </div>
       </div>
       
-      <div className="mt-6">
+      <div className="mt-8">
         <button
           type="submit"
-          className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg shadow-md disabled:opacity-75 disabled:cursor-not-allowed"
+          className="w-full text-white font-semibold px-6 py-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 bg-gradient-to-r from-emerald-500 to-blue-600 hover:from-emerald-600 hover:to-blue-700 disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:scale-100"
           disabled={isSubmitDisabled}
         >
-          {isUploading ? 'Caricamento file...' : (isPending ? 'Salvataggio attività...' : 'Carica Attività')}
+          {isUploading ? (
+            <span className="flex items-center justify-center">
+              <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+              Caricamento file...
+            </span>
+          ) : isPending ? (
+            <span className="flex items-center justify-center">
+              <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+              Salvataggio attività...
+            </span>
+          ) : (
+            'Carica Attività'
+          )}
         </button>
       </div>
     </form>

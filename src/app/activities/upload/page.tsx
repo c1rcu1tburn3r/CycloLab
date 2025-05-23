@@ -3,6 +3,7 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import ActivityUploadForm from '@/components/ActivityUploadForm';
 import type { Athlete } from '@/lib/types';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 
 async function getAthletesForCurrentUser(supabaseClient: any, userId: string): Promise<Athlete[]> {
   const { data, error } = await supabaseClient
@@ -49,15 +50,23 @@ export default async function UploadActivityPage() {
   }
 
   return (
-    <div className="space-y-8">
-      <div className="mb-8">
-        <h1 className="text-2xl sm:text-3xl font-bold text-slate-800">Carica una nuova attività</h1>
-        <p className="text-slate-600 mt-2">
-          Carica un file FIT e inserisci i dettagli dell'attività.
-        </p>
-      </div>
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50 dark:from-gray-900 dark:via-gray-800 dark:to-blue-900">
+      {/* Background Pattern */}
+      <div className="absolute inset-0 grid-dots pointer-events-none" />
       
-      <ActivityUploadForm userId={user.id} athletes={athletes} />
+      <div className="relative container mx-auto px-4 py-8 flex justify-center items-start">
+        <Card className="w-full max-w-2xl stats-card mt-8 mb-8">
+          <CardHeader className="text-center">
+            <CardTitle className="text-2xl sm:text-3xl font-bold">Carica una nuova attività</CardTitle>
+            <CardDescription className="mt-2">
+              Carica un file FIT e inserisci i dettagli dell'attività.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ActivityUploadForm userId={user.id} athletes={athletes} />
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

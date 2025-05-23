@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 // Importa createBrowserClient da @supabase/ssr
 import { createBrowserClient } from '@supabase/ssr';
 import type { Athlete } from '@/lib/types'; // MODIFICATO PERCORSO IMPORT
+import { Button } from '@/components/ui/button';
 
 interface DeleteAthleteButtonProps {
   athlete: Athlete;
@@ -21,12 +22,9 @@ export default function DeleteAthleteButton({ athlete, onDeleteSuccess }: Delete
   );
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
 
   const handleDelete = async () => {
-    if (!window.confirm(`Sei sicuro di voler eliminare l'atleta ${athlete.name} ${athlete.surname}? Questa azione è irreversibile.`)) {
-      return;
-    }
-
     setIsLoading(true);
     setError(null);
 
@@ -75,6 +73,8 @@ export default function DeleteAthleteButton({ athlete, onDeleteSuccess }: Delete
         }
       }
 
+      setShowConfirmDialog(false);
+      
       if (onDeleteSuccess) {
         onDeleteSuccess();
       } else {
@@ -91,15 +91,90 @@ export default function DeleteAthleteButton({ athlete, onDeleteSuccess }: Delete
 
   return (
     <>
-      <button
-        onClick={handleDelete}
-        disabled={isLoading}
-        className="bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-3 rounded-lg text-xs shadow-sm hover:shadow-md transition-all duration-150 flex items-center justify-center disabled:opacity-70"
+      <Button
+        onClick={() => setShowConfirmDialog(true)}
+        variant="destructive"
+        size="sm"
+        className="group relative overflow-hidden"
         title={`Elimina ${athlete.name} ${athlete.surname}`}
       >
-        {isLoading ? 'Eliminazione...' : 'Elimina'}
-      </button>
-      {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
+        <svg className="w-4 h-4 group-hover:scale-110 transition-transform duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+        </svg>
+      </Button>
+
+      {/* Modern Confirmation Dialog */}
+      {showConfirmDialog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in">
+          {/* Backdrop */}
+          <div 
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            onClick={() => !isLoading && setShowConfirmDialog(false)}
+          ></div>
+          
+          {/* Dialog */}
+          <div className="relative bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl rounded-3xl p-8 max-w-md w-full shadow-2xl border border-gray-200/20 dark:border-gray-700/20 animate-scale-in">
+            {/* Icon */}
+            <div className="w-16 h-16 mx-auto mb-6 bg-gradient-to-br from-red-500/20 to-red-600/20 rounded-full flex items-center justify-center">
+              <svg className="w-8 h-8 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+              </svg>
+            </div>
+
+            {/* Content */}
+            <div className="text-center space-y-4">
+              <h3 className="text-xl font-bold text-foreground">Conferma Eliminazione</h3>
+              <p className="text-muted-foreground">
+                Sei sicuro di voler eliminare <span className="font-semibold text-foreground">{athlete.name} {athlete.surname}</span>?
+              </p>
+              <p className="text-sm text-muted-foreground bg-destructive/10 border border-destructive/20 rounded-xl p-3">
+                ⚠️ Questa azione è <strong>irreversibile</strong>. Tutti i dati dell'atleta verranno persi permanentemente.
+              </p>
+            </div>
+
+            {error && (
+              <div className="mt-4 p-3 bg-destructive/10 border border-destructive/20 rounded-xl text-destructive text-sm text-center animate-slide-up">
+                {error}
+              </div>
+            )}
+
+            {/* Actions */}
+            <div className="flex gap-3 mt-8">
+              <Button
+                onClick={() => setShowConfirmDialog(false)}
+                variant="outline"
+                size="lg"
+                className="flex-1"
+                disabled={isLoading}
+              >
+                Annulla
+              </Button>
+              
+              <Button
+                onClick={handleDelete}
+                variant="destructive"
+                size="lg"
+                className="flex-1"
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <div className="flex items-center">
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2"></div>
+                    Eliminazione...
+                  </div>
+                ) : (
+                  <>
+                    <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                    Elimina Definitivamente
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
