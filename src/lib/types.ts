@@ -2,7 +2,19 @@
 import { Database } from './database.types';
 
 // Definizione dei tipi per le tabelle
-export type Athlete = Database['public']['Tables']['athletes']['Row'];
+export type AthleteRow = Database['public']['Tables']['athletes']['Row'];
+
+// Tipo Athlete usato nell'applicazione, estende AthleteRow per includere campi addizionali
+// o campi che ci si aspetta siano nella tabella athletes ma potrebbero non essere
+// ancora riflessi in AthleteRow se i tipi generati da Supabase non sono aggiornati.
+export type Athlete = AthleteRow & {
+  email?: string | null;
+  phone_number?: string | null;
+  // Se avatar_url non fosse in AthleteRow ma necessario, andrebbe aggiunto qui.
+  // Da AthleteForm.tsx, avatar_url è omesso da AthleteFormData,
+  // il che implica che è già in AthleteRow (e quindi in Athlete).
+};
+
 export interface ActivityData {
   id: string;
   file_name: string;
@@ -46,7 +58,7 @@ export interface ActivityData {
 
 export type Activity = Database['public']['Tables']['activities']['Row'] & {
   route_points?: RoutePoint[] | string | null;
-  athletes?: { name: string; surname: string } | null; 
+  athletes?: Pick<Athlete, 'name' | 'surname'> | null;
   athlete_id?: string | null; 
   normalized_power_watts?: number | null;
   intensity_factor?: number | null;
