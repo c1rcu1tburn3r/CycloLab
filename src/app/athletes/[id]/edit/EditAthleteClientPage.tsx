@@ -33,6 +33,8 @@ import PmcChart from '@/components/charts/PmcChart';
 // Importa la tabella dei Personal Bests
 import OverallPersonalBestsTable from '@/components/OverallPersonalBestsTable';
 
+import AthleteActivitiesTab from '@/components/AthleteActivitiesTab';
+
 interface EditAthleteClientPageProps {
   initialAthlete: Athlete;
   initialProfileEntries: AthleteProfileEntry[];
@@ -494,42 +496,10 @@ export default function EditAthleteClientPage({
             </TabsContent>
 
             <TabsContent value="attivita" className="space-y-6">
-              <Card className="stats-card">
-                <CardHeader>
-                  <CardTitle>Elenco Attività</CardTitle>
-                  <CardDescription>
-                    Lista di tutte le attività registrate per {initialAthlete.name} {initialAthlete.surname}.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {initialActivities && initialActivities.length > 0 ? (
-                    <ul className="space-y-4">
-                      {initialActivities.map(activity => (
-                        <li key={activity.id} className="p-4 border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
-                          <Link href={`/activities/${activity.id}`} className="block">
-                            <div className="flex justify-between items-center">
-                              <h3 className="font-semibold text-blue-600 dark:text-blue-400">{activity.title || 'Attività senza titolo'}</h3>
-                              <span className="text-sm text-gray-500 dark:text-gray-400">
-                                {format(new Date(activity.activity_date), 'dd MMM yyyy', { locale: it })}
-                              </span>
-                            </div>
-                            {activity.description && (
-                              <p className="text-sm text-gray-600 dark:text-gray-300 mt-1 truncate">
-                                {activity.description}
-                              </p>
-                            )}
-                            {/* Qui potremmo aggiungere altre info come distanza, tempo, ecc. se disponibili e necessarie */}
-                          </Link>
-                        </li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <p className="text-center text-gray-500 dark:text-gray-400 py-8">
-                      Nessuna attività registrata per questo atleta.
-                    </p>
-                  )}
-                </CardContent>
-              </Card>
+              <AthleteActivitiesTab 
+                activities={initialActivities} 
+                athleteName={`${initialAthlete.name} ${initialAthlete.surname}`}
+              />
             </TabsContent>
           </Tabs>
         </div>

@@ -8,6 +8,7 @@ import type { Athlete } from '@/lib/types';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import DeleteAthleteButton from '@/components/DeleteAthleteButton';
+import AthleteCard from '@/components/AthleteCard';
 
 // Funzione per calcolare l'età
 function calculateAge(birthDate: string | null): string {
@@ -184,64 +185,7 @@ export default async function AthletesPage() {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6">
               {athletesList.map((athlete, index) => (
-                <div
-                  key={athlete.id} 
-                  className="stats-card group animate-slide-up hover:scale-[1.02] transition-all duration-300"
-                  style={{ animationDelay: `${index * 100}ms` }}
-                >
-                  <Link href={`/athletes/${athlete.id}/edit`} className="block h-full flex flex-col">
-                    {/* Avatar Section */}
-                    <div className="text-center mb-6">
-                      <div className="relative inline-block">
-                        {athlete.avatar_url ? (
-                          <div className="w-20 h-20 mx-auto overflow-hidden rounded-2xl border-2 border-blue-200/50 dark:border-blue-700/50 shadow-lg group-hover:border-blue-400/50 dark:group-hover:border-blue-500/50 transition-all duration-300">
-                            <img 
-                              src={athlete.avatar_url} 
-                              alt={`${athlete.name} ${athlete.surname}`} 
-                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" 
-                            />
-                          </div>
-                        ) : (
-                          <div className="w-20 h-20 rounded-2xl mx-auto bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-xl font-bold shadow-lg group-hover:shadow-xl transition-all duration-300">
-                            {athlete.name.charAt(0).toUpperCase()}{athlete.surname.charAt(0).toUpperCase()}
-                          </div>
-                        )}
-                        
-                        {/* Status Indicator */}
-                        <div className="absolute -bottom-2 -right-2 w-6 h-6 bg-emerald-500 rounded-full border-4 border-white dark:border-gray-800 flex items-center justify-center">
-                          <div className="w-2 h-2 bg-white rounded-full"></div>
-                        </div>
-                      </div>
-                      
-                      <h3 className="text-lg font-bold text-gray-900 dark:text-white mt-4 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors line-clamp-1">
-                        {athlete.name} {athlete.surname}
-                      </h3>
-                    </div>
-
-                    {/* Stats Grid */}
-                    <div className="grid grid-cols-2 gap-4 mb-6 flex-grow">
-                      <div className="bg-blue-50/50 dark:bg-blue-900/30 rounded-xl p-3 text-center">
-                        <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Età</div>
-                        <div className="text-lg font-bold text-blue-600 dark:text-blue-400">{calculateAge(athlete.birth_date)}</div>
-                      </div>
-                      
-                      <div className="bg-orange-50/50 dark:bg-orange-900/30 rounded-xl p-3 text-center">
-                        <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Nazionalità</div>
-                        <div className="text-sm font-bold text-orange-600 dark:text-orange-400 truncate">{athlete.nationality || 'N/D'}</div>
-                      </div>
-                      
-                      <div className="bg-emerald-50/50 dark:bg-emerald-900/30 rounded-xl p-3 text-center">
-                        <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Altezza</div>
-                        <div className="text-sm font-bold text-emerald-600 dark:text-emerald-400">{athlete.height_cm ? `${athlete.height_cm}cm` : 'N/D'}</div>
-                      </div>
-                      
-                      <div className="bg-purple-50/50 dark:bg-purple-900/30 rounded-xl p-3 text-center">
-                        <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Peso</div>
-                        <div className="text-sm font-bold text-purple-600 dark:text-purple-400">{athlete.weight_kg ? `${athlete.weight_kg}kg` : 'N/D'}</div>
-                      </div>
-                    </div>
-                  </Link>
-                </div>
+                <AthleteCard key={athlete.id} athlete={athlete} index={index} />
               ))}
             </div>
           )}

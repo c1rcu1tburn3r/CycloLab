@@ -55,13 +55,41 @@ async function getAthleteActivities(supabaseClient: any, athleteId: string, user
     .select('*')
     .eq('athlete_id', athleteId)
     .eq('user_id', userId) // Assicurati che solo il coach corretto possa vedere le attività
-    .order('activity_date', { ascending: false });
+    .order('activity_date', { ascending: false })
+    .limit(20); // Limitiamo a 20 attività per il caricamento iniziale
 
   if (error) {
     console.error('Errore nel recuperare le attività dell_atleta:', error.message);
     return [];
   }
   return data || [];
+}
+
+// Funzione ottimizzata che esegue tutte le query in parallelo
+async function getAthleteData(supabaseClient: any, athleteId: string, userId: string) {
+  try {
+    // Eseguiamo tutte le query in parallelo per ridurre i tempi di caricamento
+    const [athleteToEdit, profileEntries, activities] = await Promise.all([
+      getAthleteById(supabaseClient, athleteId, userId),
+      getAthleteProfileEntries(supabaseClient, athleteId),
+      getAthleteActivities(supabaseClient, athleteId, userId)
+    ]);
+
+    return {
+      athlete: athleteToEdit,
+      profileEntries,
+      activities,
+      error: null
+    };
+  } catch (error) {
+    console.error('Errore nel caricamento dati atleta:', error);
+    return {
+      athlete: null,
+      profileEntries: [],
+      activities: [],
+      error: 'Errore nel caricamento dei dati'
+    };
+  }
 }
 
 export default async function EditAthletePage({ params }: EditAthletePageProps) {
@@ -76,22 +104,22 @@ export default async function EditAthletePage({ params }: EditAthletePageProps) 
     redirect('/auth/login');
   }
 
-  const athleteToEdit = await getAthleteById(supabase, athleteId, user.id);
+  // Caricamento ottimizzato con query parallele
+  const { athlete: athleteToEdit, profileEntries, activities, error } = await getAthleteData(supabase, athleteId, user.id);
 
-  if (!athleteToEdit) {
+  if (error || !athleteToEdit) {
     return (
       <div className="text-center py-10">
         <h1 className="text-2xl font-bold text-red-600">Atleta non trovato</h1>
-        <p className="text-slate-600">Impossibile trovare l'atleta che stai cercando di modificare, o non hai i permessi per farlo.</p>
+        <p className="text-slate-600">
+          {error || "Impossibile trovare l'atleta che stai cercando di modificare, o non hai i permessi per farlo."}
+        </p>
         <Link href="/athletes" className="mt-4 inline-block text-blue-600 hover:underline">
           Torna alla lista atleti
         </Link>
       </div>
     );
   }
-
-  const profileEntries = await getAthleteProfileEntries(supabase, athleteId);
-  const activities = await getAthleteActivities(supabase, athleteId, user.id); // Recupera le attività
 
   // Il link "Torna alla lista atleti" potrebbe essere passato a EditAthleteClientPage o gestito qui se necessario un layout diverso
   return (

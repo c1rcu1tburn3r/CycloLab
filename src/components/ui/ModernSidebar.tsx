@@ -2,9 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { createBrowserClient } from '@supabase/ssr';
-import { useRouter } from 'next/navigation';
 import { ThemeToggle } from './ThemeToggle';
 
 interface SidebarProps {
@@ -62,6 +61,7 @@ const navigation = [
 
 export function ModernSidebar({ user }: SidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
+  const [isNavigating, setIsNavigating] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
   
@@ -76,6 +76,19 @@ export function ModernSidebar({ user }: SidebarProps) {
     router.refresh();
   };
 
+  // Gestione loading state per navigazione
+  const handleNavigation = (href: string) => {
+    if (pathname !== href) {
+      setIsNavigating(true);
+      // Il loading state verrà resettato quando il pathname cambia
+    }
+  };
+
+  // Reset loading state quando cambia il pathname
+  useEffect(() => {
+    setIsNavigating(false);
+  }, [pathname]);
+
   // Effetto per gestire il margine del body in base al collapsed state
   useEffect(() => {
     const root = document.documentElement;
@@ -88,6 +101,24 @@ export function ModernSidebar({ user }: SidebarProps) {
 
   return (
     <>
+      {/* Loading Overlay */}
+      {isNavigating && (
+        <div className="fixed inset-0 bg-black/20 backdrop-blur-sm z-[9999] flex items-center justify-center">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl p-8 shadow-2xl border border-gray-200 dark:border-gray-700">
+            <div className="flex flex-col items-center space-y-4">
+              <div className="relative">
+                <div className="w-12 h-12 border-4 border-gray-200 dark:border-gray-600 border-t-blue-500 rounded-full animate-spin"></div>
+                <div className="absolute inset-0 w-12 h-12 border-4 border-transparent border-t-purple-500 rounded-full animate-spin" style={{ animationDirection: 'reverse', animationDelay: '0.3s' }}></div>
+              </div>
+              <div className="text-center">
+                <p className="text-lg font-semibold text-gray-900 dark:text-white">Caricamento...</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">Preparazione dati atleta</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Sidebar */}
       <div className={`fixed inset-y-0 left-0 z-sidebar bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border-r border-gray-200/50 dark:border-gray-700/50 transition-all duration-300 ${
         collapsed ? 'w-16' : 'w-64'
@@ -125,7 +156,8 @@ export function ModernSidebar({ user }: SidebarProps) {
                 <Link
                   key={item.name}
                   href={item.href}
-                  className={`group flex items-center px-3 py-3 rounded-xl transition-all duration-200 relative ${
+                  onClick={() => handleNavigation(item.href)}
+                  className={`group flex items-center ${collapsed ? 'justify-center px-3 py-3' : 'px-3 py-3'} rounded-xl transition-all duration-200 relative ${
                     isActive
                       ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 shadow-sm'
                       : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800/50 hover:text-gray-900 dark:hover:text-white'

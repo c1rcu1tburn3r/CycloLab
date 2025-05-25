@@ -9,6 +9,7 @@ import { it } from 'date-fns/locale';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
 // Per i DatePicker, useremo input type="date" per semplicità e per evitare
 // di dover installare/configurare un componente DatePicker complesso ora.
 // Potrai sostituirli con il tuo componente DatePicker preferito in seguito.
@@ -250,13 +251,18 @@ export default function ActivitiesClientManager({ initialActivities, coachAthlet
       </div>
 
       {/* Filtri */}
-      <Card className="mb-8 stats-card p-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 items-end">
-          <div>
-            <label htmlFor="athlete-filter" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Atleta</label>
+      <div className="stats-card mb-8 p-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {/* Atleta */}
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+              Atleta
+            </label>
             <Select value={selectedAthleteId} onValueChange={setSelectedAthleteId}>
-              <SelectTrigger id="athlete-filter" className="stats-card-bg-input"><SelectValue placeholder="Seleziona atleta" /></SelectTrigger>
-              <SelectContent className="stats-card-bg-input">
+              <SelectTrigger className="h-10">
+                <SelectValue placeholder="Seleziona atleta" />
+              </SelectTrigger>
+              <SelectContent>
                 <SelectItem value="all">Tutti gli Atleti</SelectItem>
                 {coachAthletes.map(athlete => (
                   <SelectItem key={athlete.id} value={athlete.id}>{athlete.name} {athlete.surname}</SelectItem>
@@ -264,71 +270,120 @@ export default function ActivitiesClientManager({ initialActivities, coachAthlet
               </SelectContent>
             </Select>
           </div>
-          <div>
-            <label htmlFor="start-date" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Da Data</label>
-            <input 
-                type="date" 
-                id="start-date" 
-                value={startDate} 
-                onChange={(e) => setStartDate(e.target.value)}
-                className="w-full px-3 py-2 text-sm bg-white/80 dark:bg-gray-800/80 border border-gray-200/50 dark:border-gray-700/50 rounded-xl focus:outline-none focus:ring-1 focus:ring-blue-500/70 placeholder:text-gray-400 dark:placeholder:text-gray-500 transition-all stats-card-bg-input"
+          {/* Ricerca */}
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+              Cerca attività
+            </label>
+            <Input
+              type="text"
+              placeholder="Titolo, descrizione, tipo..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="h-10"
             />
           </div>
-          <div>
-            <label htmlFor="end-date" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">A Data</label>
-             <input 
-                type="date" 
-                id="end-date" 
-                value={endDate} 
-                onChange={(e) => setEndDate(e.target.value)}
-                className="w-full px-3 py-2 text-sm bg-white/80 dark:bg-gray-800/80 border border-gray-200/50 dark:border-gray-700/50 rounded-xl focus:outline-none focus:ring-1 focus:ring-blue-500/70 placeholder:text-gray-400 dark:placeholder:text-gray-500 transition-all stats-card-bg-input"
+
+          {/* Data da */}
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+              Da
+            </label>
+            <Input
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              className="h-10"
             />
           </div>
-          <div>
-            <label htmlFor="search-term" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Cerca</label>
-            <input 
-                type="text"
-                id="search-term"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Titolo, descrizione, tipo..."
-                className="w-full px-3 py-2 text-sm bg-white/80 dark:bg-gray-800/80 border border-gray-200/50 dark:border-gray-700/50 rounded-xl focus:outline-none focus:ring-1 focus:ring-blue-500/70 placeholder:text-gray-400 dark:placeholder:text-gray-500 transition-all stats-card-bg-input"
+
+          {/* Data a */}
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+              A
+            </label>
+            <Input
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              className="h-10"
             />
           </div>
         </div>
-      </Card>
+
+        {/* Pulsante reset filtri */}
+        {(selectedAthleteId !== 'all' || startDate || endDate || searchTerm) && (
+          <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setSelectedAthleteId('all');
+                setStartDate('');
+                setEndDate('');
+                setSearchTerm('');
+              }}
+              className="text-sm"
+            >
+              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              Reset Filtri
+            </Button>
+          </div>
+        )}
+      </div>
 
       {/* Quick Stats Aggregate */}
-       {filteredActivities.length > 0 && (
+      {filteredActivities.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <Card className="stats-card p-5">
+          <div className="bg-emerald-50/50 dark:bg-emerald-900/30 rounded-xl p-4 text-center stats-card">
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400">Sessioni Filtrate</h3>
-              <div className="p-2 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg"><svg className="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg></div>
+              <div className="w-6 h-6 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg flex items-center justify-center">
+                <svg className="w-3 h-3 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                </svg>
+              </div>
             </div>
-            <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.totalActivities}</p>
-          </Card>
-          <Card className="stats-card p-5">
+            <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{stats.totalActivities}</p>
+          </div>
+
+          <div className="bg-blue-50/50 dark:bg-blue-900/30 rounded-xl p-4 text-center stats-card">
             <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400">Cycling</h3>
-                <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg"><svg className="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg></div>
+              <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400">Cycling</h3>
+              <div className="w-6 h-6 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
+                <svg className="w-3 h-3 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+              </div>
             </div>
-            <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.totalCyclingActivities}</p>
-          </Card>
-          <Card className="stats-card p-5">
+            <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{stats.totalCyclingActivities}</p>
+          </div>
+
+          <div className="bg-orange-50/50 dark:bg-orange-900/30 rounded-xl p-4 text-center stats-card">
             <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400">Distanza Totale</h3>
-                <div className="p-2 bg-orange-100 dark:bg-orange-900/30 rounded-lg"><svg className="w-4 h-4 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg></div>
+              <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400">Distanza Totale</h3>
+              <div className="w-6 h-6 bg-orange-100 dark:bg-orange-900/30 rounded-lg flex items-center justify-center">
+                <svg className="w-3 h-3 text-orange-600 dark:text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+              </div>
             </div>
-            <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.totalDistanceKm} km</p>
-          </Card>
-          <Card className="stats-card p-5">
+            <p className="text-2xl font-bold text-orange-600 dark:text-orange-400">{stats.totalDistanceKm} km</p>
+          </div>
+
+          <div className="bg-purple-50/50 dark:bg-purple-900/30 rounded-xl p-4 text-center stats-card">
             <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400">Tempo Totale</h3>
-                <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg"><svg className="w-4 h-4 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg></div>
+              <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400">Tempo Totale</h3>
+              <div className="w-6 h-6 bg-purple-100 dark:bg-purple-900/30 rounded-lg flex items-center justify-center">
+                <svg className="w-3 h-3 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
             </div>
-            <p className="text-2xl font-bold text-gray-900 dark:text-white">{formatDuration(stats.totalDurationSeconds)}</p>
-          </Card>
+            <p className="text-2xl font-bold text-purple-600 dark:text-purple-400">{formatDuration(stats.totalDurationSeconds)}</p>
+          </div>
         </div>
       )}
 
@@ -425,7 +480,7 @@ export default function ActivitiesClientManager({ initialActivities, coachAthlet
                 isComparisonMode={isComparisonMode}
                 isSelected={selectedActivities.has(activity.id)}
                 onToggleSelection={() => toggleActivitySelection(activity.id)}
-                canSelect={!selectedActivities.has(activity.id) && selectedActivities.size < 4}
+                canSelect={!selectedActivities.has(activity.id) && selectedActivities.size < 2}
                 athleteName={athleteName}
               />
             );
