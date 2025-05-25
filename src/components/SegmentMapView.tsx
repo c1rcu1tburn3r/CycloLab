@@ -143,7 +143,7 @@ export default function SegmentMapView({
 
   if (!isMounted || !leaflet || !reactLeafletModule) {
     return (
-      <div className="w-full h-96 bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center">
+      <div className="w-full h-[500px] bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-2"></div>
           <p className="text-sm text-gray-600 dark:text-gray-400">Caricamento mappa...</p>
@@ -154,7 +154,7 @@ export default function SegmentMapView({
 
   if (activities.length === 0) {
     return (
-      <div className="w-full h-96 bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center">
+      <div className="w-full h-[500px] bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center">
         <div className="text-center">
           <svg className="w-12 h-12 text-gray-400 mx-auto mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-1.447-.894L15 9m0 8V9m0 0L9 7" />
@@ -166,7 +166,7 @@ export default function SegmentMapView({
   }
 
   return (
-    <div className="relative w-full h-96">
+    <div className="relative w-full h-[500px]">
       {/* Overlay di istruzioni durante la selezione */}
       {isSelecting && (
         <div className="absolute top-4 left-4 right-4 bg-blue-500 text-white p-3 rounded-lg shadow-lg z-[1000]">

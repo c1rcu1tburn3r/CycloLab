@@ -163,7 +163,7 @@ export default function ManageAthletesClientPage() {
           <div className="mb-8">
             <div className="relative overflow-hidden rounded-3xl bg-white/70 dark:bg-gray-800/70 backdrop-blur-xl border border-gray-200/50 dark:border-gray-700/50 p-8 shadow-2xl">
               {/* Gradient Accent */}
-              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 via-purple-500 to-emerald-500" />
+              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 via-purple-500 to-emerald-500 rounded-t-3xl" />
               
               <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
                 <div className="flex items-center gap-6">
@@ -307,34 +307,34 @@ export default function ManageAthletesClientPage() {
                 <h3 className="text-xl font-semibold text-gray-900 dark:text-white">Aggiungi Nuovo Atleta</h3>
                 <p className="text-sm text-gray-600 dark:text-gray-400">Cerca e associa atleti al tuo team</p>
               </div>
-            </div>
+        </div>
 
             <div className="space-y-6">
-              <div className="relative">
+          <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <Input
-                  type="text"
-                  placeholder="Cerca atleta per nome o cognome..."
-                  value={searchTerm}
-                  onChange={handleSearchChange}
+            <Input
+              type="text"
+              placeholder="Cerca atleta per nome o cognome..."
+              value={searchTerm}
+              onChange={handleSearchChange}
                   className="pl-10 bg-white/50 dark:bg-gray-800/50 border-gray-200/50 dark:border-gray-700/50"
-                />
-              </div>
+            />
+          </div>
 
               {isLoadingSearch && (
                 <div className="flex items-center justify-center p-6">
                   <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mr-3" />
                   <p className="text-gray-600 dark:text-gray-400">Ricerca in corso...</p>
-                </div>
-              )}
+            </div>
+          )}
 
               {errorSearch && (
                 <div className="p-4 bg-red-50/80 border border-red-200/50 text-red-700 dark:bg-red-900/20 dark:border-red-700/50 dark:text-red-400 rounded-xl">
                   {errorSearch}
-                </div>
+            </div>
               )}
-
-              {searchResults.length > 0 && !isLoadingSearch && (
+          
+          {searchResults.length > 0 && !isLoadingSearch && (
                 <div className="space-y-3">
                   <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
                     Trovati {searchResults.length} atleti:
@@ -350,15 +350,15 @@ export default function ManageAthletesClientPage() {
                           <div className="w-10 h-10 bg-gradient-to-br from-gray-500 to-gray-600 rounded-xl flex items-center justify-center text-white font-semibold">
                             {athlete.name.charAt(0)}{athlete.surname.charAt(0)}
                           </div>
-                          <div>
+                  <div>
                             <p className="font-medium text-gray-900 dark:text-white">{athlete.name} {athlete.surname}</p>
                             <p className="text-sm text-gray-500 dark:text-gray-400">
                               {athlete.birth_date ? `Nato il ${format(new Date(athlete.birth_date), 'dd MMM yyyy', { locale: it })}` : 'Data di nascita non disponibile'}
                             </p>
                           </div>
-                        </div>
-                        <Button 
-                          onClick={() => handleAssociateAthlete(athlete.id)}
+                  </div>
+                  <Button 
+                    onClick={() => handleAssociateAthlete(athlete.id)}
                           disabled={isAssociating === athlete.id}
                           className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
                         >
@@ -373,12 +373,12 @@ export default function ManageAthletesClientPage() {
                               Associa
                             </>
                           )}
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
+                  </Button>
                 </div>
-              )}
+              ))}
+                  </div>
+            </div>
+          )}
 
               {searchResults.length === 0 && searchTerm.length >= 2 && !isLoadingSearch && !errorSearch && (
                 <div className="text-center p-6 text-gray-500 dark:text-gray-400">
@@ -386,9 +386,9 @@ export default function ManageAthletesClientPage() {
                   <p>Nessun atleta trovato per "{searchTerm}"</p>
                   <p className="text-sm mt-1">Prova con un altro nome o verifica l'ortografia</p>
                 </div>
-              )}
-            </div>
-          </div>
+          )}
+        </div>
+      </div>
 
           {/* I Miei Atleti */}
           <div className="stats-card">
@@ -397,7 +397,7 @@ export default function ManageAthletesClientPage() {
               <div>
                 <h3 className="text-xl font-semibold text-gray-900 dark:text-white">I Miei Atleti ({managedAthletes.length})</h3>
                 <p className="text-sm text-gray-600 dark:text-gray-400">Monitora e gestisci le prestazioni</p>
-              </div>
+        </div>
             </div>
 
             {isLoadingManaged ? (
@@ -446,12 +446,12 @@ export default function ManageAthletesClientPage() {
                           <p className="text-2xl font-bold text-green-600 dark:text-green-400">{stats.avgSpeed}</p>
                           <p className="text-xs text-gray-600 dark:text-gray-400">km/h med.</p>
                         </div>
-                      </div>
+            </div>
 
                       <div className="flex items-center justify-center text-sm text-gray-600 dark:text-gray-400 mb-6">
                         <Clock className="w-4 h-4 mr-2" />
                         <span>Questa settimana: {stats.thisWeekActivities} attività</span>
-                      </div>
+            </div>
 
                       {/* Actions */}
                       <div className="flex gap-2">
@@ -462,9 +462,9 @@ export default function ManageAthletesClientPage() {
                           </Button>
                         </Link>
                         <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => handleRemoveAthlete(athlete.id, `${athlete.name} ${athlete.surname}`)}
+                          variant="outline"
+                          size="sm" 
+                          onClick={() => handleRemoveAthlete(athlete.id, `${athlete.name} ${athlete.surname}`)} 
                           disabled={isRemoving === athlete.id}
                           className="text-red-600 hover:text-red-700 border-red-200 dark:border-red-800 hover:bg-red-50 dark:hover:bg-red-900/20"
                         >
@@ -478,8 +478,8 @@ export default function ManageAthletesClientPage() {
                     </div>
                   );
                 })}
-              </div>
-            )}
+            </div>
+          )}
           </div>
         </div>
       </div>

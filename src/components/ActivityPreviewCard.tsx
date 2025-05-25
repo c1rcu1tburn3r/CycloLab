@@ -138,14 +138,6 @@ const ActivityPreviewCard: React.FC<ActivityPreviewCardProps> = ({
 
   const displayTitle = extractLocation(activity.title || 'Attività Senza Titolo');
 
-  // Gestione click del checkbox
-  const handleCheckboxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    e.stopPropagation(); // Impedisce la propagazione del click
-    if (onToggleSelection) {
-      onToggleSelection();
-    }
-  };
-
   // Gestione click della card in modalità comparazione
   const handleCardClick = (e: React.MouseEvent) => {
     if (isComparisonMode) {
@@ -159,27 +151,13 @@ const ActivityPreviewCard: React.FC<ActivityPreviewCardProps> = ({
   return (
     <Card 
       className={`group relative overflow-hidden transition-all duration-300 hover:shadow-xl hover:scale-[1.02] animate-slide-up ${
-        isSelected ? 'ring-2 ring-blue-500 shadow-lg' : 'hover:shadow-2xl'
+        isSelected 
+          ? 'ring-4 ring-blue-500/60 shadow-2xl shadow-blue-500/25 border-blue-500/50' 
+          : 'hover:shadow-2xl'
       } ${isComparisonMode ? 'cursor-pointer' : ''}`}
       style={{ animationDelay: `${index * 75}ms` }}
       onClick={handleCardClick}
     >
-      {/* Checkbox per comparazione */}
-      {isComparisonMode && (
-        <div className="absolute top-3 left-3 z-10">
-          <div className="flex items-center justify-center w-8 h-8 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm rounded-lg shadow-lg">
-            <input
-              type="checkbox"
-              checked={isSelected}
-              onChange={handleCheckboxChange}
-              disabled={!canSelect && !isSelected}
-              className="w-4 h-4 text-blue-600 bg-white border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
-              onClick={(e) => e.stopPropagation()} // Evita doppio trigger
-            />
-          </div>
-        </div>
-      )}
-
       {/* Gradient Accent */}
       <div className={`absolute top-0 left-0 right-0 h-1 bg-gradient-to-r ${accent}`} />
       
@@ -196,6 +174,9 @@ const ActivityPreviewCard: React.FC<ActivityPreviewCardProps> = ({
               athleteName={athleteName}
               bg={bg}
               text={text}
+              isComparisonMode={isComparisonMode}
+              isSelected={isSelected}
+              canSelect={canSelect}
             />
           </Link>
         ) : (
@@ -207,16 +188,10 @@ const ActivityPreviewCard: React.FC<ActivityPreviewCardProps> = ({
             athleteName={athleteName}
             bg={bg}
             text={text}
+            isComparisonMode={isComparisonMode}
+            isSelected={isSelected}
+            canSelect={canSelect}
           />
-        )}
-
-        {/* Overlay per modalità comparazione */}
-        {isComparisonMode && (
-          <div className="absolute inset-0 bg-blue-500/10 dark:bg-blue-400/10 pointer-events-none">
-            <div className="absolute bottom-3 right-3 bg-blue-600 text-white text-xs px-2 py-1 rounded-full font-medium">
-              {isSelected ? 'Selezionata' : 'Clicca per selezionare'}
-            </div>
-          </div>
         )}
       </div>
     </Card>
@@ -232,7 +207,10 @@ const CardContentWrapper: React.FC<{
   athleteName?: string;
   bg: string;
   text: string;
-}> = ({ activity, routePoints, isLoadingRoute, displayTitle, athleteName, bg, text }) => {
+  isComparisonMode?: boolean;
+  isSelected?: boolean;
+  canSelect?: boolean;
+}> = ({ activity, routePoints, isLoadingRoute, displayTitle, athleteName, bg, text, isComparisonMode, isSelected, canSelect }) => {
   return (
     <div className="p-0">
       {/* Mappa di anteprima */}
@@ -271,9 +249,20 @@ const CardContentWrapper: React.FC<{
         </div>
 
         {/* Titolo/Località */}
-        <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2 line-clamp-1 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-          {displayTitle}
-        </h3>
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="text-lg font-bold text-gray-900 dark:text-white line-clamp-1 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors flex-1">
+            {displayTitle}
+          </h3>
+          
+          {/* Pulsante selezione in modalità comparazione */}
+          {isComparisonMode && (
+            <div className="ml-2 flex-shrink-0">
+              <div className="bg-blue-600 text-white text-xs px-3 py-1.5 rounded-full font-medium shadow-lg">
+                {isSelected ? 'Selezionata' : 'Seleziona'}
+              </div>
+            </div>
+          )}
+        </div>
 
         {/* Nome atleta se necessario */}
         {athleteName && (
@@ -283,16 +272,16 @@ const CardContentWrapper: React.FC<{
         )}
 
         {/* Dati di riepilogo */}
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-4 gap-2">
           {/* Distanza */}
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-blue-50 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
-              <svg className="w-4 h-4 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="flex flex-col items-center gap-1">
+            <div className="w-6 h-6 bg-blue-50 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
+              <svg className="w-3 h-3 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
             </div>
-            <div>
+            <div className="text-center">
               <p className="text-xs text-gray-500 dark:text-gray-400">Distanza</p>
               <p className="text-sm font-semibold text-gray-900 dark:text-white">
                 {activity.distance_meters ? `${(activity.distance_meters / 1000).toFixed(1)} km` : 'N/D'}
@@ -301,13 +290,13 @@ const CardContentWrapper: React.FC<{
           </div>
 
           {/* Tempo */}
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-emerald-50 dark:bg-emerald-900/30 rounded-lg flex items-center justify-center">
-              <svg className="w-4 h-4 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="flex flex-col items-center gap-1">
+            <div className="w-6 h-6 bg-emerald-50 dark:bg-emerald-900/30 rounded-lg flex items-center justify-center">
+              <svg className="w-3 h-3 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>
-            <div>
+            <div className="text-center">
               <p className="text-xs text-gray-500 dark:text-gray-400">Tempo</p>
               <p className="text-sm font-semibold text-gray-900 dark:text-white">
                 {formatDuration(activity.duration_seconds)}
@@ -315,14 +304,29 @@ const CardContentWrapper: React.FC<{
             </div>
           </div>
 
-          {/* Dislivello o TSS */}
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-orange-50 dark:bg-orange-900/30 rounded-lg flex items-center justify-center">
-              <svg className="w-4 h-4 text-orange-600 dark:text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          {/* Dislivello */}
+          <div className="flex flex-col items-center gap-1">
+            <div className="w-6 h-6 bg-orange-50 dark:bg-orange-900/30 rounded-lg flex items-center justify-center">
+              <svg className="w-3 h-3 text-orange-600 dark:text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
               </svg>
             </div>
-            <div>
+            <div className="text-center">
+              <p className="text-xs text-gray-500 dark:text-gray-400">Dislivello</p>
+              <p className="text-sm font-semibold text-gray-900 dark:text-white">
+                {activity.elevation_gain_meters ? `${activity.elevation_gain_meters} m` : 'N/D'}
+              </p>
+            </div>
+          </div>
+
+          {/* TSS */}
+          <div className="flex flex-col items-center gap-1">
+            <div className="w-6 h-6 bg-purple-50 dark:bg-purple-900/30 rounded-lg flex items-center justify-center">
+              <svg className="w-3 h-3 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+            </div>
+            <div className="text-center">
               <p className="text-xs text-gray-500 dark:text-gray-400">TSS</p>
               <p className="text-sm font-semibold text-gray-900 dark:text-white">
                 {activity.tss ? Math.round(activity.tss) : 'N/D'}

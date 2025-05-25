@@ -110,8 +110,10 @@ export default function ActivitiesClientManager({ initialActivities, coachAthlet
     const newSelection = new Set(selectedActivities);
     if (newSelection.has(activityId)) {
       newSelection.delete(activityId);
-    } else if (newSelection.size < 4) { // Massimo 4 attività
+    } else if (newSelection.size < 2) { // Massimo 2 attività
       newSelection.add(activityId);
+    } else {
+      console.log('Massimo 2 attività selezionabili per la comparazione');
     }
     setSelectedActivities(newSelection);
   };
@@ -351,7 +353,7 @@ export default function ActivitiesClientManager({ initialActivities, coachAthlet
               
               {isComparisonMode && selectedActivities.size > 0 && (
                 <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-                  <span>{selectedActivities.size}/4 attività selezionate</span>
+                  <span>{selectedActivities.size}/2 attività selezionate</span>
                   <Button variant="ghost" size="sm" onClick={clearSelection}>
                     Cancella Selezione
                   </Button>
