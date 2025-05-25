@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 // di dover installare/configurare un componente DatePicker complesso ora.
 // Potrai sostituirli con il tuo componente DatePicker preferito in seguito.
 import DeleteActivityButton from '@/components/DeleteActivityButton';
+import ActivityPreviewCard from '@/components/ActivityPreviewCard';
 
 interface ActivitiesClientManagerProps {
   initialActivities: Activity[];
@@ -399,7 +400,7 @@ export default function ActivitiesClientManager({ initialActivities, coachAthlet
         </Card>
       )}
 
-      {/* Elenco Attività Filtrate */}
+      {/* Elenco Attività con Preview Cards */}
       {filteredActivities.length === 0 ? (
          <div className="stats-card text-center py-16">
            <svg className="w-20 h-20 text-gray-300 dark:text-gray-600 mx-auto mb-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
@@ -407,116 +408,24 @@ export default function ActivitiesClientManager({ initialActivities, coachAthlet
            <p className="text-gray-600 dark:text-gray-300 mb-8 max-w-md mx-auto">Prova a modificare i filtri o carica nuove attività.</p>
          </div>
       ) : (
-        <div className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6">
           {filteredActivities.map((activity, index) => {
-            const { bg, text, accent } = getActivityColor(activity.activity_type);
             // @ts-ignore athletes può essere null o un oggetto, non un array qui.
-            const athleteName = activity.athletes?.name ? `${activity.athletes.name} ${activity.athletes.surname}` : 'Atleta';
-            const fitFilePathForDelete = activity.fit_file_name && currentUserId && activity.athlete_id 
-              ? `${currentUserId}/${activity.athlete_id}/${activity.fit_file_name}` 
-              : null;
+            const athleteName = selectedAthleteId === 'all' && activity.athletes?.name 
+              ? `${activity.athletes.name} ${activity.athletes.surname}` 
+              : undefined;
 
             return (
-              <Card 
-                key={activity.id} 
-                className={`stats-card group animate-slide-up hover:shadow-2xl transition-all duration-300 overflow-hidden ${
-                  selectedActivities.has(activity.id) ? 'ring-2 ring-blue-500' : ''
-                }`}
-                style={{ animationDelay: `${index * 75}ms` }}
-              >
-                <div className={`absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r ${accent} rounded-t-xl`} />
-                
-                {/* Checkbox per comparazione */}
-                {isComparisonMode && (
-                  <div className="absolute top-4 left-4 z-10">
-                    <input
-                      type="checkbox"
-                      checked={selectedActivities.has(activity.id)}
-                      onChange={() => toggleActivitySelection(activity.id)}
-                      disabled={!selectedActivities.has(activity.id) && selectedActivities.size >= 4}
-                      className="w-4 h-4 text-blue-600 bg-white border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
-                    />
-                  </div>
-                )}
-                
-                <CardHeader className="pb-4">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className={isComparisonMode ? 'ml-6' : ''}>
-                      <CardTitle className="text-xl font-bold text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-                        <Link href={`/activities/${activity.id}`} className="hover:underline">
-                          {activity.title || 'Attività Senza Titolo'}
-                        </Link>
-                      </CardTitle>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">
-                        {format(parseISO(activity.activity_date), 'EEEE d MMMM yyyy', { locale: it }) + ' alle ' + format(parseISO(activity.activity_date), 'HH:mm', { locale: it })}
-                      </p>
-                    </div>
-                    <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium ${bg} ${text}`}>
-                      {getActivityIcon(activity.activity_type)}
-                      <span>{activity.activity_type ? activity.activity_type.charAt(0).toUpperCase() + activity.activity_type.slice(1) : 'Generico'}</span>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  {selectedAthleteId === 'all' && activity.athlete_id && (
-                    <p className="text-sm font-medium text-blue-600 dark:text-blue-400 mb-3">
-                      Atleta: {athleteName}
-                    </p>
-                  )}
-                  {activity.description && (
-                    <p className="text-gray-700 dark:text-gray-300 mb-4 line-clamp-2 text-sm">
-                      {activity.description}
-                    </p>
-                  )}
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4 text-sm">
-                    <div className="bg-gray-50/50 dark:bg-gray-800/40 p-3 rounded-lg">
-                      <p className="text-xs text-gray-500 dark:text-gray-400">Distanza</p>
-                      <p className="font-semibold text-gray-800 dark:text-gray-200">
-                        {activity.distance_meters ? `${(activity.distance_meters / 1000).toFixed(2)} km` : 'N/D'}
-                      </p>
-                    </div>
-                    <div className="bg-gray-50/50 dark:bg-gray-800/40 p-3 rounded-lg">
-                      <p className="text-xs text-gray-500 dark:text-gray-400">Durata</p>
-                      <p className="font-semibold text-gray-800 dark:text-gray-200">
-                        {formatDuration(activity.duration_seconds)}
-                      </p>
-                    </div>
-                    {/* Dislivello temporaneamente commentato 
-                    <div className="bg-gray-50/50 dark:bg-gray-800/40 p-3 rounded-lg">
-                      <p className="text-xs text-gray-500 dark:text-gray-400">Dislivello</p>
-                      <p className="font-semibold text-gray-800 dark:text-gray-200">
-                        {activity.total_ascent ? `${Math.round(activity.total_ascent)} m` : 'N/D'}
-                      </p>
-                    </div>
-                    */}
-                    <div className="bg-gray-50/50 dark:bg-gray-800/40 p-3 rounded-lg">
-                      <p className="text-xs text-gray-500 dark:text-gray-400">Carico Allenamento</p>
-                      <p className="font-semibold text-gray-800 dark:text-gray-200">
-                        {activity.tss ? `${Math.round(activity.tss)} TSS` : 'N/D'}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-end gap-3 mt-4">
-                    <DeleteActivityButton 
-                      activityId={activity.id}
-                      activityTitle={activity.title || 'attività senza titolo'}
-                      fitFilePath={fitFilePathForDelete}
-                    />
-                    <Link href={`/activities/${activity.id}/edit`}>
-                      <Button variant="outline" size="sm" className="border-gray-200/50 dark:border-gray-700/50 hover:border-blue-400 dark:hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-all">
-                        <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
-                        Modifica
-                      </Button>
-                    </Link>
-                    <Link href={`/activities/${activity.id}`}>
-                      <Button size="sm" className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-semibold shadow-md hover:shadow-lg transition-all duration-300">
-                         <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
-                         Dettagli
-                      </Button>
-                    </Link>
-                  </div>
-                </CardContent>
-              </Card>
+              <ActivityPreviewCard
+                key={activity.id}
+                activity={activity}
+                index={index}
+                isComparisonMode={isComparisonMode}
+                isSelected={selectedActivities.has(activity.id)}
+                onToggleSelection={() => toggleActivitySelection(activity.id)}
+                canSelect={!selectedActivities.has(activity.id) && selectedActivities.size < 4}
+                athleteName={athleteName}
+              />
             );
           })}
         </div>
