@@ -99,6 +99,53 @@ export default function ActivitiesClientManager({ initialActivities, coachAthlet
   const [startDate, setStartDate] = useState<string>(''); // Formato YYYY-MM-DD
   const [endDate, setEndDate] = useState<string>('');     // Formato YYYY-MM-DD
   const [searchTerm, setSearchTerm] = useState('');
+  
+  // Stati per la comparazione
+  const [selectedActivities, setSelectedActivities] = useState<Set<string>>(new Set());
+  const [isComparisonMode, setIsComparisonMode] = useState(false);
+
+  // Funzioni per la comparazione
+  const toggleActivitySelection = (activityId: string) => {
+    const newSelection = new Set(selectedActivities);
+    if (newSelection.has(activityId)) {
+      newSelection.delete(activityId);
+    } else if (newSelection.size < 4) { // Massimo 4 attività
+      newSelection.add(activityId);
+    }
+    setSelectedActivities(newSelection);
+  };
+
+  const clearSelection = () => {
+    setSelectedActivities(new Set());
+  };
+
+  const getComparisonSuggestions = () => {
+    // Logic per suggerire comparazioni sensate
+    const selected = Array.from(selectedActivities).map(id => 
+      filteredActivities.find(a => a.id === id)
+    ).filter((activity): activity is Activity => activity !== undefined);
+    
+    if (selected.length < 2) return null;
+    
+    const firstActivity = selected[0];
+    if (!firstActivity) return null;
+    
+    // Analizza se le attività selezionate sono comparabili
+    const sameType = selected.every(a => a.activity_type === firstActivity.activity_type);
+    const similarDuration = selected.every(a => 
+      Math.abs((a.duration_seconds || 0) - (firstActivity.duration_seconds || 0)) < 600 // 10 min tolerance
+    );
+    const similarDistance = selected.every(a => 
+      Math.abs((a.distance_meters || 0) - (firstActivity.distance_meters || 0)) < 5000 // 5km tolerance
+    );
+    
+    return {
+      sameType,
+      similarDuration,
+      similarDistance,
+      recommendedMetrics: sameType ? ['power', 'speed', 'heartRate'] : ['relative_effort', 'efficiency']
+    };
+  };
 
   const filteredActivities = useMemo(() => {
     let activities = initialActivities;
@@ -155,12 +202,19 @@ export default function ActivitiesClientManager({ initialActivities, coachAthlet
     return athlete ? `${athlete.name} ${athlete.surname}` : null;
   }, [selectedAthleteId, coachAthletes]);
 
+  // Debug per verificare che il componente funzioni
+  useEffect(() => {
+    console.log('DEBUG - ActivitiesClientManager rendered');
+    console.log('DEBUG - filteredActivities.length:', filteredActivities.length);
+    console.log('DEBUG - isComparisonMode:', isComparisonMode);
+  }, [filteredActivities.length, isComparisonMode]);
+
   return (
     <div className="min-h-screen">
       {/* Header copiato da page.tsx, adattato per usare i dati filtrati */}
       <div className="mb-8">
         <div className="relative overflow-hidden rounded-3xl bg-white/70 dark:bg-gray-800/70 backdrop-blur-xl border border-gray-200/50 dark:border-gray-700/50 p-8 shadow-2xl">
-          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500 via-blue-500 to-purple-500" />
+          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500 via-blue-500 to-purple-500 rounded-t-3xl" />
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
             <div className="flex items-center gap-6">
               <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-emerald-500 to-blue-600 flex items-center justify-center text-white shadow-lg">
@@ -275,6 +329,76 @@ export default function ActivitiesClientManager({ initialActivities, coachAthlet
         </div>
       )}
 
+      {/* Comparison Controls */}
+      {filteredActivities.length > 1 && (
+        <Card className="mb-6 stats-card p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <Button
+                variant={isComparisonMode ? "default" : "outline"}
+                onClick={() => {
+                  setIsComparisonMode(!isComparisonMode);
+                  if (!isComparisonMode) clearSelection();
+                }}
+                className="flex items-center gap-2"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                </svg>
+                {isComparisonMode ? 'Modalità Comparazione ON' : 'Compara Attività'}
+              </Button>
+              
+              {isComparisonMode && selectedActivities.size > 0 && (
+                <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                  <span>{selectedActivities.size}/4 attività selezionate</span>
+                  <Button variant="ghost" size="sm" onClick={clearSelection}>
+                    Cancella Selezione
+                  </Button>
+                </div>
+              )}
+            </div>
+            
+            {isComparisonMode && selectedActivities.size >= 2 && (
+              <div className="flex items-center gap-2">
+                {(() => {
+                  const suggestions = getComparisonSuggestions();
+                  if (suggestions) {
+                    return (
+                      <div className="flex items-center gap-2 text-xs">
+                        <div className={`px-2 py-1 rounded-full text-xs ${
+                          suggestions.sameType ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
+                        }`}>
+                          {suggestions.sameType ? '✓ Stesso tipo' : '⚠ Tipi diversi'}
+                        </div>
+                        <div className={`px-2 py-1 rounded-full text-xs ${
+                          suggestions.similarDuration ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
+                        }`}>
+                          {suggestions.similarDuration ? '✓ Durata simile' : '⚠ Durata diversa'}
+                        </div>
+                      </div>
+                    );
+                  }
+                  return null;
+                })()}
+                
+                <Button 
+                  className="bg-blue-600 hover:bg-blue-700 text-white"
+                  onClick={() => {
+                    const selectedIds = Array.from(selectedActivities).join(',');
+                    window.location.href = `/activities/compare?ids=${selectedIds}`;
+                  }}
+                >
+                  <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                  </svg>
+                  Confronta Ora
+                </Button>
+              </div>
+            )}
+          </div>
+        </Card>
+      )}
+
       {/* Elenco Attività Filtrate */}
       {filteredActivities.length === 0 ? (
          <div className="stats-card text-center py-16">
@@ -295,13 +419,29 @@ export default function ActivitiesClientManager({ initialActivities, coachAthlet
             return (
               <Card 
                 key={activity.id} 
-                className={`stats-card group animate-slide-up hover:shadow-2xl transition-all duration-300`}
+                className={`stats-card group animate-slide-up hover:shadow-2xl transition-all duration-300 overflow-hidden ${
+                  selectedActivities.has(activity.id) ? 'ring-2 ring-blue-500' : ''
+                }`}
                 style={{ animationDelay: `${index * 75}ms` }}
               >
-                <div className={`absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r ${accent}`} />
+                <div className={`absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r ${accent} rounded-t-xl`} />
+                
+                {/* Checkbox per comparazione */}
+                {isComparisonMode && (
+                  <div className="absolute top-4 left-4 z-10">
+                    <input
+                      type="checkbox"
+                      checked={selectedActivities.has(activity.id)}
+                      onChange={() => toggleActivitySelection(activity.id)}
+                      disabled={!selectedActivities.has(activity.id) && selectedActivities.size >= 4}
+                      className="w-4 h-4 text-blue-600 bg-white border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
+                    />
+                  </div>
+                )}
+                
                 <CardHeader className="pb-4">
                   <div className="flex items-start justify-between gap-4">
-                    <div>
+                    <div className={isComparisonMode ? 'ml-6' : ''}>
                       <CardTitle className="text-xl font-bold text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
                         <Link href={`/activities/${activity.id}`} className="hover:underline">
                           {activity.title || 'Attività Senza Titolo'}

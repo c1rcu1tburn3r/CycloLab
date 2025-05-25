@@ -74,17 +74,53 @@ export async function searchGlobal(query: string): Promise<GlobalSearchResult[]>
       athletes: JoinedAthleteField 
     };
 
-    const { data: activitiesData, error: activitiesError } = await supabase
+    // Cerca Attività per titolo
+    const { data: activitiesByTitle, error: activitiesByTitleError } = await supabase
       .from('activities')
-      .select('id, title, athletes(id, name, surname)') 
+      .select('id, title, athletes(id, name, surname)')
       .eq('user_id', userId)
-      .or(`title.ilike.${searchTerm},athletes.name.ilike.${searchTerm},athletes.surname.ilike.${searchTerm}`)
+      .ilike('title', searchTerm)
       .limit(limit);
 
-    if (activitiesError) {
-      console.error('Errore nella ricerca attività:', activitiesError.message);
-    } else if (activitiesData) {
-      const activities = activitiesData as ActivityWithJoinedAthlete[];
+    if (activitiesByTitleError) {
+      console.error('Errore nella ricerca attività per titolo:', activitiesByTitleError.message);
+    }
+
+    // Cerca Attività per nome/cognome atleta (attraverso l'athlete_id)
+    const { data: athleteIds, error: athleteIdsError } = await supabase
+      .from('athletes')
+      .select('id')
+      .eq('user_id', userId)
+      .or(`name.ilike.${searchTerm},surname.ilike.${searchTerm}`);
+
+    let activitiesByAthlete: any[] = [];
+    if (!athleteIdsError && athleteIds && athleteIds.length > 0) {
+      const athleteIdsList = athleteIds.map(a => a.id);
+      const { data, error } = await supabase
+        .from('activities')
+        .select('id, title, athletes(id, name, surname)')
+        .eq('user_id', userId)
+        .in('athlete_id', athleteIdsList)
+        .limit(limit);
+
+      if (error) {
+        console.error('Errore nella ricerca attività per atleta:', error.message);
+      } else {
+        activitiesByAthlete = data || [];
+      }
+    }
+
+    // Combina i risultati evitando duplicati
+    const allActivities = [...(activitiesByTitle || [])];
+    activitiesByAthlete.forEach(activity => {
+      if (!allActivities.find(a => a.id === activity.id)) {
+        allActivities.push(activity);
+      }
+    });
+
+    // Processa i risultati delle attività
+    if (allActivities.length > 0) {
+      const activities = allActivities as ActivityWithJoinedAthlete[];
       activities.forEach((activity: ActivityWithJoinedAthlete) => {
         // Prendiamo il primo atleta dall'array, se esiste
         const athleteInfo = activity.athletes && activity.athletes.length > 0 ? activity.athletes[0] : null;

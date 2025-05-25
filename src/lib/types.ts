@@ -177,3 +177,61 @@ export type AthletePersonalBest = Database['public']['Tables']['athlete_personal
 // export type AthletePersonalBestInsert = Database['public']['Tables']['athlete_personal_bests']['Insert'];
 
 // Aggiungeremo qui altri tipi condivisi man mano che servono...
+
+// Tipi per il sistema di segmenti intelligenti
+export interface GPS_Point {
+  latitude: number;
+  longitude: number;
+  elevation?: number;
+  timestamp?: string;
+}
+
+export interface ActivitySegment {
+  activityId: string;
+  athleteId: string;
+  athleteName: string;
+  startIndex: number;
+  endIndex: number;
+  startTime: string;
+  endTime: string;
+  distance: number; // metri
+  duration: number; // secondi
+  avgPower?: number;
+  avgSpeed: number;
+  avgHeartRate?: number;
+  elevationGain?: number;
+  performance_score: number; // 0-100 basato su velocità/potenza
+}
+
+export interface CommonSegment {
+  id: string;
+  name?: string; // "Segmento auto-riconosciuto" o nome custom
+  type: 'auto_detected' | 'pre_defined' | 'user_created';
+  path: GPS_Point[];
+  startPoint: GPS_Point;
+  endPoint: GPS_Point;
+  distance: number;
+  elevationGain?: number;
+  category: 'climb' | 'descent' | 'flat' | 'sprint' | 'mixed';
+  confidence: number; // 0-100 quanto è sicuro che sia lo stesso segmento
+  activitySegments: ActivitySegment[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SegmentComparison {
+  segmentId: string;
+  segmentName: string;
+  segments: ActivitySegment[];
+  bestPerformance: ActivitySegment;
+  analysis: {
+    avgSpeedRange: [number, number];
+    powerRange?: [number, number];
+    timeRange: [number, number];
+    winner: {
+      fastest: ActivitySegment;
+      highestPower?: ActivitySegment;
+      mostEfficient?: ActivitySegment;
+    };
+  };
+}
