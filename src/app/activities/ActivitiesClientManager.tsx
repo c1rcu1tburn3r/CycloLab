@@ -15,6 +15,8 @@ import { Input } from "@/components/ui/input";
 // Potrai sostituirli con il tuo componente DatePicker preferito in seguito.
 import DeleteActivityButton from '@/components/DeleteActivityButton';
 import ActivityPreviewCard from '@/components/ActivityPreviewCard';
+import { useFilterPreferences } from '@/hooks/useFilterPreferences';
+import ExportControls from '@/components/ExportControls';
 
 interface ActivitiesClientManagerProps {
   initialActivities: Activity[];
@@ -97,14 +99,106 @@ const getActivityIcon = (type: string | null | undefined) => {
 
 
 export default function ActivitiesClientManager({ initialActivities, coachAthletes, currentUserId }: ActivitiesClientManagerProps) {
+  // Hook per gestire le preferenze filtri
+  const {
+    preferences,
+    isLoaded,
+    updatePreference,
+    resetPreferences
+  } = useFilterPreferences({
+    storageKey: 'activities-filter-preferences',
+    defaultValues: {
+      selectedAthleteId: 'all',
+      searchTerm: '',
+      startDate: '',
+      endDate: '',
+      minDistance: '',
+      maxDistance: ''
+    }
+  });
+
+  // Stati locali inizializzati con valori di default
   const [selectedAthleteId, setSelectedAthleteId] = useState<string | 'all'>('all');
-  const [startDate, setStartDate] = useState<string>(''); // Formato YYYY-MM-DD
-  const [endDate, setEndDate] = useState<string>('');     // Formato YYYY-MM-DD
-  const [searchTerm, setSearchTerm] = useState('');
+  const [startDate, setStartDate] = useState<string>('');
+  const [endDate, setEndDate] = useState<string>('');
+  const [searchTerm, setSearchTerm] = useState<string>('');
+  const [minDistance, setMinDistance] = useState<string>('');
+  const [maxDistance, setMaxDistance] = useState<string>('');
   
   // Stati per la comparazione
   const [selectedActivities, setSelectedActivities] = useState<Set<string>>(new Set());
   const [isComparisonMode, setIsComparisonMode] = useState(false);
+
+  // Stato per la paginazione
+  const [currentPage, setCurrentPage] = useState(1);
+  const ACTIVITIES_PER_PAGE = 12;
+
+  // Sincronizza gli stati locali con le preferenze caricate una sola volta
+  useEffect(() => {
+    if (isLoaded && preferences) {
+      // Aggiorna solo se i valori sono diversi da quelli di default
+      if (preferences.selectedAthleteId && preferences.selectedAthleteId !== 'all') {
+        setSelectedAthleteId(preferences.selectedAthleteId);
+      }
+      if (preferences.startDate) {
+        setStartDate(preferences.startDate);
+      }
+      if (preferences.endDate) {
+        setEndDate(preferences.endDate);
+      }
+      if (preferences.searchTerm) {
+        setSearchTerm(preferences.searchTerm);
+      }
+      if (preferences.minDistance) {
+        setMinDistance(preferences.minDistance);
+      }
+      if (preferences.maxDistance) {
+        setMaxDistance(preferences.maxDistance);
+      }
+    }
+  }, [isLoaded]); // Esegue solo quando isLoaded diventa true
+
+  // Funzioni wrapper per aggiornare sia lo stato locale che le preferenze
+  const handleAthleteChange = (value: string) => {
+    setSelectedAthleteId(value);
+    updatePreference('selectedAthleteId', value);
+  };
+
+  const handleSearchChange = (value: string) => {
+    setSearchTerm(value);
+    updatePreference('searchTerm', value);
+  };
+
+  const handleStartDateChange = (value: string) => {
+    setStartDate(value);
+    updatePreference('startDate', value);
+  };
+
+  const handleEndDateChange = (value: string) => {
+    setEndDate(value);
+    updatePreference('endDate', value);
+  };
+
+  const handleMinDistanceChange = (value: string) => {
+    setMinDistance(value);
+    updatePreference('minDistance', value);
+  };
+
+  const handleMaxDistanceChange = (value: string) => {
+    setMaxDistance(value);
+    updatePreference('maxDistance', value);
+  };
+
+  const handleResetFilters = () => {
+    setSelectedAthleteId('all');
+    setStartDate('');
+    setEndDate('');
+    setSearchTerm('');
+    setMinDistance('');
+    setMaxDistance('');
+    setCurrentPage(1); // Reset anche la pagina
+    resetPreferences();
+  };
 
   // Funzioni per la comparazione
   const toggleActivitySelection = (activityId: string) => {
@@ -188,8 +282,39 @@ export default function ActivitiesClientManager({ initialActivities, coachAthlet
             (act.activity_type && act.activity_type.toLowerCase().includes(lowerSearchTerm))
         );
     }
+
+    // Filtro per range distanza
+    if (minDistance && !isNaN(parseFloat(minDistance))) {
+      const minDistanceMeters = parseFloat(minDistance) * 1000;
+      activities = activities.filter(act => 
+        act.distance_meters && act.distance_meters >= minDistanceMeters
+      );
+    }
+
+    if (maxDistance && !isNaN(parseFloat(maxDistance))) {
+      const maxDistanceMeters = parseFloat(maxDistance) * 1000;
+      activities = activities.filter(act => 
+        act.distance_meters && act.distance_meters <= maxDistanceMeters
+      );
+    }
+
     return activities.sort((a,b) => new Date(b.activity_date).getTime() - new Date(a.activity_date).getTime());
-  }, [initialActivities, selectedAthleteId, startDate, endDate, searchTerm]);
+  }, [initialActivities, selectedAthleteId, startDate, endDate, searchTerm, minDistance, maxDistance]);
+
+  // Reset pagina quando cambiano i filtri
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedAthleteId, startDate, endDate, searchTerm, minDistance, maxDistance]);
+
+  // Calcola le attività da mostrare per la pagina corrente
+  const paginatedActivities = useMemo(() => {
+    const startIndex = (currentPage - 1) * ACTIVITIES_PER_PAGE;
+    const endIndex = startIndex + ACTIVITIES_PER_PAGE;
+    return filteredActivities.slice(startIndex, endIndex);
+  }, [filteredActivities, currentPage, ACTIVITIES_PER_PAGE]);
+
+  // Calcola il numero totale di pagine
+  const totalPages = Math.ceil(filteredActivities.length / ACTIVITIES_PER_PAGE);
 
   const stats = useMemo(() => {
     return {
@@ -252,13 +377,13 @@ export default function ActivitiesClientManager({ initialActivities, coachAthlet
 
       {/* Filtri */}
       <div className="stats-card mb-8 p-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-6">
           {/* Atleta */}
           <div className="space-y-2">
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
               Atleta
             </label>
-            <Select value={selectedAthleteId} onValueChange={setSelectedAthleteId}>
+            <Select value={selectedAthleteId} onValueChange={handleAthleteChange}>
               <SelectTrigger className="h-10">
                 <SelectValue placeholder="Seleziona atleta" />
               </SelectTrigger>
@@ -270,6 +395,7 @@ export default function ActivitiesClientManager({ initialActivities, coachAthlet
               </SelectContent>
             </Select>
           </div>
+          
           {/* Ricerca */}
           <div className="space-y-2">
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -279,7 +405,7 @@ export default function ActivitiesClientManager({ initialActivities, coachAthlet
               type="text"
               placeholder="Titolo, descrizione, tipo..."
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(e) => handleSearchChange(e.target.value)}
               className="h-10"
             />
           </div>
@@ -292,7 +418,7 @@ export default function ActivitiesClientManager({ initialActivities, coachAthlet
             <Input
               type="date"
               value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
+              onChange={(e) => handleStartDateChange(e.target.value)}
               className="h-10"
             />
           </div>
@@ -305,23 +431,50 @@ export default function ActivitiesClientManager({ initialActivities, coachAthlet
             <Input
               type="date"
               value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
+              onChange={(e) => handleEndDateChange(e.target.value)}
               className="h-10"
+            />
+          </div>
+
+          {/* Distanza minima */}
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+              Distanza min (km)
+            </label>
+            <Input
+              type="number"
+              placeholder="0"
+              value={minDistance}
+              onChange={(e) => handleMinDistanceChange(e.target.value)}
+              className="h-10"
+              min="0"
+              step="0.1"
+            />
+          </div>
+
+          {/* Distanza massima */}
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+              Distanza max (km)
+            </label>
+            <Input
+              type="number"
+              placeholder="∞"
+              value={maxDistance}
+              onChange={(e) => handleMaxDistanceChange(e.target.value)}
+              className="h-10"
+              min="0"
+              step="0.1"
             />
           </div>
         </div>
 
         {/* Pulsante reset filtri */}
-        {(selectedAthleteId !== 'all' || startDate || endDate || searchTerm) && (
+        {(selectedAthleteId !== 'all' || startDate || endDate || searchTerm || minDistance || maxDistance) && (
           <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
             <Button
               variant="outline"
-              onClick={() => {
-                setSelectedAthleteId('all');
-                setStartDate('');
-                setEndDate('');
-                setSearchTerm('');
-              }}
+              onClick={handleResetFilters}
               className="text-sm"
             >
               <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -465,27 +618,102 @@ export default function ActivitiesClientManager({ initialActivities, coachAthlet
            <p className="text-gray-600 dark:text-gray-300 mb-8 max-w-md mx-auto">Prova a modificare i filtri o carica nuove attività.</p>
          </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6">
-          {filteredActivities.map((activity, index) => {
-            // @ts-ignore athletes può essere null o un oggetto, non un array qui.
-            const athleteName = selectedAthleteId === 'all' && activity.athletes?.name 
-              ? `${activity.athletes.name} ${activity.athletes.surname}` 
-              : undefined;
+        <>
+          {/* Grid delle attività - sempre 4 colonne su schermi grandi */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-8">
+            {paginatedActivities.map((activity, index) => {
+              // @ts-ignore athletes può essere null o un oggetto, non un array qui.
+              const athleteName = selectedAthleteId === 'all' && activity.athletes?.name 
+                ? `${activity.athletes.name} ${activity.athletes.surname}` 
+                : undefined;
 
-            return (
-              <ActivityPreviewCard
-                key={activity.id}
-                activity={activity}
-                index={index}
-                isComparisonMode={isComparisonMode}
-                isSelected={selectedActivities.has(activity.id)}
-                onToggleSelection={() => toggleActivitySelection(activity.id)}
-                canSelect={!selectedActivities.has(activity.id) && selectedActivities.size < 2}
-                athleteName={athleteName}
-              />
-            );
-          })}
-        </div>
+              return (
+                <ActivityPreviewCard
+                  key={activity.id}
+                  activity={activity}
+                  index={(currentPage - 1) * ACTIVITIES_PER_PAGE + index}
+                  isComparisonMode={isComparisonMode}
+                  isSelected={selectedActivities.has(activity.id)}
+                  onToggleSelection={() => toggleActivitySelection(activity.id)}
+                  canSelect={!selectedActivities.has(activity.id) && selectedActivities.size < 2}
+                  athleteName={athleteName}
+                />
+              );
+            })}
+          </div>
+
+          {/* Controlli di paginazione */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-center gap-2 mb-8">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                disabled={currentPage === 1}
+                className="flex items-center gap-1"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+                Precedente
+              </Button>
+
+              <div className="flex items-center gap-1">
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => {
+                  // Mostra sempre la prima, l'ultima, la corrente e quelle adiacenti
+                  const showPage = page === 1 || page === totalPages || 
+                                  Math.abs(page - currentPage) <= 1;
+                  
+                  if (!showPage && page === 2 && currentPage > 4) {
+                    return <span key={page} className="px-2 text-gray-400">...</span>;
+                  }
+                  if (!showPage && page === totalPages - 1 && currentPage < totalPages - 3) {
+                    return <span key={page} className="px-2 text-gray-400">...</span>;
+                  }
+                  if (!showPage) return null;
+
+                  return (
+                    <Button
+                      key={page}
+                      variant={currentPage === page ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setCurrentPage(page)}
+                      className="w-10 h-10"
+                    >
+                      {page}
+                    </Button>
+                  );
+                })}
+              </div>
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                disabled={currentPage === totalPages}
+                className="flex items-center gap-1"
+              >
+                Successiva
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </Button>
+            </div>
+          )}
+
+          {/* Info paginazione */}
+          <div className="text-center text-sm text-gray-600 dark:text-gray-400 mb-8">
+            Mostrando {((currentPage - 1) * ACTIVITIES_PER_PAGE) + 1}-{Math.min(currentPage * ACTIVITIES_PER_PAGE, filteredActivities.length)} di {filteredActivities.length} attività
+          </div>
+
+          {/* Export Controls - spostato in fondo */}
+          <div className="border-t border-gray-200 dark:border-gray-700 pt-8">
+            <ExportControls 
+              activities={filteredActivities}
+              athlete={selectedAthleteId !== 'all' ? coachAthletes.find(a => a.id === selectedAthleteId) : undefined}
+            />
+          </div>
+        </>
       )}
     </div>
   );

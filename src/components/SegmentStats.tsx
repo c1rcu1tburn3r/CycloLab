@@ -13,13 +13,13 @@ interface SegmentStatsProps {
 const SegmentStats: React.FC<SegmentStatsProps> = ({ metrics, isLoading, error, warning }) => {
   if (isLoading) {
     return (
-      <div className="bg-white p-4 md:p-6 rounded-lg shadow-md mt-6 animate-pulse">
-        <div className="h-6 bg-slate-200 rounded w-1/3 mb-4"></div>
+      <div className="bg-white dark:bg-gray-800 p-4 md:p-6 rounded-lg shadow-md mt-6 animate-pulse">
+        <div className="h-6 bg-slate-200 dark:bg-gray-600 rounded w-1/3 mb-4"></div>
         <div className="space-y-3">
           {[...Array(5)].map((_, i) => (
             <div key={i} className="grid grid-cols-2 gap-4">
-              <div className="h-4 bg-slate-200 rounded col-span-1"></div>
-              <div className="h-4 bg-slate-200 rounded col-span-1"></div>
+              <div className="h-4 bg-slate-200 dark:bg-gray-600 rounded col-span-1"></div>
+              <div className="h-4 bg-slate-200 dark:bg-gray-600 rounded col-span-1"></div>
             </div>
           ))}
         </div>
@@ -29,19 +29,19 @@ const SegmentStats: React.FC<SegmentStatsProps> = ({ metrics, isLoading, error, 
 
   if (error) {
     return (
-      <div className="bg-white p-4 md:p-6 rounded-lg shadow-md mt-6">
-        <h3 className="text-lg font-semibold text-slate-800 mb-3">Statistiche Segmento</h3>
-        <p className="text-red-600">Errore nel caricamento delle statistiche: {error}</p>
+      <div className="bg-white dark:bg-gray-800 p-4 md:p-6 rounded-lg shadow-md mt-6">
+        <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-200 mb-3">Statistiche Segmento</h3>
+        <p className="text-red-600 dark:text-red-400">Errore nel caricamento delle statistiche: {error}</p>
       </div>
     );
   }
 
   if (!metrics) {
     return (
-      <div className="bg-white p-4 md:p-6 rounded-lg shadow-md mt-6">
-        <h3 className="text-lg font-semibold text-slate-800 mb-3">Statistiche Segmento</h3>
-        <p className="text-slate-500">Nessun segmento selezionato o dati insufficienti per l'analisi.</p>
-        <p className="text-sm text-slate-400 mt-2">Clicca su due punti della traccia sulla mappa per selezionare un segmento.</p>
+      <div className="bg-white dark:bg-gray-800 p-4 md:p-6 rounded-lg shadow-md mt-6">
+        <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-200 mb-3">Statistiche Segmento</h3>
+        <p className="text-slate-500 dark:text-slate-400">Nessun segmento selezionato o dati insufficienti per l'analisi.</p>
+        <p className="text-sm text-slate-400 dark:text-slate-500 mt-2">Clicca su due punti della traccia sulla mappa per selezionare un segmento.</p>
       </div>
     );
   }
@@ -63,9 +63,9 @@ const SegmentStats: React.FC<SegmentStatsProps> = ({ metrics, isLoading, error, 
   const renderMetric = (label: string, value: string | number | null | undefined, unit: string = '') => {
     const displayValue = (value === null || value === undefined) ? 'N/D' : `${value}${unit}`;
     return (
-      <div className="flex justify-between items-center py-2.5 border-b border-slate-200/80 last:border-b-0">
-        <span className="text-sm text-slate-500">{label}:</span>
-        <span className="text-sm font-semibold text-slate-700 tracking-tight">{displayValue}</span>
+      <div className="flex justify-between items-center py-2.5 border-b border-slate-200/80 dark:border-gray-600/80 last:border-b-0">
+        <span className="text-sm text-slate-500 dark:text-slate-400">{label}:</span>
+        <span className="text-sm font-semibold text-slate-700 dark:text-slate-200 tracking-tight">{displayValue}</span>
       </div>
     );
   };
@@ -82,12 +82,12 @@ const SegmentStats: React.FC<SegmentStatsProps> = ({ metrics, isLoading, error, 
   };
 
   return (
-    <div className="bg-white p-5 md:p-8 rounded-xl shadow-lg mt-8">
-      <h3 className="text-xl font-bold text-slate-800 mb-6 tracking-tight">Statistiche del Segmento</h3>
+    <div className="bg-white dark:bg-gray-800 p-5 md:p-8 rounded-xl shadow-lg mt-8">
+      <h3 className="text-xl font-bold text-slate-800 dark:text-slate-200 mb-6 tracking-tight">Statistiche del Segmento</h3>
       
       {warning && (
-        <div className="mb-6 p-3.5 bg-amber-50 border border-amber-300 rounded-lg">
-          <p className="text-amber-800 text-sm font-medium">{warning}</p>
+        <div className="mb-6 p-3.5 bg-amber-50 dark:bg-amber-900/20 border border-amber-300 dark:border-amber-600 rounded-lg">
+          <p className="text-amber-800 dark:text-amber-200 text-sm font-medium">{warning}</p>
         </div>
       )}
       

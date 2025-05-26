@@ -86,7 +86,13 @@ const AthletePerformanceChart: React.FC<AthletePerformanceChartProps> = ({ profi
     легендаData.push('W/kg');
   }
 
+  // Rileva il tema dark
+  const isDarkMode = document.documentElement.classList.contains('dark');
+  const textColor = isDarkMode ? '#e2e8f0' : '#374151';
+  const backgroundColor = isDarkMode ? 'transparent' : 'transparent';
+
   const option: EChartsOption = {
+    backgroundColor: backgroundColor,
     tooltip: {
       trigger: 'axis',
       axisPointer: { type: 'cross', crossStyle: { color: '#999' } },
@@ -107,6 +113,9 @@ const AthletePerformanceChart: React.FC<AthletePerformanceChartProps> = ({ profi
     legend: {
       data: легендаData,
       bottom: 10,
+      textStyle: {
+        color: textColor
+      }
       // Potremmo nasconderla se i toggle sono sufficienti: show: false
     },
     grid: {
@@ -119,7 +128,15 @@ const AthletePerformanceChart: React.FC<AthletePerformanceChartProps> = ({ profi
       {
         type: 'category',
         data: dates,
-        axisPointer: { type: 'shadow' }
+        axisPointer: { type: 'shadow' },
+        axisLabel: {
+          color: textColor
+        },
+        axisLine: {
+          lineStyle: {
+            color: textColor
+          }
+        }
       }
     ],
     yAxis: [
@@ -130,8 +147,11 @@ const AthletePerformanceChart: React.FC<AthletePerformanceChartProps> = ({ profi
         offset: 0,
         min: seriesVisibility.peso ? undefined : 0, // Prova a minimizzare l'impatto sulla scala se non visibile
         max: seriesVisibility.peso ? undefined : 1, // Prova a minimizzare l'impatto sulla scala se non visibile
+        nameTextStyle: {
+          color: textColor
+        },
         axisLine: { show: seriesVisibility.peso, lineStyle: { color: '#5470C6' } },
-        axisLabel: { formatter: '{value} kg', show: seriesVisibility.peso },
+        axisLabel: { formatter: '{value} kg', show: seriesVisibility.peso, color: textColor },
         splitLine: { show: true, }
       },
       { // FTP
@@ -165,10 +185,10 @@ const AthletePerformanceChart: React.FC<AthletePerformanceChartProps> = ({ profi
   };
 
   return (
-    <div className="mt-6 bg-white p-4 md:p-6 rounded-lg shadow border border-slate-200">
-      <h3 className="text-md font-semibold text-slate-700 mb-4">Andamento Peso, FTP & W/kg</h3>
+    <div className="mt-6 bg-white dark:bg-gray-800 p-4 md:p-6 rounded-lg shadow border border-slate-200 dark:border-gray-600">
+      <h3 className="text-md font-semibold text-slate-700 dark:text-slate-200 mb-4">Andamento Peso, FTP & W/kg</h3>
       
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mb-4 p-2 bg-slate-50 rounded-md border border-slate-200">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mb-4 p-2 bg-slate-50 dark:bg-gray-700 rounded-md border border-slate-200 dark:border-gray-600">
         <div className="flex items-center space-x-2">
           <Checkbox
             id="toggle-peso"
@@ -176,7 +196,7 @@ const AthletePerformanceChart: React.FC<AthletePerformanceChartProps> = ({ profi
             onCheckedChange={() => handleVisibilityChange('peso')}
             aria-label="Toggle Peso"
           />
-          <Label htmlFor="toggle-peso" className="text-sm font-medium text-slate-700 cursor-pointer">
+          <Label htmlFor="toggle-peso" className="text-sm font-medium text-slate-700 dark:text-slate-200 cursor-pointer">
             Peso (kg)
           </Label>
         </div>
@@ -187,7 +207,7 @@ const AthletePerformanceChart: React.FC<AthletePerformanceChartProps> = ({ profi
             onCheckedChange={() => handleVisibilityChange('ftp')}
             aria-label="Toggle FTP"
           />
-          <Label htmlFor="toggle-ftp" className="text-sm font-medium text-slate-700 cursor-pointer">
+          <Label htmlFor="toggle-ftp" className="text-sm font-medium text-slate-700 dark:text-slate-200 cursor-pointer">
             FTP (W)
           </Label>
         </div>
@@ -198,7 +218,7 @@ const AthletePerformanceChart: React.FC<AthletePerformanceChartProps> = ({ profi
             onCheckedChange={() => handleVisibilityChange('wPerKg')}
             aria-label="Toggle W/kg"
           />
-          <Label htmlFor="toggle-wPerKg" className="text-sm font-medium text-slate-700 cursor-pointer">
+          <Label htmlFor="toggle-wPerKg" className="text-sm font-medium text-slate-700 dark:text-slate-200 cursor-pointer">
             W/kg
           </Label>
         </div>

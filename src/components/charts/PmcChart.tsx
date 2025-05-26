@@ -63,7 +63,13 @@ const PmcChart: React.FC<PmcChartProps> = ({ athleteId, initialCtl = 0, initialA
     const maxTss = tssSeries.length > 0 ? Math.max(...tssSeries) : 100;
     const tssAxisMax = Math.max(100, Math.ceil((maxTss * 1.15) / 10) * 10);
 
+    // Rileva il tema dark
+    const isDarkMode = document.documentElement.classList.contains('dark');
+    const textColor = isDarkMode ? '#e2e8f0' : '#374151';
+    const backgroundColor = isDarkMode ? 'transparent' : 'transparent';
+
     return {
+      backgroundColor: backgroundColor,
       tooltip: {
         trigger: 'axis',
         axisPointer: {
@@ -74,7 +80,10 @@ const PmcChart: React.FC<PmcChartProps> = ({ athleteId, initialCtl = 0, initialA
         }
       },
       legend: {
-        data: ['CTL', 'ATL', 'TSB', 'TSS']
+        data: ['CTL', 'ATL', 'TSB', 'TSS'],
+        textStyle: {
+          color: textColor
+        }
       },
       grid: {
         left: '3%',
@@ -86,7 +95,15 @@ const PmcChart: React.FC<PmcChartProps> = ({ athleteId, initialCtl = 0, initialA
         {
           type: 'category',
           boundaryGap: false,
-          data: dates
+          data: dates,
+          axisLabel: {
+            color: textColor
+          },
+          axisLine: {
+            lineStyle: {
+              color: textColor
+            }
+          }
         }
       ],
       yAxis: [
@@ -94,24 +111,32 @@ const PmcChart: React.FC<PmcChartProps> = ({ athleteId, initialCtl = 0, initialA
           type: 'value',
           name: 'CTL / ATL',
           position: 'left',
+          nameTextStyle: {
+            color: textColor
+          },
           axisLine: {
             show: true,
-            //lineStyle: { color: '#5470C6' } // Colore per CTL/ATL
+            lineStyle: { color: textColor }
           },
           axisLabel: {
-            formatter: '{value}'
+            formatter: '{value}',
+            color: textColor
           }
         },
         {
           type: 'value',
           name: 'TSB',
           position: 'right',
+          nameTextStyle: {
+            color: textColor
+          },
           axisLine: {
             show: true,
-            //lineStyle: { color: '#91CC75' } // Colore per TSB
+            lineStyle: { color: textColor }
           },
           axisLabel: {
-            formatter: '{value}'
+            formatter: '{value}',
+            color: textColor
           },
           splitLine: { show: false } // Nasconde le griglie per questo asse se troppo affollato
         },
@@ -121,12 +146,16 @@ const PmcChart: React.FC<PmcChartProps> = ({ athleteId, initialCtl = 0, initialA
           position: 'right',
           min: 0,
           max: tssAxisMax,
+          nameTextStyle: {
+            color: textColor
+          },
           axisLine: {
             show: true,
-           // lineStyle: { color: '#FAC858' } // Colore per TSS
+            lineStyle: { color: textColor }
           },
           axisLabel: {
-            formatter: '{value}'
+            formatter: '{value}',
+            color: textColor
           },
           splitLine: { show: false }
         }

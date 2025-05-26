@@ -51,9 +51,7 @@ const AthleteSummaryCard: React.FC<AthleteSummaryCardProps> = ({ athlete }) => {
           <h3 className="font-semibold text-gray-900 dark:text-white">
             {athlete.name} {athlete.surname}
           </h3>
-          {athlete.nationality && (
-            <p className="text-sm text-gray-500 dark:text-gray-400">{athlete.nationality}</p>
-          )}
+          
         </div>
       </div>
 

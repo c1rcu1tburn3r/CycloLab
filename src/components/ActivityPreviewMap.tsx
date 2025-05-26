@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import { Activity, RoutePoint } from '@/lib/types';
 
@@ -30,11 +30,44 @@ const ActivityPreviewMap: React.FC<ActivityPreviewMapProps> = ({
   height = '200px' 
 }) => {
   const [isMounted, setIsMounted] = useState(false);
+  const [mapError, setMapError] = useState<string | null>(null);
+  const [tileLoadError, setTileLoadError] = useState<boolean>(false);
+  
+  // Refs per cleanup
+  const mapRef = useRef<L.Map | null>(null);
+
+  // Cleanup function
+  const cleanup = () => {
+    if (mapRef.current) {
+      try {
+        mapRef.current.remove();
+      } catch (error) {
+        console.warn('Errore durante la rimozione della mappa preview:', error);
+      }
+      mapRef.current = null;
+    }
+  };
 
   useEffect(() => {
     setIsMounted(true);
-    import('leaflet/dist/leaflet.css');
+    
+    import('leaflet/dist/leaflet.css').catch(error => {
+      console.warn('Impossibile caricare CSS di Leaflet:', error);
+      setMapError('Errore nel caricamento degli stili della mappa');
+    });
+
+    return cleanup;
   }, []);
+
+  // Gestione errori tile loading
+  const handleTileLoadError = (error: any) => {
+    console.warn('Errore nel caricamento dei tile preview:', error);
+    setTileLoadError(true);
+    
+    setTimeout(() => {
+      setTileLoadError(false);
+    }, 3000);
+  };
 
   const hasRoutePoints = routePoints && routePoints.length > 0;
   const hasStartCoordinates = Boolean(activity.start_lat && activity.start_lon);
@@ -141,9 +174,15 @@ const ActivityPreviewMap: React.FC<ActivityPreviewMapProps> = ({
         touchZoom={false}
         keyboard={false}
         attributionControl={false}
+        ref={mapRef}
       >
         <TileLayer
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          eventHandlers={{
+            tileerror: handleTileLoadError,
+            tileloadstart: () => setTileLoadError(false)
+          }}
+          errorTileUrl="/map-error-tile.png"
         />
         
         {hasRoutePoints && (

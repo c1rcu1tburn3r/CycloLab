@@ -49,11 +49,20 @@ export default function AthleteCard({ athlete, index }: AthleteCardProps) {
       {/* Loading Overlay */}
       {isLoading && (
         <div className="absolute inset-0 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-2xl z-10 flex items-center justify-center">
-          <div className="flex flex-col items-center space-y-3">
+          <div className="flex flex-col items-center space-y-4">
             <div className="relative">
-              <div className="w-8 h-8 border-2 border-gray-200 dark:border-gray-600 border-t-blue-500 rounded-full animate-spin"></div>
+              <div className="w-12 h-12 border-4 border-gray-200 dark:border-gray-600 border-t-blue-500 rounded-full animate-spin"></div>
+              <div className="absolute inset-0 w-12 h-12 border-4 border-transparent border-t-purple-500 rounded-full animate-spin" style={{ animationDirection: 'reverse', animationDelay: '0.3s' }}></div>
             </div>
-            <p className="text-sm font-medium text-gray-600 dark:text-gray-300">Caricamento...</p>
+            <div className="text-center">
+              <p className="text-sm font-semibold text-gray-900 dark:text-white mb-2">Caricamento...</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">Preparazione dati atleta</p>
+            </div>
+            <div className="flex space-x-1">
+              <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce"></div>
+              <div className="w-2 h-2 bg-purple-500 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+              <div className="w-2 h-2 bg-emerald-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+            </div>
           </div>
         </div>
       )}
@@ -95,8 +104,8 @@ export default function AthleteCard({ athlete, index }: AthleteCardProps) {
           </div>
           
           <div className="bg-orange-50/50 dark:bg-orange-900/30 rounded-xl p-3 text-center">
-            <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Nazionalità</div>
-            <div className="text-sm font-bold text-orange-600 dark:text-orange-400 truncate">{athlete.nationality || 'N/D'}</div>
+            <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Email</div>
+            <div className="text-sm font-bold text-orange-600 dark:text-orange-400 truncate">{athlete.email || 'N/D'}</div>
           </div>
           
           <div className="bg-emerald-50/50 dark:bg-emerald-900/30 rounded-xl p-3 text-center">

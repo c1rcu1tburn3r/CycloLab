@@ -13,6 +13,8 @@
 - **File Parsing**: fit-file-parser 1.21.0
 - **Date Handling**: date-fns 4.1.0
 - **Storage**: Supabase Storage per file .fit
+- **Caching**: Sistema cache intelligente in memoria con TTL
+- **Performance**: Hook personalizzati per ottimizzazioni query
 
 ### Configurazione Ambiente
 ```bash
@@ -100,7 +102,13 @@ cyclolab/
 │   │       ├── server.ts         # Client Supabase server-side
 │   │       └── client.ts         # Client Supabase client-side
 │   │
-│   └── hooks/                     # Custom React Hooks
+│   ├── hooks/                     # Custom React Hooks
+│   │   ├── use-cache.ts          # Sistema cache intelligente (TTL, invalidazione)
+│   │   ├── use-cyclolab-cache.ts # Hook cache specializzati CycloLab
+│   │   └── use-filter-preferences.ts # Persistenza filtri localStorage
+│   │
+│   └── components/
+│       ├── AthletesClient.tsx    # Componente atleti con cache (nuovo)
 │
 ├── public/                        # Asset statici
 ├── package.json                   # Dipendenze e scripts
@@ -470,7 +478,78 @@ const DynamicMap = dynamic(() => import('./MapComponent'), {
 - [ ] **Plugin system** per estensibilità
 - [ ] **Multi-tenant** architecture per team
 
+## 📝 **AGGIORNAMENTI GENNAIO 2025**
+
+### ✅ Sistema di Caching Intelligente (15 Gennaio 2025)
+**Implementato sistema completo di cache in memoria per ottimizzazioni performance:**
+
+#### Hook Cache Base (`src/hooks/use-cache.ts`)
+- **Classe MemoryCache**: Gestione cache con TTL configurabile
+- **Hook useCache**: Cache con stale-while-revalidate pattern
+- **Hook useSupabaseCache**: Specializzato per query Supabase
+- **Sistema invalidazione**: Pattern regex per invalidazione intelligente
+- **Auto-refresh**: Ricarica automatica su focus finestra
+- **Gestione errori**: Retry automatico e fallback
+
+#### Hook Specializzati CycloLab (`src/hooks/use-cyclolab-cache.ts`)
+- **useAthletes**: Cache atleti utente (TTL 10 minuti)
+- **useAthleteActivities**: Cache attività atleta (TTL 5 minuti)
+- **useCycloLabCacheInvalidation**: Sistema invalidazione basato su dipendenze
+
+#### Integrazione Pagina Atleti (`src/components/AthletesClient.tsx`)
+- **Indicatori visivi**: Loading, stale data, errori
+- **Fallback server-side**: Dati iniziali per performance
+- **Gestione errori**: Pulsante retry e messaggi informativi
+- **Auto-refresh**: Aggiornamento automatico su focus
+
+#### Client Supabase Browser (`src/utils/supabase/client.ts`)
+- **createBrowserClient**: Configurato per hook React
+- **Compatibilità**: Server e client components
+
+### 🗑️ Pulizia Codebase (15 Gennaio 2025)
+**Rimossi componenti non utilizzati per semplificare architettura:**
+
+#### Dashboard Analytics Rimossa
+- **Motivazione**: Dati già disponibili in pagina atleti, non aggiungeva valore
+- **File eliminati**:
+  - `src/app/dashboard/page.tsx`
+  - `src/app/dashboard/DashboardClient.tsx`
+  - `src/components/dashboard/StatsOverview.tsx`
+  - `src/components/dashboard/VolumeChart.tsx`
+  - `src/components/dashboard/PersonalBestsChart.tsx`
+  - `src/components/dashboard/ActivityHeatmap.tsx`
+
+#### Navigazione Semplificata
+- **Rimosso**: Pulsante "Dashboard" duplicato dalla sidebar
+- **Mantenuto**: Solo pulsante "Atleti" per accesso principale
+
+### 🔧 Script Ottimizzazioni Database (15 Gennaio 2025)
+**Preparati script SQL per ottimizzazioni performance:**
+
+#### Script Ottimizzazioni (`database_optimization.sql`)
+- **Indici compositi**: Per query frequenti atleti e attività
+- **Ottimizzazioni JSONB**: Per route_points GPS
+- **Indici GIN**: Per ricerca full-text
+- **Query monitoraggio**: Performance e utilizzo indici
+
+#### Script Test Performance (`test_performance.sql`)
+- **10 test specifici**: Query più critiche dell'applicazione
+- **Baseline**: Misurazione prima ottimizzazioni
+- **Confronto**: Template per documentare miglioramenti
+
+### 🎯 Miglioramenti UX
+- **Indicatori stato cache**: Visibilità stato caricamento dati
+- **Gestione errori**: Messaggi informativi e retry automatico
+- **Performance**: Caricamento più fluido con cache intelligente
+- **Pulizia interfaccia**: Navigazione semplificata senza duplicati
+
+### 🔄 Pattern Architetturali Introdotti
+- **Stale-while-revalidate**: Dati sempre disponibili, aggiornamento background
+- **Cache invalidation**: Basata su dipendenze e pattern regex
+- **Hybrid rendering**: Server-side per SEO, client-side per interattività
+- **Error boundaries**: Gestione errori granulare per componenti
+
 ---
 
-*Ultimo aggiornamento: Dicembre 2024*
-*Versione progetto: 0.1.0* 
+*Ultimo aggiornamento: 15 Gennaio 2025*
+*Versione progetto: 0.2.0* 

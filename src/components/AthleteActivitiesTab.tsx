@@ -23,6 +23,8 @@ export default function AthleteActivitiesTab({ activities, athleteName }: Athlet
   const [activityTypeFilter, setActivityTypeFilter] = useState<string>('all');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
+  const [minDistance, setMinDistance] = useState<string>(''); // in km
+  const [maxDistance, setMaxDistance] = useState<string>(''); // in km
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(12); // 12 attività per pagina
 
@@ -83,7 +85,14 @@ export default function AthleteActivitiesTab({ activities, athleteName }: Athlet
       const matchesDateFrom = !dateFrom || activityDate >= new Date(dateFrom);
       const matchesDateTo = !dateTo || activityDate <= new Date(dateTo);
 
-      return matchesSearch && matchesType && matchesDateFrom && matchesDateTo;
+      // Filtro per range distanza
+      const activityDistanceKm = activity.distance_meters ? activity.distance_meters / 1000 : 0;
+      const matchesMinDistance = !minDistance || !isNaN(parseFloat(minDistance)) ? 
+        activityDistanceKm >= (parseFloat(minDistance) || 0) : true;
+      const matchesMaxDistance = !maxDistance || !isNaN(parseFloat(maxDistance)) ? 
+        activityDistanceKm <= (parseFloat(maxDistance) || Infinity) : true;
+
+      return matchesSearch && matchesType && matchesDateFrom && matchesDateTo && matchesMinDistance && matchesMaxDistance;
     });
 
     // Ordinamento
@@ -107,7 +116,7 @@ export default function AthleteActivitiesTab({ activities, athleteName }: Athlet
     });
 
     return filtered;
-  }, [activities, searchTerm, sortBy, activityTypeFilter, dateFrom, dateTo]);
+  }, [activities, searchTerm, sortBy, activityTypeFilter, dateFrom, dateTo, minDistance, maxDistance]);
 
   // Tipi di attività disponibili
   const availableActivityTypes = useMemo(() => {
@@ -127,7 +136,7 @@ export default function AthleteActivitiesTab({ activities, athleteName }: Athlet
   // Reset pagina quando cambiano i filtri
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, sortBy, activityTypeFilter, dateFrom, dateTo]);
+  }, [searchTerm, sortBy, activityTypeFilter, dateFrom, dateTo, minDistance, maxDistance]);
 
   return (
     <div className="space-y-6">
@@ -172,7 +181,7 @@ export default function AthleteActivitiesTab({ activities, athleteName }: Athlet
 
       {/* Filtri e controlli */}
       <div className="stats-card">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-8 gap-4">
           {/* Ricerca */}
           <div className="lg:col-span-2">
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -250,10 +259,40 @@ export default function AthleteActivitiesTab({ activities, athleteName }: Athlet
               onChange={(e) => setDateTo(e.target.value)}
             />
           </div>
+
+          {/* Distanza minima */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Dist. min (km)
+            </label>
+            <Input
+              type="number"
+              placeholder="0"
+              value={minDistance}
+              onChange={(e) => setMinDistance(e.target.value)}
+              min="0"
+              step="0.1"
+            />
+          </div>
+
+          {/* Distanza massima */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Dist. max (km)
+            </label>
+            <Input
+              type="number"
+              placeholder="∞"
+              value={maxDistance}
+              onChange={(e) => setMaxDistance(e.target.value)}
+              min="0"
+              step="0.1"
+            />
+          </div>
         </div>
 
         {/* Pulsante reset filtri */}
-        {(searchTerm || activityTypeFilter !== 'all' || dateFrom || dateTo || sortBy !== 'date_desc') && (
+        {(searchTerm || activityTypeFilter !== 'all' || dateFrom || dateTo || minDistance || maxDistance || sortBy !== 'date_desc') && (
           <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
             <Button
               variant="outline"
@@ -262,6 +301,8 @@ export default function AthleteActivitiesTab({ activities, athleteName }: Athlet
                 setActivityTypeFilter('all');
                 setDateFrom('');
                 setDateTo('');
+                setMinDistance('');
+                setMaxDistance('');
                 setSortBy('date_desc');
               }}
               className="text-sm"
@@ -317,7 +358,7 @@ export default function AthleteActivitiesTab({ activities, athleteName }: Athlet
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {paginatedActivities.map((activity, index) => (
                 <ActivityPreviewCard
                   key={activity.id}

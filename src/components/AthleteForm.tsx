@@ -13,54 +13,11 @@ import type { Athlete } from '@/lib/types'; // Importa l'interfaccia Athlete dal
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2 } from 'lucide-react'; // Per l'icona di caricamento nel bottone
-// Importa Select da Shadcn/UI
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-// Import per Combobox
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { Button } from "@/components/ui/button"; // Importa Button
-import { Check, ChevronsUpDown } from 'lucide-react'; // Importa icone
+import { useCycloLabToast } from "@/hooks/use-cyclolab-toast";
 
-// Importa i dati dei paesi dal file JSON
-import countryDataJson from '@/lib/countries.json';
 
-interface Country {
-  countryName: string;
-  prefix: string;
-  nationality: string;
-  code: string;
-}
-
-const countryData: Country[] = countryDataJson;
-
-// Trova un default per il prefisso e la nazionalità (es. Italia se presente, altrimenti il primo della lista)
-const defaultCountry = countryData.find(c => c.code === 'IT') || countryData[0];
-
-// AthleteFormData ora si basa su Athlete, che già include email e phone_number.
-// Omettiamo le stesse proprietà che non sono gestite direttamente dal form.
-// Se AthleteRow includesse già email e phone_number, si potrebbe usare Omit<AthleteRow, ...> e poi aggiungere i campi opzionali.
-// Ma dato che Athlete è AthleteRow & { email, phone_number }, Omit<Athlete, ...> è corretto.
-type AthleteFormData = Omit<Athlete, 'id' | 'created_at' | 'user_id' | 'avatar_url' | 'phone_number' | 'nationality'> & {
-  phone_number_numeric: string; // Solo la parte numerica del telefono
-  nationality_value: string; // Il valore selezionato per la nazionalità
-};
+// AthleteFormData ora si basa su Athlete, omettendo i campi non gestiti dal form
+type AthleteFormData = Omit<Athlete, 'id' | 'created_at' | 'user_id' | 'avatar_url' | 'phone_number' | 'nationality'>;
 
 interface AthleteFormProps {
   // initialData?: Athlete & { email?: string; phone_number?: string }; // Aggiorniamo anche initialData
@@ -70,6 +27,7 @@ interface AthleteFormProps {
 
 export default function AthleteForm({ initialData, onFormSubmitSuccess }: AthleteFormProps) {
   const router = useRouter();
+  const { showAthleteAdded, showAthleteUpdated, showError } = useCycloLabToast();
   // Inizializza il client Supabase per il browser
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -77,39 +35,7 @@ export default function AthleteForm({ initialData, onFormSubmitSuccess }: Athlet
   );
   const [currentUser, setCurrentUser] = useState<User | null>(null);
 
-  // Funzione per trovare il prefisso iniziale o usare il default
-  const getInitialPhonePrefix = () => {
-    if (initialData?.phone_number) {
-      const match = initialData.phone_number.match(/^(\+\d+)/);
-      if (match && match[0] && countryData.some(c => c.prefix === match[0])) {
-        return match[0];
-      }
-    }
-    return defaultCountry.prefix;
-  };
 
-  // Funzione per trovare la nazionalità iniziale o usare il default
-  const getInitialNationality = () => {
-    if (initialData?.nationality && countryData.some(c => c.nationality === initialData.nationality)) {
-      return initialData.nationality;
-    }
-    return defaultCountry.nationality;
-  };
-  
-  const getInitialNumericPhoneNumber = () => {
-    if (initialData?.phone_number) {
-        // Rimuove il prefisso se presente e corrisponde a uno dei prefissi noti
-        const knownPrefix = countryData.find(c => initialData.phone_number!.startsWith(c.prefix));
-        if (knownPrefix) {
-            return initialData.phone_number.substring(knownPrefix.prefix.length).trim();
-        }
-        // Altrimenti, prova a rimuovere un prefisso generico se non corrisponde a uno noto, per pulizia
-        return initialData.phone_number.replace(/^(\+\d+)/, '').trim();
-    }
-    return '';
-  }
-
-  const [selectedPhonePrefix, setSelectedPhonePrefix] = useState<string>(getInitialPhonePrefix());
 
   const [formData, setFormData] = useState<AthleteFormData>({
     name: initialData?.name || '',
@@ -117,9 +43,7 @@ export default function AthleteForm({ initialData, onFormSubmitSuccess }: Athlet
     birth_date: initialData?.birth_date || '',
     height_cm: initialData?.height_cm || null,
     weight_kg: initialData?.weight_kg || null,
-    nationality_value: getInitialNationality(),
     email: initialData?.email || '',
-    phone_number_numeric: getInitialNumericPhoneNumber(),
   });
 
   const [isLoading, setIsLoading] = useState(false);
@@ -129,8 +53,7 @@ export default function AthleteForm({ initialData, onFormSubmitSuccess }: Athlet
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(initialData?.avatar_url || null);
 
-  // Stato per il Combobox della nazionalità
-  const [nationalityPopoverOpen, setNationalityPopoverOpen] = useState(false);
+
 
   useEffect(() => {
     const getUserAndSetData = async () => {
@@ -151,10 +74,7 @@ export default function AthleteForm({ initialData, onFormSubmitSuccess }: Athlet
     const { name, value, type } = e.target;
     let processedValue: string | number | null = value;
 
-    if (name === 'phone_number_numeric') {
-      // Consenti solo numeri per il campo telefono numerico
-      processedValue = value.replace(/[^0-9]/g, '');
-    } else if (type === 'number') {
+    if (type === 'number') {
       processedValue = value === '' ? null : parseFloat(value);
       if (isNaN(processedValue as number)) processedValue = null;
     }
@@ -182,7 +102,6 @@ export default function AthleteForm({ initialData, onFormSubmitSuccess }: Athlet
   // Regex per la validazione
   const nameRegex = /^[a-zA-ZÀ-ÖØ-öø-ÿ\s'-]+$/; // Lettere, spazi, apostrofi, trattini (per nomi composti/stranieri)
   const emailRegex = /^\S+@\S+\.\S+$/;
-  const numericOnlyRegex = /^[0-9]+$/; // Per la parte numerica del telefono
   const weightRegex = /^\d+(\.\d{1})?$/; // Numeri con al massimo un decimale
 
   const handleSubmit = async (e: FormEvent) => {
@@ -192,7 +111,7 @@ export default function AthleteForm({ initialData, onFormSubmitSuccess }: Athlet
 
     // --- INIZIO BLOCCO VALIDAZIONE ---
     const validationErrors: string[] = [];
-    const { name, surname, email, phone_number_numeric, birth_date, nationality_value, height_cm, weight_kg } = formData;
+    const { name, surname, email, birth_date, height_cm, weight_kg } = formData;
 
     // Nome
     if (!name.trim()) validationErrors.push("Il nome è obbligatorio.");
@@ -206,14 +125,6 @@ export default function AthleteForm({ initialData, onFormSubmitSuccess }: Athlet
     if (!email?.trim()) validationErrors.push("L'email è obbligatoria.");
     else if (!emailRegex.test(email)) validationErrors.push("Inserisci un indirizzo email valido.");
 
-    // Telefono
-    if (!selectedPhonePrefix) validationErrors.push("Seleziona un prefisso telefonico.");
-    if (!phone_number_numeric.trim()) {
-      validationErrors.push("Il numero di telefono è obbligatorio.");
-    } else if (!numericOnlyRegex.test(phone_number_numeric)) {
-      validationErrors.push("Il numero di telefono può contenere solo cifre.");
-    }
-
     // Data di Nascita
     if (!birth_date) {
       validationErrors.push("La data di nascita è obbligatoria.");
@@ -223,12 +134,6 @@ export default function AthleteForm({ initialData, onFormSubmitSuccess }: Athlet
       const dob = new Date(birth_date);
       if (dob >= today) validationErrors.push("La data di nascita non può essere oggi o una data futura.");
       // Potremmo aggiungere un controllo sull'età minima/massima se necessario
-    }
-
-    // Nazionalità
-    if (!nationality_value) validationErrors.push("La nazionalità è obbligatoria.");
-    else if (!countryData.some(c => c.nationality === nationality_value)) {
-        validationErrors.push("Seleziona una nazionalità valida dalla lista.");
     }
 
     // Altezza (cm)
@@ -301,17 +206,13 @@ export default function AthleteForm({ initialData, onFormSubmitSuccess }: Athlet
       }
     }
 
-    const fullPhoneNumber = `${selectedPhonePrefix}${formData.phone_number_numeric.trim()}`;
-
     const athleteDataToSave = {
       name: formData.name,
       surname: formData.surname,
       birth_date: formData.birth_date,
       height_cm: formData.height_cm ? Number(formData.height_cm) : null,
       weight_kg: formData.weight_kg ? Number(formData.weight_kg) : null,
-      nationality: formData.nationality_value,
       email: formData.email,
-      phone_number: fullPhoneNumber,
       user_id: initialData?.user_id || submitUser.id,
       avatar_url: uploadedAvatarUrl,
     };
@@ -336,9 +237,19 @@ export default function AthleteForm({ initialData, onFormSubmitSuccess }: Athlet
 
     if (operationError) {
       console.error('Errore operazione DB:', operationError);
-      setError(`Errore nel salvataggio dei dati dell'atleta: ${operationError.message}`);
+      const errorMessage = `Errore nel salvataggio dei dati dell'atleta: ${operationError.message}`;
+      setError(errorMessage);
+      showError("Errore nel salvataggio", errorMessage);
     } else {
-      setSuccessMessage(initialData?.id ? 'Atleta aggiornato con successo!' : 'Atleta aggiunto con successo!');
+      const athleteName = `${formData.name} ${formData.surname}`;
+      if (initialData?.id) {
+        setSuccessMessage('Atleta aggiornato con successo!');
+        showAthleteUpdated(athleteName);
+      } else {
+        setSuccessMessage('Atleta aggiunto con successo!');
+        showAthleteAdded(athleteName);
+      }
+      
       if (onFormSubmitSuccess) {
         onFormSubmitSuccess();
       } else {
@@ -424,37 +335,6 @@ export default function AthleteForm({ initialData, onFormSubmitSuccess }: Athlet
           />
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor="phone_number_numeric" className={labelClassName}>Telefono <span className="text-red-500">*</span></Label>
-          <div className="flex gap-2">
-            <Select value={selectedPhonePrefix} onValueChange={setSelectedPhonePrefix}>
-              <SelectTrigger className={`${commonInputClassName} w-[150px]`}> {/* Larghezza fissa per il prefisso */}
-                <SelectValue placeholder="Prefisso" />
-              </SelectTrigger>
-              <SelectContent>
-                {countryData.map((country) => (
-                  <SelectItem key={country.code} value={country.prefix}>
-                    {country.countryName} ({country.prefix})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Input
-              id="phone_number_numeric"
-              name="phone_number_numeric"
-              type="tel" // type="tel" è più semantico, il filtraggio avviene in handleInputChange
-              value={formData.phone_number_numeric}
-              onChange={handleInputChange}
-              placeholder="1234567890"
-              required
-              className={`${commonInputClassName} flex-grow`} // Occupa lo spazio rimanente
-              pattern="[0-9]*" // Utile per la tastiera mobile e validazione browser base
-            />
-          </div>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="space-y-1.5">
           <Label htmlFor="birth_date" className={labelClassName}>Data di Nascita <span className="text-red-500">*</span></Label>
           <Input
             id="birth_date"
@@ -466,53 +346,19 @@ export default function AthleteForm({ initialData, onFormSubmitSuccess }: Athlet
             className={commonInputClassName}
           />
         </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="nationality_value" className={labelClassName}>Nazionalità <span className="text-red-500">*</span></Label>
-          <Popover open={nationalityPopoverOpen} onOpenChange={setNationalityPopoverOpen}>
-            <PopoverTrigger asChild>
-              <Button
-                variant="outline"
-                role="combobox"
-                aria-expanded={nationalityPopoverOpen}
-                className={`${commonInputClassName} w-full justify-between font-normal`}
-              >
-                {formData.nationality_value
-                  ? countryData.find((country) => country.nationality.toLowerCase() === formData.nationality_value.toLowerCase())?.nationality
-                  : "Seleziona nazionalità..."}
-                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-              <Command>
-                <CommandInput placeholder="Cerca nazionalità..." />
-                <CommandList>
-                  <CommandEmpty>Nessuna nazionalità trovata.</CommandEmpty>
-                  <CommandGroup>
-                    {countryData.map((country) => (
-                      <CommandItem
-                        key={country.code}
-                        value={country.nationality}
-                        onSelect={(currentValue: string) => {
-                          const selectedNationality = countryData.find(c => c.nationality.toLowerCase() === currentValue.toLowerCase())?.nationality || '';
-                          setFormData(prev => ({ 
-                            ...prev, 
-                            nationality_value: selectedNationality 
-                          }));
-                          setNationalityPopoverOpen(false);
-                        }}
-                      >
-                        <Check
-                          className={`mr-2 h-4 w-4 ${formData.nationality_value.toLowerCase() === country.nationality.toLowerCase() ? "opacity-100" : "opacity-0"}`}
-                        />
-                        {country.nationality}
-                      </CommandItem>
-                    ))}
-                  </CommandGroup>
-                </CommandList>
-              </Command>
-            </PopoverContent>
-          </Popover>
-        </div>
+      </div>
+
+      <div className="space-y-1.5">
+        <Label htmlFor="birth_date" className={labelClassName}>Data di Nascita <span className="text-red-500">*</span></Label>
+        <Input
+          id="birth_date"
+          name="birth_date"
+          type="date"
+          value={formData.birth_date || ''}
+          onChange={handleInputChange}
+          required
+          className={commonInputClassName}
+        />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

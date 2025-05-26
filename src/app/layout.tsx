@@ -12,6 +12,7 @@ import LogoutButtonClient from "@/components/LogoutButtonClient";
 import { ModernSidebar } from "@/components/ui/ModernSidebar";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import GlobalSearch from "@/components/ui/GlobalSearch";
+import { Toaster } from "@/components/ui/toaster";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -71,7 +72,7 @@ export default async function RootLayout({
                               href="/athletes" 
                               className="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
                             >
-                              Dashboard
+                              CycloLab
                             </Link>
                             <span className="text-gray-500 dark:text-gray-400">/</span>
                             <span className="font-medium text-gray-900 dark:text-white">Panoramica</span>
@@ -242,6 +243,7 @@ export default async function RootLayout({
             </div>
           )}
         </div>
+        <Toaster />
       </body>
     </html>
   );

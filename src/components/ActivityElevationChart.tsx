@@ -161,7 +161,10 @@ const ActivityElevationChart: React.FC<ActivityElevationChartProps> = ({
           text: 'Dati non sufficienti per il grafico',
           left: 'center',
           top: 'center',
-          textStyle: { color: '#4b5563', fontSize: 16 },
+          textStyle: { 
+            color: document.documentElement.classList.contains('dark') ? '#9ca3af' : '#4b5563', 
+            fontSize: 16 
+          },
         },
       });
       return;
@@ -229,7 +232,10 @@ const ActivityElevationChart: React.FC<ActivityElevationChartProps> = ({
           text: selectedMetrics.length > 0 ? 'Dati non disponibili per le metriche selezionate.' : 'Nessuna metrica selezionata.',
           left: 'center',
           top: 'center',
-          textStyle: { color: '#4b5563', fontSize: 16 },
+          textStyle: { 
+            color: document.documentElement.classList.contains('dark') ? '#9ca3af' : '#4b5563', 
+            fontSize: 16 
+          },
         },
       });
       return;
@@ -336,7 +342,8 @@ const ActivityElevationChart: React.FC<ActivityElevationChartProps> = ({
         bottom: 15,
         selectedMode: 'multiple',
         textStyle: {
-          fontSize: 10
+          fontSize: 10,
+          color: document.documentElement.classList.contains('dark') ? '#e2e8f0' : '#374151'
         },
         padding: [5, 8, 5, 8],
         itemGap: 8
@@ -356,13 +363,29 @@ const ActivityElevationChart: React.FC<ActivityElevationChartProps> = ({
           margin: 8,
           hideOverlap: true,
           align: 'center',
-          fontSize: 10
+          fontSize: 10,
+          color: document.documentElement.classList.contains('dark') ? '#e2e8f0' : '#374151'
+        },
+        axisLine: {
+          lineStyle: {
+            color: document.documentElement.classList.contains('dark') ? '#e2e8f0' : '#374151'
+          }
         },
         boundaryGap: false,
         position: 'bottom',
         offset: 0,
       },
-      yAxis: yAxisConfig.length > 0 ? yAxisConfig : { type: 'value' },
+      yAxis: yAxisConfig.length > 0 ? yAxisConfig.map(axis => ({
+        ...axis,
+        nameTextStyle: {
+          ...axis.nameTextStyle,
+          color: document.documentElement.classList.contains('dark') ? '#e2e8f0' : '#374151'
+        },
+        axisLabel: {
+          ...axis.axisLabel,
+          color: document.documentElement.classList.contains('dark') ? '#e2e8f0' : '#374151'
+        }
+      })) : { type: 'value' },
       series: seriesData,
       dataZoom: [
         {
@@ -405,9 +428,12 @@ const ActivityElevationChart: React.FC<ActivityElevationChartProps> = ({
         },
         right: 20,
         top: 5,
+        iconStyle: {
+          borderColor: document.documentElement.classList.contains('dark') ? '#e2e8f0' : '#374151'
+        }
       },
       animationDuration: 750,
-      backgroundColor: undefined,
+      backgroundColor: 'transparent',
     };
     setChartOptions(options);
 
@@ -454,8 +480,8 @@ const ActivityElevationChart: React.FC<ActivityElevationChartProps> = ({
 
   if (!routePoints || routePoints.length === 0) {
     return (
-      <div className="bg-white p-6 rounded-lg shadow-md h-[350px] sm:h-[400px] md:h-[450px] lg:h-[500px] flex items-center justify-center">
-        <p className="text-gray-500">Dati non disponibili per il grafico.</p>
+      <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md h-[350px] sm:h-[400px] md:h-[450px] lg:h-[500px] flex items-center justify-center">
+        <p className="text-gray-500 dark:text-gray-400">Dati non disponibili per il grafico.</p>
       </div>
     );
   }
@@ -468,7 +494,7 @@ const ActivityElevationChart: React.FC<ActivityElevationChartProps> = ({
           titleText.startsWith('Nessuna metrica selezionata')) {
         return (
           <div className="h-full flex flex-col items-center justify-center">
-            <p className="text-gray-600 mb-4 text-center px-4">{titleText}</p>
+            <p className="text-gray-600 dark:text-gray-400 mb-4 text-center px-4">{titleText}</p>
           </div>
         );
       }
@@ -490,14 +516,14 @@ const ActivityElevationChart: React.FC<ActivityElevationChartProps> = ({
     
     return (
       <div className="flex items-center justify-center h-full">
-        <p className="text-gray-600">Caricamento grafico...</p>
+        <p className="text-gray-600 dark:text-gray-400">Caricamento grafico...</p>
       </div>
     );
   };
 
   return (
-    <div className="bg-white p-4 md:p-6 rounded-lg shadow-md relative">
-      <h3 className="text-lg font-semibold mb-3 text-slate-700 flex items-center justify-between relative z-20">
+    <div className="bg-white dark:bg-gray-800 p-4 md:p-6 rounded-lg shadow-md relative">
+      <h3 className="text-lg font-semibold mb-3 text-slate-700 dark:text-slate-200 flex items-center justify-between relative z-20">
         <div className="flex items-center">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 mr-2 text-blue-600">
             <path d="M2 22h20"></path>
@@ -522,19 +548,19 @@ const ActivityElevationChart: React.FC<ActivityElevationChartProps> = ({
       </h3>
       
       {!selectedSegment && (
-        <div className="absolute top-0 left-1/2 transform -translate-x-1/2 z-20 bg-white bg-opacity-80 px-3 py-1.5 rounded-b-md shadow-md text-sm font-medium text-slate-700 border border-t-0 border-slate-200">
+        <div className="absolute top-0 left-1/2 transform -translate-x-1/2 z-20 bg-white dark:bg-gray-800 bg-opacity-80 dark:bg-opacity-80 px-3 py-1.5 rounded-b-md shadow-md text-sm font-medium text-slate-700 dark:text-slate-200 border border-t-0 border-slate-200 dark:border-gray-600">
           Clicca due punti sul grafico per analizzare un segmento
         </div>
       )}
       
-      <div className="flex flex-wrap justify-center gap-x-3 gap-y-2 mb-4 border-b pb-3 border-slate-200 relative z-20">
+      <div className="flex flex-wrap justify-center gap-x-3 gap-y-2 mb-4 border-b pb-3 border-slate-200 dark:border-gray-600 relative z-20">
         {availableMetrics.map((metric) => {
           const currentMetricDef = metricConfig[metric];
           if (!currentMetricDef) return null; 
           const metricHasSomeData = routePoints.some(p => typeof (p as any)[metric] === 'number');
 
           return (
-            <label key={metric} className={`flex items-center space-x-1.5 p-2 border rounded-lg hover:bg-slate-50 cursor-pointer text-xs sm:text-sm shadow-sm ${!metricHasSomeData && metric !=='elevation' ? 'opacity-50 cursor-not-allowed' : ''}`}>
+            <label key={metric} className={`flex items-center space-x-1.5 p-2 border border-gray-200 dark:border-gray-600 rounded-lg hover:bg-slate-50 dark:hover:bg-gray-700 cursor-pointer text-xs sm:text-sm shadow-sm ${!metricHasSomeData && metric !=='elevation' ? 'opacity-50 cursor-not-allowed' : ''}`}>
               <input
                 type="checkbox"
                 checked={selectedMetrics.includes(metric)}
@@ -542,7 +568,7 @@ const ActivityElevationChart: React.FC<ActivityElevationChartProps> = ({
                 disabled={!metricHasSomeData && metric !=='elevation'}
                 className="form-checkbox h-3.5 w-3.5 sm:h-4 sm:w-4 text-blue-600 transition duration-150 ease-in-out rounded focus:ring-blue-500 border-gray-300"
               />
-              <span className="text-slate-700">{currentMetricDef.name}</span>
+              <span className="text-slate-700 dark:text-slate-200">{currentMetricDef.name}</span>
             </label>
           );
         })}
