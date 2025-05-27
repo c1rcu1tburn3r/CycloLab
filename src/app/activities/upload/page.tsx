@@ -59,7 +59,7 @@ export default async function UploadActivityPage() {
           <CardHeader className="text-center">
             <CardTitle className="text-2xl sm:text-3xl font-bold">Carica una nuova attività</CardTitle>
             <CardDescription className="mt-2">
-              Carica un file FIT e inserisci i dettagli dell'attività.
+              Carica un file FIT e inserisci i dettagli dell&apos;attività.
             </CardDescription>
           </CardHeader>
           <CardContent>

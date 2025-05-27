@@ -133,21 +133,20 @@ export default function ActivitiesClientManager({ initialActivities, coachAthlet
   const [currentPage, setCurrentPage] = useState(1);
   const ACTIVITIES_PER_PAGE = 12;
 
-  // Sincronizza gli stati locali con le preferenze caricate una sola volta
+  // Carica le preferenze salvate quando il componente è pronto
   useEffect(() => {
     if (isLoaded && preferences) {
-      // Aggiorna solo se i valori sono diversi da quelli di default
-      if (preferences.selectedAthleteId && preferences.selectedAthleteId !== 'all') {
+      if (preferences.selectedAthleteId) {
         setSelectedAthleteId(preferences.selectedAthleteId);
+      }
+      if (preferences.searchTerm) {
+        setSearchTerm(preferences.searchTerm);
       }
       if (preferences.startDate) {
         setStartDate(preferences.startDate);
       }
       if (preferences.endDate) {
         setEndDate(preferences.endDate);
-      }
-      if (preferences.searchTerm) {
-        setSearchTerm(preferences.searchTerm);
       }
       if (preferences.minDistance) {
         setMinDistance(preferences.minDistance);
@@ -156,7 +155,7 @@ export default function ActivitiesClientManager({ initialActivities, coachAthlet
         setMaxDistance(preferences.maxDistance);
       }
     }
-  }, [isLoaded]); // Esegue solo quando isLoaded diventa true
+  }, [isLoaded, preferences]); // Aggiunta dipendenza 'preferences'
 
   // Funzioni wrapper per aggiornare sia lo stato locale che le preferenze
   const handleAthleteChange = (value: string) => {

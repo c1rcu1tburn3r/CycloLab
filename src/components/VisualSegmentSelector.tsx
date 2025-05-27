@@ -149,7 +149,7 @@ export default function VisualSegmentSelector({ activities }: VisualSegmentSelec
   }, [isSelecting, selectionPoints]);
 
   // Calcola le prestazioni del segmento selezionato
-  const calculateSegment = (startPoint: { lat: number; lng: number }, endPoint: { lat: number; lng: number }) => {
+  const calculateSegment = useCallback((startPoint: { lat: number; lng: number }, endPoint: { lat: number; lng: number }) => {
     console.log('🎯 Calculating segment between:', startPoint, endPoint);
     
     const segmentData = routeData.map(activity => {
@@ -201,7 +201,19 @@ export default function VisualSegmentSelector({ activities }: VisualSegmentSelec
       setSelectedSegment(segment);
       console.log('✅ Segment calculated:', segment);
     }
-  };
+  }, [routeData, setSelectedSegment]);
+
+  // Effetto per calcolare il segmento quando abbiamo due punti selezionati
+  useEffect(() => {
+    if (selectionPoints.length === 2 && !isSelecting) {
+      // Aggiungi un piccolo delay per permettere al rendering di completarsi
+      setTimeout(() => {
+        const newPoints = [...selectionPoints];
+        calculateSegment(newPoints[0], newPoints[1]);
+        setIsSelecting(false);
+      }, 100); // Piccolo delay per assicurarsi che lo stato sia aggiornato
+    }
+  }, [isSelecting, selectionPoints, calculateSegment]);
 
   // Trova il punto più vicino nelle coordinate
   const findNearestPointIndex = (route: RoutePoint[], target: { lat: number; lng: number }): number => {

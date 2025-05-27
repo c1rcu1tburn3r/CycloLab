@@ -68,24 +68,19 @@ const getActivityIcon = (type: string | null | undefined) => {
 };
 
 export default function ActivityComparisonDashboard({ activities }: ActivityComparisonDashboardProps) {
-  // Controllo che ci siano esattamente 2 attività
-  if (activities.length !== 2) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center">
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
-            Comparazione non disponibile
-          </h2>
-          <p className="text-gray-600 dark:text-gray-400">
-            Seleziona esattamente 2 attività per la comparazione.
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  // Analisi di comparabilità
+  // Analisi di comparabilità - deve essere sempre chiamata prima dei controlli condizionali
   const comparisonAnalysis = useMemo(() => {
+    if (activities.length !== 2) {
+      return {
+        sameType: false,
+        similarDuration: false,
+        similarDistance: false,
+        avgDuration: 0,
+        avgDistance: 0,
+        qualityScore: 0
+      };
+    }
+
     const types = activities.map(a => a.activity_type);
     const durations = activities.map(a => a.duration_seconds || 0);
     const distances = activities.map(a => a.distance_meters || 0);
@@ -108,6 +103,26 @@ export default function ActivityComparisonDashboard({ activities }: ActivityComp
       qualityScore: (sameType ? 40 : 0) + (similarDuration ? 30 : 0) + (similarDistance ? 30 : 0)
     };
   }, [activities]);
+
+  if (activities.length !== 2) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 p-4">
+        <div className="max-w-md mx-auto mt-20 text-center">
+          <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center">
+            <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+            </svg>
+          </div>
+          <h2 className="text-2xl font-bold text-gray-800 dark:text-white mb-2">
+            Selezione Incompleta
+          </h2>
+          <p className="text-gray-600 dark:text-gray-300 mb-6">
+            Seleziona esattamente 2 attività per la comparazione.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

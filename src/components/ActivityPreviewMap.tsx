@@ -1,8 +1,19 @@
 'use client';
 
-import { useEffect, useState, useMemo, useRef } from 'react';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
 import dynamic from 'next/dynamic';
-import { Activity, RoutePoint } from '@/lib/types';
+import type { Activity, RoutePoint } from '@/lib/types';
+import L from 'leaflet';
+
+// =====================================================
+// CONSTANTS
+// =====================================================
+
+const DEFAULT_CENTER = { lat: 45.464664, lng: 9.188540 }; // Milano come fallback
+
+// =====================================================
+// DYNAMIC IMPORTS
+// =====================================================
 
 // Caricamento dinamico dei componenti di Leaflet per evitare errori SSR
 const MapContainer = dynamic(
@@ -17,6 +28,10 @@ const Polyline = dynamic(
   () => import('react-leaflet').then((mod) => mod.Polyline),
   { ssr: false }
 );
+
+// =====================================================
+// COMPONENT
+// =====================================================
 
 interface ActivityPreviewMapProps {
   activity: Activity;
@@ -72,10 +87,8 @@ const ActivityPreviewMap: React.FC<ActivityPreviewMapProps> = ({
   const hasRoutePoints = routePoints && routePoints.length > 0;
   const hasStartCoordinates = Boolean(activity.start_lat && activity.start_lon);
   
-  const defaultCenter = { lat: 45.464664, lng: 9.188540 }; // Milano come fallback
-  
   const { mapCenter, zoomLevel, routeColor } = useMemo(() => {
-    let center = defaultCenter;
+    let center = DEFAULT_CENTER;
     let zoom = 13;
     let color = '#FF6B35'; // Arancione moderno
 

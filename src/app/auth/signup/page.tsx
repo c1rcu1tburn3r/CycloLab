@@ -81,7 +81,7 @@ export default function SignupPage() {
                   <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Registrazione Completata!</h2>
                   <p className="text-gray-600 dark:text-gray-300">
                     Abbiamo inviato un email di conferma a <strong>{email}</strong>. 
-                    Clicca sul link nell'email per attivare il tuo account.
+                    Clicca sul link nell&apos;email per attivare il tuo account.
                   </p>
                 </div>
                 

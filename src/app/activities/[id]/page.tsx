@@ -7,6 +7,8 @@ import { it } from 'date-fns/locale';
 import type { Activity, RoutePoint } from '@/lib/types';
 import DeleteActivityButton from '@/components/DeleteActivityButton';
 import ActivityViewClient from '@/components/ActivityViewClient';
+import ClimbsSection from '@/components/ClimbsSection';
+import { getActivityClimbs, detectAndSaveClimbs } from '@/app/activities/climbActions';
 import { Suspense } from 'react';
 
 interface ActivityDetailPageProps {
@@ -94,6 +96,41 @@ export default async function ActivityDetailPage({ params }: ActivityDetailPageP
 
   if (activity.user_id !== user.id) {
     redirect('/activities?error=unauthorized');
+  }
+
+  // Rilevamento automatico salite se ci sono dati GPS
+  let climbsData = null;
+  let climbsError = null;
+  
+  if (parsedRoutePoints.length > 0) {
+    try {
+      // Prima prova a recuperare salite esistenti
+      const existingClimbs = await getActivityClimbs(activity.id);
+      
+      if (existingClimbs.success && existingClimbs.climbs.length > 0) {
+        climbsData = existingClimbs.climbs;
+        console.log(`✅ Trovate ${existingClimbs.climbs.length} salite esistenti per attività ${activity.id}`);
+      } else {
+        // Se non ci sono salite, FORZA il rilevamento automatico
+        console.log(`🔍 Nessuna salita trovata, avvio rilevamento automatico per attività ${activity.id}`);
+        const detectionResult = await detectAndSaveClimbs(
+          activity.id, 
+          parsedRoutePoints, 
+          activity.title
+        );
+        
+        if (detectionResult.success) {
+          climbsData = detectionResult.climbs;
+          console.log(`✅ Rilevate ${detectionResult.climbs.length} nuove salite per attività ${activity.id}`);
+        } else {
+          climbsError = detectionResult.error;
+          console.log(`❌ Errore rilevamento salite: ${detectionResult.error}`);
+        }
+      }
+    } catch (error) {
+      console.error('❌ Errore nel rilevamento salite:', error);
+      climbsError = error instanceof Error ? error.message : 'Errore sconosciuto';
+    }
   }
 
   const updatedFileUrl = activity.fit_file_url && activity.fit_file_name && activity.user_id && activity.athlete_id ? 
@@ -213,6 +250,72 @@ export default async function ActivityDetailPage({ params }: ActivityDetailPageP
             <div className="stats-card p-0 overflow-hidden">
               <ActivityViewClient {...activityViewProps} />
             </div>
+
+            {/* Sezione Salite Rilevate - Sempre visibile se ci sono dati GPS */}
+            {parsedRoutePoints.length > 0 && (
+              <Suspense fallback={
+                <div className="stats-card">
+                  <div className="animate-pulse">
+                    <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-1/3 mb-4"></div>
+                    <div className="space-y-3">
+                      <div className="h-20 bg-gray-200 dark:bg-gray-700 rounded"></div>
+                      <div className="h-20 bg-gray-200 dark:bg-gray-700 rounded"></div>
+                    </div>
+                  </div>
+                </div>
+              }>
+                <div className="stats-card">
+                  <div className="flex items-center gap-3 mb-6">
+                    <div className="w-10 h-10 rounded-xl bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center">
+                      <svg className="w-5 h-5 text-orange-600 dark:text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5 3l6 6m0 0l6-6M11 9v12a2 2 0 104 0V9" />
+                      </svg>
+                    </div>
+                    <div>
+                      <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Salite Rilevate</h2>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        {climbsData ? `${climbsData.length} salite trovate` : 'Analisi automatica del percorso'}
+                      </p>
+                    </div>
+                  </div>
+                  
+                  {climbsError ? (
+                    <div className="text-center py-8">
+                      <div className="w-16 h-16 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <svg className="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                      </div>
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Errore nel rilevamento</h3>
+                      <p className="text-gray-600 dark:text-gray-300 mb-4">{climbsError}</p>
+                    </div>
+                  ) : climbsData && climbsData.length > 0 ? (
+                    <ClimbsSection 
+                      climbs={climbsData}
+                      showActions={true}
+                      routePoints={parsedRoutePoints}
+                    />
+                  ) : (
+                    <div className="text-center py-8">
+                      <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M5 3l6 6m0 0l6-6M11 9v12a2 2 0 104 0V9" />
+                        </svg>
+                      </div>
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Nessuna salita rilevata</h3>
+                      <p className="text-gray-600 dark:text-gray-300 mb-4">
+                        Il percorso non contiene salite significative secondo i criteri di rilevamento
+                      </p>
+                      <div className="text-sm text-gray-500 dark:text-gray-400 space-y-1">
+                        <p>• Dislivello minimo: 50m</p>
+                        <p>• Distanza minima: 500m</p>
+                        <p>• Pendenza minima: 3%</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </Suspense>
+            )}
           </div>
 
           {/* Colonna Laterale (1/3) */}

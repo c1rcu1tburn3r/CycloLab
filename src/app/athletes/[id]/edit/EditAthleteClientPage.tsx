@@ -332,7 +332,7 @@ export default function EditAthleteClientPage({
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M16 8v8m-4-5v5m-4-2v2m-2 4h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                     </svg>
                     <p className="text-gray-500 dark:text-gray-400 mb-2">Nessun dato storico disponibile</p>
-                    <p className="text-sm text-gray-400 dark:text-gray-500">Aggiungi delle voci nella scheda "Storico" per visualizzare il grafico</p>
+                    <p className="text-sm text-gray-400 dark:text-gray-500">Aggiungi delle voci nella scheda &quot;Storico&quot; per visualizzare il grafico</p>
                   </div>
                 )}
               </div>
@@ -380,7 +380,7 @@ export default function EditAthleteClientPage({
                   </div>
                   <div>
                     <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Dettagli Anagrafici</h2>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">Modifica le informazioni personali dell'atleta</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">Modifica le informazioni personali dell&apos;atleta</p>
                   </div>
                 </div>
                 

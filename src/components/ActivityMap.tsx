@@ -53,6 +53,16 @@ const DynamicHoverMarker = dynamic(() => import('./HoverMarker'), {
   loading: () => null 
 });
 
+// =====================================================
+// CONSTANTS
+// =====================================================
+
+const DEFAULT_CENTER = { lat: 45.464664, lng: 9.188540 }; // Milano come fallback
+
+// =====================================================
+// ACTIVITY MAP COMPONENT
+// =====================================================
+
 interface ActivityMapProps {
   activity: Activity;
   routePoints: RoutePoint[];
@@ -366,10 +376,8 @@ const ActivityMap: React.FC<ActivityMapProps> = ({ activity, routePoints, highli
   
   // Rimosso blocco di log [ActivityMap] Pre-render state
 
-  const defaultCenter = { lat: 45.464664, lng: 9.188540 };
-  
   const { mapCenter, zoomLevel } = useMemo(() => {
-    let center = defaultCenter;
+    let center = DEFAULT_CENTER;
     let zoom = 13;
 
     // Se c'è una selezione attiva, centra la mappa su quel segmento

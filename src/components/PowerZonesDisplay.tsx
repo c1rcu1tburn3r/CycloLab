@@ -39,13 +39,19 @@ const PowerZonesDisplay: React.FC<PowerZonesDisplayProps> = ({ currentFtp }) => 
     { name: "Z7", description: "Potenza Neuromuscolare", minPercent: 151, maxPercent: null, color: "text-purple-500" },
   ];
 
-  const calculatedZones: PowerZone[] = zonesDefinition.map(zone => {
-    const low = Math.round((zone.minPercent / 100) * currentFtp);
+  const calculatedZones: PowerZone[] = zonesDefinition.map((zone, index) => {
+    const low = index === 0 ? 0 : Math.round((zone.minPercent / 100) * currentFtp);
     const high = zone.maxPercent ? Math.round((zone.maxPercent / 100) * currentFtp) : null;
+    
+    // Per zone continue, la zona successiva inizia dove finisce la precedente
+    const adjustedLow = index === 0 ? 0 : 
+      index === 1 ? Math.round((zonesDefinition[0].maxPercent! / 100) * currentFtp) + 1 :
+      Math.round((zonesDefinition[index - 1].maxPercent! / 100) * currentFtp) + 1;
+    
     return {
       ...zone,
-      wattsLow: low,
-      wattsHigh: high ? `${high} W` : `> ${low - 1} W`
+      wattsLow: adjustedLow,
+      wattsHigh: high ? `${adjustedLow} - ${high} W` : `${adjustedLow}+ W`
     };
   });
 
@@ -66,7 +72,7 @@ const PowerZonesDisplay: React.FC<PowerZonesDisplayProps> = ({ currentFtp }) => 
                   {zone.description}
                 </p>
                 <p className="text-xs text-gray-500 dark:text-gray-400">
-                  {zone.minPercent}% - {zone.maxPercent ? `${zone.maxPercent}%` : '150%+'} FTP
+                  {zone.maxPercent ? `${zone.minPercent}% - ${zone.maxPercent}% FTP` : `${zone.minPercent}%+ FTP`}
                 </p>
               </div>
             </div>
@@ -74,7 +80,7 @@ const PowerZonesDisplay: React.FC<PowerZonesDisplayProps> = ({ currentFtp }) => 
           
           <div className="text-right">
             <p className="font-bold text-gray-900 dark:text-white">
-              {zone.wattsLow} - {zone.wattsHigh}
+              {zone.wattsHigh}
             </p>
           </div>
         </div>

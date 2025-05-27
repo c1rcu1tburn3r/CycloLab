@@ -348,19 +348,6 @@ export default function AthleteForm({ initialData, onFormSubmitSuccess }: Athlet
         </div>
       </div>
 
-      <div className="space-y-1.5">
-        <Label htmlFor="birth_date" className={labelClassName}>Data di Nascita <span className="text-red-500">*</span></Label>
-        <Input
-          id="birth_date"
-          name="birth_date"
-          type="date"
-          value={formData.birth_date || ''}
-          onChange={handleInputChange}
-          required
-          className={commonInputClassName}
-        />
-      </div>
-
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="space-y-1.5">
           <Label htmlFor="height_cm" className={labelClassName}>Altezza (cm) <span className="text-red-500">*</span></Label>
@@ -384,7 +371,7 @@ export default function AthleteForm({ initialData, onFormSubmitSuccess }: Athlet
             value={formData.weight_kg || ''}
             onChange={handleInputChange}
             placeholder="70.5"
-            step="0.1" // Per consentire decimali
+            step="0.1"
             required
             className={commonInputClassName}
           />
