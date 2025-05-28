@@ -1,11 +1,11 @@
 'use client';
 
+import React, { useState, useEffect } from 'react';
 import ReactECharts from 'echarts-for-react';
 import { type EChartsOption } from 'echarts';
 import { type AthleteProfileEntry } from '@/lib/types'; // Assicurati che il percorso sia corretto
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
-import { useState } from 'react'; // Importa useState
 import { Checkbox } from "@/components/ui/checkbox"; // Importa Checkbox
 import { Label } from "@/components/ui/label";   // Importa Label
 
@@ -25,6 +25,30 @@ const AthletePerformanceChart: React.FC<AthletePerformanceChartProps> = ({ profi
     ftp: true,
     wPerKg: true,
   });
+
+  // Stato per il tema dark mode
+  const [isDarkMode, setIsDarkMode] = useState(false);
+
+  // Rileva il tema dark mode solo nel browser
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const checkDarkMode = () => {
+        setIsDarkMode(document.documentElement.classList.contains('dark'));
+      };
+      
+      // Controlla inizialmente
+      checkDarkMode();
+      
+      // Osserva i cambiamenti del tema
+      const observer = new MutationObserver(checkDarkMode);
+      observer.observe(document.documentElement, {
+        attributes: true,
+        attributeFilter: ['class']
+      });
+      
+      return () => observer.disconnect();
+    }
+  }, []);
 
   if (!profileEntries || profileEntries.length === 0) {
     return <p className="text-sm text-slate-500 p-4 text-center">Nessun dato disponibile per il grafico.</p>;
@@ -86,8 +110,7 @@ const AthletePerformanceChart: React.FC<AthletePerformanceChartProps> = ({ profi
     легендаData.push('W/kg');
   }
 
-  // Rileva il tema dark
-  const isDarkMode = document.documentElement.classList.contains('dark');
+  // Usa lo stato invece di accedere direttamente a document
   const textColor = isDarkMode ? '#e2e8f0' : '#374151';
   const backgroundColor = isDarkMode ? 'transparent' : 'transparent';
 

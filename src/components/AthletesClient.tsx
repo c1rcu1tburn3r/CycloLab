@@ -111,13 +111,13 @@ export default function AthletesClient({ userId, initialAthletes = [] }: Athlete
               {/* Titolo */}
               <div>
                 <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-                  I Tuoi Atleti
+                  Atleti
                 </h1>
                 <p className="text-gray-600 dark:text-gray-300 flex items-center gap-2">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h4a1 1 0 011 1v5m-6 0V9a1 1 0 011-1h4a1 1 0 011 1v11" />
                   </svg>
-                  Dashboard Professionale
+                  Schede Atleti
                   {isStale && (
                     <span className="text-xs bg-orange-100 dark:bg-orange-900 text-orange-600 dark:text-orange-400 px-2 py-1 rounded-full">
                       Cache
@@ -129,14 +129,6 @@ export default function AthletesClient({ userId, initialAthletes = [] }: Athlete
             
             {/* Actions */}
             <div className="flex items-center gap-4">
-              <div className="text-right">
-                <p className="text-sm text-gray-500 dark:text-gray-400">Atleti Totali</p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                  {athletes.length}
-                  {isLoading && <span className="text-sm text-blue-500 ml-1">...</span>}
-                </p>
-              </div>
-              
               <Link href="/athletes/add">
                 <Button className="bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white font-semibold px-6 py-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105">
                   <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -159,36 +151,22 @@ export default function AthletesClient({ userId, initialAthletes = [] }: Athlete
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
             </svg>
           </div>
-          <p className="text-3xl font-bold text-gray-900 dark:text-white">{athletes.length}</p>
+          <p className="text-3xl font-bold text-gray-900 dark:text-white">
+            {athletes.length}
+          </p>
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">sotto la tua guida</p>
         </div>
 
         <div className="stats-card group">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400">Under 25</h3>
+            <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400">Profilo Completo</h3>
             <svg className="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
-            </svg>
-          </div>
-          <p className="text-3xl font-bold text-gray-900 dark:text-white">
-            {athletes.filter(athlete => {
-              const age = calculateAge(athlete.birth_date);
-              return age !== 'N/D' && parseInt(age) < 25;
-            }).length}
-          </p>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">giovani talenti</p>
-        </div>
-
-        <div className="stats-card group">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400">Profili Completi</h3>
-            <svg className="w-5 h-5 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
             </svg>
           </div>
           <p className="text-3xl font-bold text-gray-900 dark:text-white">
             {athletes.filter(athlete => 
-              athlete.name && athlete.surname && athlete.birth_date
+              athlete.name && athlete.surname && athlete.birth_date && athlete.email && athlete.height_cm
             ).length}
           </p>
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">dati completi</p>
@@ -196,15 +174,30 @@ export default function AthletesClient({ userId, initialAthletes = [] }: Athlete
 
         <div className="stats-card group">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400">Domini Email</h3>
-            <svg className="w-5 h-5 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207" />
+            <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400">Profilo Incompleto</h3>
+            <svg className="w-5 h-5 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           </div>
           <p className="text-3xl font-bold text-gray-900 dark:text-white">
-            {new Set(athletes.filter(athlete => athlete.email).map(athlete => athlete.email!.split('@')[1])).size}
+            {athletes.length - athletes.filter(athlete => 
+              athlete.name && athlete.surname && athlete.birth_date && athlete.email && athlete.height_cm
+            ).length}
           </p>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">domini diversi</p>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">da completare</p>
+        </div>
+
+        <div className="stats-card group">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400">Squadre</h3>
+            <svg className="w-5 h-5 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+            </svg>
+          </div>
+          <p className="text-3xl font-bold text-gray-900 dark:text-white">
+            {athletes.length > 0 ? 1 : 0}
+          </p>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">gruppi attivi</p>
         </div>
       </div>
 

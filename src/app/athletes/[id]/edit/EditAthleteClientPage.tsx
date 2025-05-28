@@ -35,6 +35,9 @@ import OverallPersonalBestsTable from '@/components/OverallPersonalBestsTable';
 
 import AthleteActivitiesTab from '@/components/AthleteActivitiesTab';
 
+// Importa il componente per eliminare l'atleta
+import DeleteAthleteButton from '@/components/DeleteAthleteButton';
+
 interface EditAthleteClientPageProps {
   initialAthlete: Athlete;
   initialProfileEntries: AthleteProfileEntry[];
@@ -391,6 +394,48 @@ export default function EditAthleteClientPage({
                 )}
                 
                 <AthleteForm initialData={athleteData} key={JSON.stringify(athleteData)} />
+
+                {/* Card Eliminazione Atleta */}
+                <div className="mt-8 group relative overflow-hidden rounded-xl border border-gray-200/50 dark:border-gray-700/50 bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm hover:border-red-200 dark:hover:border-red-800/50 transition-all duration-300">
+                  <div className="absolute inset-0 bg-gradient-to-r from-red-50/0 via-red-50/20 to-red-50/0 dark:from-red-900/0 dark:via-red-900/10 dark:to-red-900/0 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                  
+                  <div className="relative p-6">
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-start gap-4">
+                        <div className="w-12 h-12 rounded-xl bg-red-50 dark:bg-red-900/20 flex items-center justify-center group-hover:bg-red-100 dark:group-hover:bg-red-900/30 transition-colors duration-300">
+                          <svg className="w-6 h-6 text-red-500 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        </div>
+                        
+                        <div className="flex-1">
+                          <h4 className="text-base font-semibold text-gray-900 dark:text-white mb-2">
+                            Elimina Atleta
+                          </h4>
+                          <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
+                            Rimuovi definitivamente questo atleta dal sistema. Tutti i dati associati, 
+                            incluse attività e statistiche, verranno eliminati permanentemente.
+                          </p>
+                        </div>
+                      </div>
+                      
+                      <div className="flex-shrink-0 flex flex-col items-end gap-3">
+                        <DeleteAthleteButton 
+                          athlete={athleteData} 
+                          onDeleteSuccess={() => {
+                            router.push('/athletes');
+                          }}
+                        />
+                        <div className="flex items-center gap-2 text-xs text-amber-600 dark:text-amber-400">
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                          </svg>
+                          <span>Azione irreversibile</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
             </TabsContent>
 

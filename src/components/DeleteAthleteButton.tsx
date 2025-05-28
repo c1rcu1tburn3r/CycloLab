@@ -1,7 +1,8 @@
 // src/components/DeleteAthleteButton.tsx
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 // Importa createBrowserClient da @supabase/ssr
 import { createBrowserClient } from '@supabase/ssr';
@@ -23,6 +24,34 @@ export default function DeleteAthleteButton({ athlete, onDeleteSuccess }: Delete
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+
+  // Gestisce il body scroll quando il dialog è aperto
+  useEffect(() => {
+    if (showConfirmDialog) {
+      document.body.style.overflow = 'hidden';
+      
+      // Gestisce il tasto Escape
+      const handleEscape = (e: KeyboardEvent) => {
+        if (e.key === 'Escape' && !isLoading) {
+          setShowConfirmDialog(false);
+        }
+      };
+      
+      document.addEventListener('keydown', handleEscape);
+      
+      return () => {
+        document.removeEventListener('keydown', handleEscape);
+        document.body.style.overflow = 'unset';
+      };
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+
+    // Cleanup quando il componente viene smontato
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [showConfirmDialog, isLoading]);
 
   const handleDelete = async () => {
     setIsLoading(true);
@@ -93,19 +122,20 @@ export default function DeleteAthleteButton({ athlete, onDeleteSuccess }: Delete
     <>
       <Button
         onClick={() => setShowConfirmDialog(true)}
-        variant="destructive"
+        variant="outline"
         size="sm"
-        className="group relative overflow-hidden"
+        className="group relative overflow-hidden border-red-200 dark:border-red-800/50 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 hover:border-red-300 dark:hover:border-red-700 transition-all duration-200"
         title={`Elimina ${athlete.name} ${athlete.surname}`}
       >
-        <svg className="w-4 h-4 group-hover:scale-110 transition-transform duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+        <svg className="w-4 h-4 mr-2 group-hover:scale-110 transition-transform duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
         </svg>
+        <span className="text-sm font-medium">Elimina</span>
       </Button>
 
-      {/* Modern Confirmation Dialog */}
-      {showConfirmDialog && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in">
+      {/* Modern Confirmation Dialog - Renderizzato nel body usando Portal */}
+      {showConfirmDialog && typeof window !== 'undefined' && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 animate-fade-in">
           {/* Backdrop */}
           <div 
             className="absolute inset-0 bg-black/50 backdrop-blur-sm"
@@ -113,7 +143,7 @@ export default function DeleteAthleteButton({ athlete, onDeleteSuccess }: Delete
           ></div>
           
           {/* Dialog */}
-          <div className="relative bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl rounded-3xl p-8 max-w-md w-full shadow-2xl border border-gray-200/20 dark:border-gray-700/20 animate-scale-in">
+          <div className="relative z-[10000] bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl rounded-3xl p-8 max-w-md w-full shadow-2xl border border-gray-200/20 dark:border-gray-700/20 animate-scale-in">
             {/* Icon */}
             <div className="w-16 h-16 mx-auto mb-6 bg-gradient-to-br from-red-500/20 to-red-600/20 rounded-full flex items-center justify-center">
               <svg className="w-8 h-8 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -173,7 +203,8 @@ export default function DeleteAthleteButton({ athlete, onDeleteSuccess }: Delete
               </Button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );
