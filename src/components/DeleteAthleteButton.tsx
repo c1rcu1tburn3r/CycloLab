@@ -59,8 +59,8 @@ export default function DeleteAthleteButton({ athlete, onDeleteSuccess }: Delete
 
     try {
       // Verifica che l'utente sia ancora autenticato prima di procedere con operazioni sensibili
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session || session.user.id !== athlete.user_id) {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user || user.id !== athlete.user_id) {
         // Questo controllo è una sicurezza aggiuntiva lato client,
         // la vera sicurezza è gestita dalle Row Level Security Policies su Supabase.
         throw new Error("Non autorizzato o sessione scaduta.");

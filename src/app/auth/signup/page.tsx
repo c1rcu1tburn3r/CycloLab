@@ -1,12 +1,49 @@
 // src/app/auth/signup/page.tsx
 'use client';
 
-import { useState, FormEvent } from 'react';
+import { useState, FormEvent, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 // Importa createBrowserClient da @supabase/ssr
 import { createBrowserClient } from '@supabase/ssr';
 import { Button } from '@/components/ui/button';
+import { Eye, EyeOff, Check, X, AlertCircle, Shield, Clock } from 'lucide-react';
+
+// Tipi per la validazione
+interface ValidationResult {
+  isValid: boolean;
+  message: string;
+}
+
+interface FormErrors {
+  email?: string;
+  password?: string;
+  confirmPassword?: string;
+}
+
+// Rate limiting configuration
+const RATE_LIMIT = {
+  MAX_ATTEMPTS: 3,
+  WINDOW_MS: 15 * 60 * 1000, // 15 minuti
+  STORAGE_KEY: 'signup_attempts',
+};
+
+// Lista domini email temporanei (sample - in produzione usare API)
+const TEMP_EMAIL_DOMAINS = [
+  '10minutemail.com', 'guerrillamail.com', 'temp-mail.org', 
+  'throwaway.email', 'mailinator.com', 'tempmail.plus',
+  'getnada.com', 'yopmail.com', 'mailtrap.io', 'mohmal.com',
+  'sharklasers.com', 'grr.la', 'dispostable.com', 'tempail.com'
+];
+
+// Criteri di validazione password
+const PASSWORD_CRITERIA = {
+  minLength: { test: (pwd: string) => pwd.length >= 8, label: 'Almeno 8 caratteri' },
+  hasUppercase: { test: (pwd: string) => /[A-Z]/.test(pwd), label: 'Una lettera maiuscola' },
+  hasLowercase: { test: (pwd: string) => /[a-z]/.test(pwd), label: 'Una lettera minuscola' },
+  hasNumber: { test: (pwd: string) => /\d/.test(pwd), label: 'Un numero' },
+  hasSpecial: { test: (pwd: string) => /[!@#$%^&*(),.?":{}|<>]/.test(pwd), label: 'Un carattere speciale' },
+};
 
 export default function SignupPage() {
   const router = useRouter();
@@ -15,46 +52,361 @@ export default function SignupPage() {
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   );
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+
+  // Stati del form
+  const [formData, setFormData] = useState({
+    email: '',
+    password: '',
+    confirmPassword: '',
+  });
+  
+  const [formErrors, setFormErrors] = useState<FormErrors>({});
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [touched, setTouched] = useState({
+    email: false,
+    password: false,
+    confirmPassword: false,
+  });
+  const [isRateLimited, setIsRateLimited] = useState(false);
+  const [timeUntilReset, setTimeUntilReset] = useState(0);
+
+  // Rate limiting check
+  const checkRateLimit = (): { allowed: boolean; timeLeft: number } => {
+    const stored = localStorage.getItem(RATE_LIMIT.STORAGE_KEY);
+    if (!stored) return { allowed: true, timeLeft: 0 };
+
+    const { attempts, firstAttempt } = JSON.parse(stored);
+    const now = Date.now();
+    const windowStart = now - RATE_LIMIT.WINDOW_MS;
+
+    // Se la finestra è scaduta, resetta
+    if (firstAttempt < windowStart) {
+      localStorage.removeItem(RATE_LIMIT.STORAGE_KEY);
+      return { allowed: true, timeLeft: 0 };
+    }
+
+    // Se ha superato il limite
+    if (attempts >= RATE_LIMIT.MAX_ATTEMPTS) {
+      const timeLeft = Math.ceil((firstAttempt + RATE_LIMIT.WINDOW_MS - now) / 1000);
+      return { allowed: false, timeLeft };
+    }
+
+    return { allowed: true, timeLeft: 0 };
+  };
+
+  // Aggiorna rate limit
+  const updateRateLimit = () => {
+    const stored = localStorage.getItem(RATE_LIMIT.STORAGE_KEY);
+    const now = Date.now();
+
+    if (!stored) {
+      localStorage.setItem(RATE_LIMIT.STORAGE_KEY, JSON.stringify({
+        attempts: 1,
+        firstAttempt: now
+      }));
+    } else {
+      const { attempts, firstAttempt } = JSON.parse(stored);
+      localStorage.setItem(RATE_LIMIT.STORAGE_KEY, JSON.stringify({
+        attempts: attempts + 1,
+        firstAttempt
+      }));
+    }
+  };
+
+  // Timer per rate limit
+  useEffect(() => {
+    if (isRateLimited && timeUntilReset > 0) {
+      const timer = setInterval(() => {
+        setTimeUntilReset(prev => {
+          if (prev <= 1) {
+            setIsRateLimited(false);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+
+      return () => clearInterval(timer);
+    }
+  }, [isRateLimited, timeUntilReset]);
+
+  // Validazione domini temporanei
+  const isTemporaryEmail = (email: string): boolean => {
+    const domain = email.split('@')[1]?.toLowerCase();
+    return TEMP_EMAIL_DOMAINS.includes(domain);
+  };
+
+  // Validazione MX record (ripristinata - più permissiva)
+  const validateMXRecord = async (domain: string): Promise<boolean> => {
+    try {
+      // Controlli base per formato dominio
+      const domainLower = domain.toLowerCase();
+      
+      // Deve avere almeno un punto e non essere vuoto
+      if (!domainLower || !domainLower.includes('.')) {
+        return false;
+      }
+      
+      // Deve avere almeno 2 parti (nome.tld)
+      const parts = domainLower.split('.');
+      if (parts.length < 2 || parts.some(part => part.length === 0)) {
+        return false;
+      }
+      
+      // Blocca solo pattern chiaramente fake/test (molto specifici)
+      const obviousFakePatterns = [
+        /test\.test/i, /fake\.fake/i, /spam\.spam/i, /temp\.temp/i,
+        /esempio\.esempio/i, /prova\.prova/i, /falso\.falso/i
+      ];
+      
+      if (obviousFakePatterns.some(pattern => pattern.test(domain))) {
+        return false;
+      }
+      
+      // Accetta tutti gli altri domini - la validazione sarà tramite email di conferma
+      return true;
+    } catch {
+      return true; // Più permissivo in caso di errore
+    }
+  };
+
+  // Validazione email avanzata
+  const validateEmail = async (email: string): Promise<ValidationResult> => {
+    if (!email) {
+      return { isValid: false, message: 'Email è obbligatoria' };
+    }
+    
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    if (!emailRegex.test(email)) {
+      return { isValid: false, message: 'Formato email non valido' };
+    }
+
+    const domain = email.split('@')[1];
+    if (!domain) {
+      return { isValid: false, message: 'Dominio email mancante' };
+    }
+
+    // Check email temporanee
+    if (isTemporaryEmail(email)) {
+      return { 
+        isValid: false, 
+        message: 'Email temporanee non sono consentite. Usa un indirizzo permanente.' 
+      };
+    }
+
+    // Validazione MX record
+    const hasMX = await validateMXRecord(domain);
+    if (!hasMX) {
+      return { 
+        isValid: false, 
+        message: `Dominio "${domain}" non supportato. Usa Gmail, Outlook, Yahoo o altri provider principali.` 
+      };
+    }
+    
+    return { isValid: true, message: '' };
+  };
+
+  // Validazione password
+  const validatePassword = (password: string): ValidationResult => {
+    if (!password) {
+      return { isValid: false, message: 'Password è obbligatoria' };
+    }
+
+    const failedCriteria = Object.entries(PASSWORD_CRITERIA)
+      .filter(([_, criterion]) => !criterion.test(password))
+      .map(([_, criterion]) => criterion.label);
+
+    if (failedCriteria.length > 0) {
+      return { isValid: false, message: `Requisiti mancanti: ${failedCriteria.join(', ')}` };
+    }
+
+    // Check per password comuni
+    const commonPasswords = ['password', '12345678', 'qwertyui', 'password123', 'admin123', 'welcome123'];
+    if (commonPasswords.some(common => password.toLowerCase().includes(common))) {
+      return { isValid: false, message: 'Password troppo comune, scegline una più originale' };
+    }
+
+    // Check per pattern sequenziali
+    if (/(.)\1{2,}/.test(password)) {
+      return { isValid: false, message: 'Evita caratteri ripetuti consecutivamente' };
+    }
+
+    return { isValid: true, message: 'Password sicura!' };
+  };
+
+  // Validazione conferma password
+  const validateConfirmPassword = (confirmPassword: string, password: string): ValidationResult => {
+    if (!confirmPassword) {
+      return { isValid: false, message: 'Conferma password è obbligatoria' };
+    }
+    
+    if (confirmPassword !== password) {
+      return { isValid: false, message: 'Le password non corrispondono' };
+    }
+    
+    return { isValid: true, message: 'Password corrispondono!' };
+  };
+
+  // Calcolo forza password
+  const getPasswordStrength = (password: string): { score: number; label: string; color: string } => {
+    const criteriaCount = Object.values(PASSWORD_CRITERIA).filter(criterion => criterion.test(password)).length;
+    
+    // Bonus per lunghezza extra
+    const lengthBonus = password.length > 12 ? 1 : 0;
+    // Malus per pattern comuni
+    const commonPatterns = /(.)\1{2,}|123|abc|qwe/i.test(password) ? -1 : 0;
+    
+    const totalScore = criteriaCount + lengthBonus + commonPatterns;
+    
+    if (totalScore <= 1) return { score: 0, label: 'Molto debole', color: 'bg-red-500' };
+    if (totalScore <= 2) return { score: 25, label: 'Debole', color: 'bg-red-400' };
+    if (totalScore <= 3) return { score: 50, label: 'Media', color: 'bg-yellow-400' };
+    if (totalScore <= 4) return { score: 75, label: 'Forte', color: 'bg-blue-500' };
+    return { score: 100, label: 'Molto forte', color: 'bg-green-500' };
+  };
+
+  // Validazione in tempo reale
+  useEffect(() => {
+    const validateForm = async () => {
+      const newErrors: FormErrors = {};
+
+      if (touched.email) {
+        const emailValidation = await validateEmail(formData.email);
+        if (!emailValidation.isValid) {
+          newErrors.email = emailValidation.message;
+        }
+      }
+
+      if (touched.password) {
+        const passwordValidation = validatePassword(formData.password);
+        if (!passwordValidation.isValid) {
+          newErrors.password = passwordValidation.message;
+        }
+      }
+
+      if (touched.confirmPassword) {
+        const confirmPasswordValidation = validateConfirmPassword(formData.confirmPassword, formData.password);
+        if (!confirmPasswordValidation.isValid) {
+          newErrors.confirmPassword = confirmPasswordValidation.message;
+        }
+      }
+
+      setFormErrors(newErrors);
+    };
+
+    validateForm();
+  }, [formData, touched]);
+
+  const handleInputChange = (field: keyof typeof formData, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+    setError(null); // Reset errore generale
+  };
+
+  const handleBlur = (field: keyof typeof touched) => {
+    setTouched(prev => ({ ...prev, [field]: true }));
+  };
 
   const handleSignup = async (event: FormEvent) => {
     event.preventDefault();
     setIsLoading(true);
     setError(null);
 
-    if (password !== confirmPassword) {
-      setError('Le password non corrispondono');
+    // Check rate limiting
+    const rateLimitCheck = checkRateLimit();
+    if (!rateLimitCheck.allowed) {
+      setIsRateLimited(true);
+      setTimeUntilReset(rateLimitCheck.timeLeft);
+      setError(`Troppi tentativi di registrazione. Riprova tra ${Math.ceil(rateLimitCheck.timeLeft / 60)} minuti.`);
       setIsLoading(false);
       return;
     }
 
-    if (password.length < 6) {
-      setError('La password deve essere di almeno 6 caratteri');
+    // Segna tutti i campi come touched per mostrare errori
+    setTouched({ email: true, password: true, confirmPassword: true });
+
+    // Validazione finale
+    const emailValidation = await validateEmail(formData.email);
+    const passwordValidation = validatePassword(formData.password);
+    const confirmPasswordValidation = validateConfirmPassword(formData.confirmPassword, formData.password);
+
+    if (!emailValidation.isValid || !passwordValidation.isValid || !confirmPasswordValidation.isValid) {
+      setError('Correggi gli errori nel form prima di continuare');
       setIsLoading(false);
+      updateRateLimit(); // Conta come tentativo fallito
       return;
     }
 
-    const { data, error: signUpError } = await supabase.auth.signUp({
-      email,
-      password,
-    });
+    try {
+      const { data, error: signUpError } = await supabase.auth.signUp({
+        email: formData.email.toLowerCase().trim(),
+        password: formData.password,
+        options: {
+          data: {
+            registration_timestamp: new Date().toISOString(),
+            user_agent: navigator.userAgent,
+            registration_ip: 'hidden', // In produzione ottenere IP dal server
+          }
+        }
+      });
 
-    setIsLoading(false);
-
-    if (signUpError) {
-      setError(signUpError.message);
-    } else if (data.user && !data.user.email_confirmed_at) {
-      setIsSuccess(true);
-    } else {
-      router.push('/athletes');
-      router.refresh();
+      if (signUpError) {
+        updateRateLimit(); // Conta come tentativo fallito
+        
+        // Gestisci errori specifici di Supabase
+        if (signUpError.message.includes('User already registered') || 
+            signUpError.message.includes('already been registered')) {
+          setError('Questa email è già registrata. Prova a fare login o usa un\'altra email.');
+        } else if (signUpError.message.includes('Invalid email')) {
+          setError('Formato email non valido');
+        } else if (signUpError.message.includes('Password')) {
+          setError('Password non valida secondo i criteri di sicurezza');
+        } else if (signUpError.message.includes('rate limit') || 
+                   signUpError.message.includes('too many')) {
+          setError('Troppi tentativi di registrazione. Attendi prima di riprovare.');
+        } else if (signUpError.message.includes('network')) {
+          setError('Errore di connessione. Verifica la tua connessione internet.');
+        } else {
+          setError(`Errore registrazione: ${signUpError.message}`);
+        }
+      } else if (data.user && !data.user.email_confirmed_at) {
+        // Reset rate limit in caso di successo
+        localStorage.removeItem(RATE_LIMIT.STORAGE_KEY);
+        setIsSuccess(true);
+      } else if (data.user && data.user.email_confirmed_at) {
+        // Reset rate limit e redirect se email già confermata
+        localStorage.removeItem(RATE_LIMIT.STORAGE_KEY);
+        router.push('/athletes');
+        router.refresh();
+      }
+    } catch (error: any) {
+      updateRateLimit(); // Conta come tentativo fallito
+      
+      if (error.name === 'NetworkError' || error.message.includes('fetch')) {
+        setError('Errore di connessione. Verifica la tua connessione internet e riprova.');
+      } else {
+        setError('Errore imprevisto. Se il problema persiste, contatta il supporto.');
+      }
+      console.error('Signup error:', error);
+    } finally {
+      setIsLoading(false);
     }
   };
+
+  // Componente Criterio Password
+  const PasswordCriterion = ({ test, label }: { test: boolean; label: string }) => (
+    <div className={`flex items-center space-x-2 text-xs transition-colors ${test ? 'text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-gray-400'}`}>
+      {test ? <Check className="w-3 h-3" /> : <X className="w-3 h-3" />}
+      <span>{label}</span>
+    </div>
+  );
+
+  const passwordStrength = getPasswordStrength(formData.password);
+  const isFormValid = Object.keys(formErrors).length === 0 && 
+                     formData.email && formData.password && formData.confirmPassword;
 
   if (isSuccess) {
     return (
@@ -80,7 +432,7 @@ export default function SignupPage() {
                 <div>
                   <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Registrazione Completata!</h2>
                   <p className="text-gray-600 dark:text-gray-300">
-                    Abbiamo inviato un email di conferma a <strong>{email}</strong>. 
+                    Abbiamo inviato un email di conferma a <strong>{formData.email}</strong>. 
                     Clicca sul link nell&apos;email per attivare il tuo account.
                   </p>
                 </div>
@@ -133,77 +485,235 @@ export default function SignupPage() {
               </div>
 
               {error && (
-                <div className="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 p-4 rounded-xl text-sm animate-slide-up">
+                <div className={`border rounded-xl text-sm animate-slide-up ${
+                  isRateLimited 
+                    ? 'bg-yellow-50 dark:bg-yellow-900/30 border-yellow-200 dark:border-yellow-800 text-yellow-700 dark:text-yellow-400'
+                    : 'bg-red-50 dark:bg-red-900/30 border-red-200 dark:border-red-800 text-red-700 dark:text-red-400'
+                } p-4`}>
                   <div className="flex items-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    <span>{error}</span>
+                    {isRateLimited ? (
+                      <Clock className="h-5 w-5 mr-2 flex-shrink-0" />
+                    ) : (
+                      <AlertCircle className="h-5 w-5 mr-2 flex-shrink-0" />
+                    )}
+                    <div>
+                      <span>{error}</span>
+                      {isRateLimited && timeUntilReset > 0 && (
+                        <div className="mt-2 text-xs opacity-75">
+                          Tempo rimasto: {Math.floor(timeUntilReset / 60)}:{(timeUntilReset % 60).toString().padStart(2, '0')}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               )}
+
+              {/* Security Badge */}
+              <div className="bg-gradient-to-r from-green-50 to-blue-50 dark:from-green-900/20 dark:to-blue-900/20 border border-green-200 dark:border-green-800 rounded-xl p-4">
+                <div className="flex items-center space-x-3">
+                  <div className="w-8 h-8 bg-gradient-to-r from-green-500 to-blue-500 rounded-lg flex items-center justify-center">
+                    <Shield className="w-4 h-4 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-medium text-gray-900 dark:text-white">Sicurezza Avanzata</h3>
+                    <p className="text-xs text-gray-600 dark:text-gray-400">
+                      Validazione email, protezione anti-spam, password sicure
+                    </p>
+                  </div>
+                </div>
+              </div>
               
               <form onSubmit={handleSignup} className="space-y-6">
                 <div className="space-y-4">
+                  {/* Campo Email */}
                   <div>
                     <label htmlFor="email" className="block text-sm font-medium text-gray-900 dark:text-white mb-2">
-                      Email
+                      Email <span className="text-red-500">*</span>
                     </label>
-                    <input
-                      id="email"
-                      type="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      required
-                      className="w-full px-4 py-3 bg-white/50 dark:bg-gray-800/50 border border-gray-200/50 dark:border-gray-700/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-transparent transition-all placeholder:text-gray-400 dark:placeholder:text-gray-500"
-                      placeholder="tuamail@esempio.com"
-                    />
+                    <div className="relative">
+                      <input
+                        id="email"
+                        type="email"
+                        value={formData.email}
+                        onChange={(e) => handleInputChange('email', e.target.value)}
+                        onBlur={() => handleBlur('email')}
+                        required
+                        className={`w-full px-4 py-3 bg-white/50 dark:bg-gray-800/50 border rounded-xl focus:outline-none focus:ring-2 transition-all placeholder:text-gray-400 dark:placeholder:text-gray-500 ${
+                          formErrors.email 
+                            ? 'border-red-300 focus:ring-red-500/50 focus:border-red-500' 
+                            : touched.email && !formErrors.email
+                            ? 'border-green-300 focus:ring-green-500/50 focus:border-green-500'
+                            : 'border-gray-200/50 dark:border-gray-700/50 focus:ring-emerald-500/50 focus:border-transparent'
+                        }`}
+                        placeholder="tuamail@esempio.com"
+                      />
+                      {touched.email && (
+                        <div className="absolute inset-y-0 right-0 flex items-center pr-3">
+                          {formErrors.email ? (
+                            <AlertCircle className="w-5 h-5 text-red-500" />
+                          ) : (
+                            <Check className="w-5 h-5 text-green-500" />
+                          )}
+                        </div>
+                      )}
+                    </div>
+                    {formErrors.email && (
+                      <p className="mt-1 text-sm text-red-600 dark:text-red-400 flex items-center">
+                        <AlertCircle className="w-4 h-4 mr-1 flex-shrink-0" />
+                        {formErrors.email}
+                      </p>
+                    )}
                   </div>
                   
+                  {/* Campo Password */}
                   <div>
                     <label htmlFor="password" className="block text-sm font-medium text-gray-900 dark:text-white mb-2">
-                      Password
+                      Password <span className="text-red-500">*</span>
                     </label>
-                    <input
-                      id="password"
-                      type="password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      required
-                      className="w-full px-4 py-3 bg-white/50 dark:bg-gray-800/50 border border-gray-200/50 dark:border-gray-700/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-transparent transition-all placeholder:text-gray-400 dark:placeholder:text-gray-500"
-                      placeholder="••••••••"
-                    />
+                    <div className="relative">
+                      <input
+                        id="password"
+                        type={showPassword ? 'text' : 'password'}
+                        value={formData.password}
+                        onChange={(e) => handleInputChange('password', e.target.value)}
+                        onBlur={() => handleBlur('password')}
+                        required
+                        className={`w-full px-4 py-3 pr-12 bg-white/50 dark:bg-gray-800/50 border rounded-xl focus:outline-none focus:ring-2 transition-all placeholder:text-gray-400 dark:placeholder:text-gray-500 ${
+                          formErrors.password 
+                            ? 'border-red-300 focus:ring-red-500/50 focus:border-red-500' 
+                            : touched.password && !formErrors.password
+                            ? 'border-green-300 focus:ring-green-500/50 focus:border-green-500'
+                            : 'border-gray-200/50 dark:border-gray-700/50 focus:ring-emerald-500/50 focus:border-transparent'
+                        }`}
+                        placeholder="••••••••"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                      >
+                        {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                      </button>
+                    </div>
+                    
+                    {/* Password Strength Meter */}
+                    {formData.password && (
+                      <div className="mt-2 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-gray-600 dark:text-gray-400">Forza password:</span>
+                          <span className={`text-xs font-medium ${
+                            passwordStrength.score >= 75 ? 'text-green-600 dark:text-green-400' :
+                            passwordStrength.score >= 50 ? 'text-yellow-600 dark:text-yellow-400' :
+                            'text-red-600 dark:text-red-400'
+                          }`}>
+                            {passwordStrength.label}
+                          </span>
+                        </div>
+                        <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                          <div 
+                            className={`h-2 rounded-full transition-all duration-300 ${passwordStrength.color}`}
+                            style={{ width: `${passwordStrength.score}%` }}
+                          />
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* Password Criteria */}
+                    {touched.password && (
+                      <div className="mt-3 p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg space-y-2">
+                        <p className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          Requisiti password:
+                        </p>
+                        <div className="grid grid-cols-1 gap-1">
+                          {Object.entries(PASSWORD_CRITERIA).map(([key, criterion]) => (
+                            <PasswordCriterion
+                              key={key}
+                              test={criterion.test(formData.password)}
+                              label={criterion.label}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    
+                    {formErrors.password && (
+                      <p className="mt-2 text-sm text-red-600 dark:text-red-400 flex items-center">
+                        <AlertCircle className="w-4 h-4 mr-1 flex-shrink-0" />
+                        {formErrors.password}
+                      </p>
+                    )}
                   </div>
                   
+                  {/* Campo Conferma Password */}
                   <div>
                     <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-900 dark:text-white mb-2">
-                      Conferma Password
+                      Conferma Password <span className="text-red-500">*</span>
                     </label>
-                    <input
-                      id="confirmPassword"
-                      type="password"
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                      required
-                      className="w-full px-4 py-3 bg-white/50 dark:bg-gray-800/50 border border-gray-200/50 dark:border-gray-700/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-transparent transition-all placeholder:text-gray-400 dark:placeholder:text-gray-500"
-                      placeholder="••••••••"
-                    />
+                    <div className="relative">
+                      <input
+                        id="confirmPassword"
+                        type={showConfirmPassword ? 'text' : 'password'}
+                        value={formData.confirmPassword}
+                        onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
+                        onBlur={() => handleBlur('confirmPassword')}
+                        required
+                        className={`w-full px-4 py-3 pr-12 bg-white/50 dark:bg-gray-800/50 border rounded-xl focus:outline-none focus:ring-2 transition-all placeholder:text-gray-400 dark:placeholder:text-gray-500 ${
+                          formErrors.confirmPassword 
+                            ? 'border-red-300 focus:ring-red-500/50 focus:border-red-500' 
+                            : touched.confirmPassword && !formErrors.confirmPassword
+                            ? 'border-green-300 focus:ring-green-500/50 focus:border-green-500'
+                            : 'border-gray-200/50 dark:border-gray-700/50 focus:ring-emerald-500/50 focus:border-transparent'
+                        }`}
+                        placeholder="••••••••"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                      >
+                        {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                      </button>
+                    </div>
+                    {formErrors.confirmPassword && (
+                      <p className="mt-1 text-sm text-red-600 dark:text-red-400 flex items-center">
+                        <AlertCircle className="w-4 h-4 mr-1 flex-shrink-0" />
+                        {formErrors.confirmPassword}
+                      </p>
+                    )}
+                    {touched.confirmPassword && !formErrors.confirmPassword && formData.confirmPassword && (
+                      <p className="mt-1 text-sm text-green-600 dark:text-green-400 flex items-center">
+                        <Check className="w-4 h-4 mr-1 flex-shrink-0" />
+                        Le password corrispondono!
+                      </p>
+                    )}
                   </div>
                 </div>
 
                 <Button
                   type="submit"
-                  disabled={isLoading}
-                  className="w-full bg-gradient-to-r from-emerald-500 to-blue-600 hover:from-emerald-600 hover:to-blue-700 text-white font-semibold py-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
+                  disabled={isLoading || !isFormValid || isRateLimited}
+                  className={`w-full font-semibold py-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 ${
+                    isRateLimited
+                      ? 'bg-yellow-400 text-yellow-900 cursor-not-allowed'
+                      : isFormValid && !isLoading
+                      ? 'bg-gradient-to-r from-emerald-500 to-blue-600 hover:from-emerald-600 hover:to-blue-700 text-white' 
+                      : 'bg-gray-300 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed'
+                  }`}
                 >
-                  {isLoading ? (
-                    <div className="flex items-center">
+                  {isRateLimited ? (
+                    <div className="flex items-center justify-center">
+                      <Clock className="w-4 h-4 mr-2" />
+                      Rate limit attivo
+                    </div>
+                  ) : isLoading ? (
+                    <div className="flex items-center justify-center">
                       <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2"></div>
                       Registrazione in corso...
                     </div>
                   ) : (
                     <div className="flex items-center justify-center">
-                      Crea Account
+                      <Shield className="w-4 h-4 mr-2" />
+                      Crea Account Sicuro
                       <svg className="ml-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
                       </svg>

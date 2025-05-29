@@ -41,19 +41,33 @@ export default async function AddAthletePage() {
       <div className="relative container mx-auto px-4 py-8 flex justify-center items-start">
         <Card className="w-full max-w-2xl stats-card mt-8 mb-8">
           <CardHeader>
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-4">
-                <CardTitle className="text-2xl sm:text-3xl font-bold">Aggiungi Nuovo Atleta</CardTitle>
-                <Link href="/athletes" className="text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 hover:underline flex items-center whitespace-nowrap">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4 mr-1">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
+              <div className="flex-1">
+                <CardTitle className="text-2xl sm:text-3xl font-bold mb-2">Registra Nuovo Atleta</CardTitle>
+                <div className="space-y-2">
+                  <CardDescription className="text-base whitespace-nowrap">
+                    Inserisci i dati per creare un nuovo atleta.
+                  </CardDescription>
+                  <div className="flex items-center gap-2 px-3 py-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-700">
+                    <svg className="w-4 h-4 text-blue-600 dark:text-blue-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
-                    Torna alla lista atleti
-                </Link>
+                    <span className="text-sm text-blue-700 dark:text-blue-300">
+                      L'atleta verrà automaticamente associato al tuo account coach
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <Link href="/athletes" className="text-sm text-gray-600 hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-400 hover:underline flex items-center gap-1 whitespace-nowrap">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
+                </svg>
+                Torna alla lista
+              </Link>
             </div>
-            {/* Potremmo aggiungere una CardDescription qui se necessario */}
           </CardHeader>
           <CardContent>
-            <AthleteForm />
+            <AthleteForm mode="registration" />
           </CardContent>
         </Card>
       </div>
