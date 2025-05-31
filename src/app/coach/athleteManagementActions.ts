@@ -107,7 +107,7 @@ export async function searchPotentialAthletes(searchTerm: string): Promise<{
 
     // 2. Cerca atleti che corrispondono al searchTerm e NON sono tra quelli già associati
     //    Cerchiamo per nome o cognome (case-insensitive)
-    //    Nota: il tipo Athlete include user_id, name, surname, ecc. ma NON email (come da verifica precedente)
+    //    Nota: il tipo Athlete include user_id, name, surname, ecc. ma ora anche email e phone_number
     let query = supabase
       .from('athletes')
       .select(`
@@ -120,7 +120,10 @@ export async function searchPotentialAthletes(searchTerm: string): Promise<{
         created_at,
         avatar_url,
         height_cm,
-        weight_kg
+        weight_kg,
+        sex,
+        email,
+        phone_number
       `)
       .or(`name.ilike.%${searchTerm.trim()}%,surname.ilike.%${searchTerm.trim()}%`);
     // TODO: Considerare la ricerca per email se l'email fosse disponibile in `athletes` 

@@ -10,6 +10,7 @@ export type AthleteRow = Database['public']['Tables']['athletes']['Row'];
 export type Athlete = AthleteRow & {
   email?: string | null;
   phone_number?: string | null;
+  current_ftp?: number | null; // Campo calcolato per dashboard analytics
   // Se avatar_url non fosse in AthleteRow ma necessario, andrebbe aggiunto qui.
   // Da AthleteForm.tsx, avatar_url è omesso da AthleteFormData,
   // il che implica che è già in AthleteRow (e quindi in Athlete).
@@ -164,7 +165,11 @@ export interface AthleteProfileEntry {
   effective_date: string; // Data da cui questa voce è valida (YYYY-MM-DD)
   ftp_watts?: number | null; // FTP in watt
   weight_kg?: number | null; // Peso in kg
-  // max_hr_bpm?: number | null; // Se avessimo la FC massima
+  max_hr_bpm?: number | null; // FC massima in bpm
+  vo2max_ml_kg_min?: number | null; // VO2max calcolato scientificamente (ml/kg/min)
+  vo2max_method?: string | null; // Metodo usato per calcolo VO2max
+  vo2max_confidence?: number | null; // Affidabilità calcolo VO2max (0.0-1.0)
+  vo2max_reasoning?: string | null; // Spiegazione dettagliata del calcolo VO2max
   created_at: string; // Timestamp di creazione della voce
   updated_at?: string; // Timestamp di ultima modifica della voce
   // user_id?: string; // ID del coach che ha inserito/modificato questa voce, se volessimo tracciarlo qui

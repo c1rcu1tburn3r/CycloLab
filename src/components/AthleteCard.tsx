@@ -104,8 +104,10 @@ export default function AthleteCard({ athlete, index }: AthleteCardProps) {
           </div>
           
           <div className="bg-orange-50/50 dark:bg-orange-900/30 rounded-xl p-3 text-center">
-            <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Email</div>
-            <div className="text-sm font-bold text-orange-600 dark:text-orange-400 truncate">{athlete.email || 'N/D'}</div>
+            <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">FTP</div>
+            <div className="text-sm font-bold text-orange-600 dark:text-orange-400">
+              {athlete.current_ftp ? `${athlete.current_ftp}W` : 'N/D'}
+            </div>
           </div>
           
           <div className="bg-emerald-50/50 dark:bg-emerald-900/30 rounded-xl p-3 text-center">

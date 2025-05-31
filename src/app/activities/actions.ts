@@ -88,31 +88,45 @@ async function getAthleteFTPOnDate(
   }
 
   try {
+    // 1. PRIMA: Cerca FTP <= data attività (comportamento normale)
     const { data: profileEntry, error } = await supabase
       .from('athlete_profile_entries')
-      .select('ftp_watts')
+      .select('ftp_watts, effective_date')
       .eq('athlete_id', athleteId)
       .lte('effective_date', activityDate) // Data effettiva minore o uguale alla data dell'attività
       .order('effective_date', { ascending: false }) // Prendi la più recente
       .limit(1)
       .single();
 
-    if (error) {
-      if (error.code === 'PGRST116') { // Codice errore per "single() did not return exactly one row"
-        // console.log(`[getAthleteFTPOnDate] Nessun profilo FTP trovato per l'atleta ${athleteId} alla data ${activityDate} o precedente.`);
-        return null;
-      }
-      console.error('[getAthleteFTPOnDate] Errore nel recupero del profilo FTP:', error);
-      return null;
-    }
-
-    if (profileEntry && profileEntry.ftp_watts) {
+    // Se trovato FTP retroattivo, usalo
+    if (!error && profileEntry && profileEntry.ftp_watts) {
+      console.log(`[getAthleteFTPOnDate] FTP retroattivo trovato: ${profileEntry.ftp_watts}W (data: ${profileEntry.effective_date})`);
       return profileEntry.ftp_watts;
     }
-    return null;
+
+    // 2. FALLBACK: Se non trovato, cerca qualsiasi FTP disponibile (anche futuro)
+    console.warn(`[getAthleteFTPOnDate] Nessun FTP retroattivo per atleta ${athleteId} alla data ${activityDate}. Cerco FTP futuro...`);
+    
+    const { data: anyProfileEntry, error: futureError } = await supabase
+      .from('athlete_profile_entries')
+      .select('ftp_watts, effective_date')
+      .eq('athlete_id', athleteId)
+      .order('effective_date', { ascending: true }) // Prendi il primo disponibile
+      .limit(1)
+      .single();
+
+    if (!futureError && anyProfileEntry && anyProfileEntry.ftp_watts) {
+      console.warn(`[getAthleteFTPOnDate] ⚠️  USANDO FTP FUTURO: ${anyProfileEntry.ftp_watts}W (data: ${anyProfileEntry.effective_date}) per attività del ${activityDate}`);
+      return anyProfileEntry.ftp_watts;
+    }
+
+    // 3. ULTIMO FALLBACK: Nessun FTP disponibile
+    console.warn(`[getAthleteFTPOnDate] ❌ Nessun FTP disponibile per atleta ${athleteId}. Usando fallback intelligente.`);
+    return 200; // FTP default per amatori
+
   } catch (e: any) {
     console.error('[getAthleteFTPOnDate] Eccezione nel recupero del profilo FTP:', e.message);
-    return null;
+    return 200; // FTP default per amatori
   }
 }
 
@@ -153,7 +167,13 @@ export async function processAndCreateActivity(
   try {
     // Recupera l'FTP dell'atleta alla data dell'attività
     const athleteFTP = await getAthleteFTPOnDate(supabase, formData.athlete_id, formData.activity_date);
-    // console.log(`[Server Action] FTP recuperato per atleta ${formData.athlete_id} in data ${formData.activity_date}: ${athleteFTP} W`);
+    console.log(`[Server Action] FTP recuperato per atleta ${formData.athlete_id} in data ${formData.activity_date}: ${athleteFTP} W`);
+
+    // Verifica se stiamo usando FTP default o futuro
+    let ftpWarningMessage = '';
+    if (athleteFTP === 200) {
+      ftpWarningMessage = '⚠️ Usato FTP default (200W) - considera l\'aggiunta di dati FTP reali per questo atleta.';
+    }
 
     // --- INIZIO PARSING FIT REALE ---
     // console.log(`[Server Action] Inizio parsing reale per: ${fitFilePath}`);
@@ -751,7 +771,18 @@ export async function processAndCreateActivity(
     revalidatePath('/activities');
     revalidatePath(`/activities/${newActivity.id}`);
 
-    return { success: true, activityId: newActivity.id, message: 'Attività creata con successo!' };
+    // Componi messaggio finale
+    let finalMessage = 'Attività creata con successo!';
+    if (ftpWarningMessage) {
+      finalMessage += ` ${ftpWarningMessage}`;
+    }
+
+    return { 
+      success: true, 
+      activityId: newActivity.id, 
+      message: finalMessage,
+      warning: ftpWarningMessage || undefined
+    };
 
   } catch (error: any) {
     console.error("Errore completo nell'azione processAndCreateActivity:", error);

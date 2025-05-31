@@ -9,6 +9,8 @@ interface ProfileEntryData {
   effectiveDate: string;
   ftp?: number | string | null; // Può arrivare come stringa dal form
   weight?: number | string | null; // Può arrivare come stringa dal form
+  hrMax?: number | string | null; // FC massima in bpm
+  hrLthr?: number | string | null; // LTHR in bpm
   // Aggiungere altri campi se necessario
 }
 
@@ -40,9 +42,13 @@ export async function saveAthleteProfileEntry(
 
   const ftpString = typeof formData.ftp === 'number' ? String(formData.ftp) : formData.ftp;
   const weightString = typeof formData.weight === 'number' ? String(formData.weight) : formData.weight;
+  const hrMaxString = typeof formData.hrMax === 'number' ? String(formData.hrMax) : formData.hrMax;
+  const hrLthrString = typeof formData.hrLthr === 'number' ? String(formData.hrLthr) : formData.hrLthr;
 
   const ftpValue = (ftpString === undefined || ftpString === null || ftpString.trim() === '') ? null : parseFloat(ftpString.replace(',', '.'));
   const weightValue = (weightString === undefined || weightString === null || weightString.trim() === '') ? null : parseFloat(weightString.replace(',', '.'));
+  const hrMaxValue = (hrMaxString === undefined || hrMaxString === null || hrMaxString.trim() === '') ? null : parseFloat(hrMaxString.replace(',', '.'));
+  const hrLthrValue = (hrLthrString === undefined || hrLthrString === null || hrLthrString.trim() === '') ? null : parseFloat(hrLthrString.replace(',', '.'));
 
   if (ftpValue !== null && isNaN(ftpValue)) {
     return { error: 'FTP non è un numero valido.', success: false };
@@ -50,23 +56,32 @@ export async function saveAthleteProfileEntry(
   if (weightValue !== null && isNaN(weightValue)) {
     return { error: 'Peso non è un numero valido.', success: false };
   }
+  if (hrMaxValue !== null && isNaN(hrMaxValue)) {
+    return { error: 'FC Max non è un numero valido.', success: false };
+  }
+  if (hrLthrValue !== null && isNaN(hrLthrValue)) {
+    return { error: 'LTHR non è un numero valido.', success: false };
+  }
   if (ftpValue !== null && ftpValue < 0) {
     return { error: 'FTP non può essere negativo.', success: false };
   }
   if (weightValue !== null && weightValue < 0) {
     return { error: 'Il peso non può essere negativo.', success: false };
   }
-
+  if (hrMaxValue !== null && hrMaxValue < 0) {
+    return { error: 'FC Max non può essere negativa.', success: false };
+  }
+  if (hrLthrValue !== null && hrLthrValue < 0) {
+    return { error: 'LTHR non può essere negativa.', success: false };
+  }
 
   const entryToUpsert = {
     athlete_id: athleteId,
     effective_date: formData.effectiveDate,
     ftp_watts: ftpValue,
     weight_kg: weightValue,
-    // Se athlete_id e effective_date sono le colonne per il conflict,
-    // e l'ID della riga (se esiste) non è parte del conflict target, 
-    // non è necessario passarlo qui per l'upsert.
-    // Supabase troverà la riga basandosi su onConflict.
+    max_hr_bpm: hrMaxValue,
+    // Rimuovo hr_lthr_bpm perché non esiste nel database
   };
 
   const { data, error } = await supabase
@@ -87,7 +102,7 @@ export async function saveAthleteProfileEntry(
   // Voce inserita/aggiornata con successo, ora proviamo ad aggiornare la tabella athletes
   // con l'ultimo peso se questa è la voce più recente.
   if (data && data.effective_date) { // data è la riga inserita
-    const insertedEntry = data as { effective_date: string, weight_kg: number | null, ftp_watts: number | null };
+    const insertedEntry = data as { effective_date: string, weight_kg: number | null, ftp_watts: number | null, max_hr_bpm: number | null };
 
     const { data: latestProfileEntries, error: latestEntryError } = await supabase
       .from('athlete_profile_entries')
@@ -101,10 +116,13 @@ export async function saveAthleteProfileEntry(
       // Non blocchiamo, ma logghiamo un warning.
     } else if (latestProfileEntries && latestProfileEntries.length > 0 && latestProfileEntries[0].effective_date === insertedEntry.effective_date) {
       // Se la data inserita è la più recente (o una delle più recenti)
-      const athleteUpdateData: { weight_kg?: number | null } = {};
+      const athleteUpdateData: { weight_kg?: number | null, max_hr_bpm?: number | null } = {};
       
       if (insertedEntry.weight_kg !== null && insertedEntry.weight_kg !== undefined) {
         athleteUpdateData.weight_kg = insertedEntry.weight_kg;
+      }
+      if (insertedEntry.max_hr_bpm !== null && insertedEntry.max_hr_bpm !== undefined) {
+        athleteUpdateData.max_hr_bpm = insertedEntry.max_hr_bpm;
       }
 
       if (Object.keys(athleteUpdateData).length > 0) {

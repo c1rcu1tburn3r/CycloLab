@@ -16,9 +16,17 @@ export interface PmcActivity {
   // intensity_factor?: number | null;
 }
 
-export async function getActivitiesForPmc(
-  athleteId: string
-): Promise<{ data?: PmcActivity[]; error?: string }> {
+/**
+ * Recupera le attività con TSS per calcoli PMC
+ * STRATEGIA ADATTIVA: Cerca attività nel periodo recente, ma se non ne trova abbastanza,
+ * estende automaticamente il periodo per garantire analisi significative
+ */
+export async function getActivitiesForPmc(athleteId: string): Promise<{
+  data?: PmcActivity[];
+  error?: string;
+  adaptiveMessage?: string;
+  totalActivitiesFound?: number;
+}> {
   if (!athleteId) {
     console.warn('[getActivitiesForPmc] Athlete ID non fornito.');
     return { error: 'Athlete ID is required.' };
@@ -57,33 +65,95 @@ export async function getActivitiesForPmc(
   }
 
   try {
-    const { data, error } = await supabase
-      .from('activities')
-      .select('id, activity_date, tss, normalized_power_watts, intensity_factor') // Seleziona i campi
-      .eq('athlete_id', athleteId)
-      .not('tss', 'is', null) // CORRETTO: Verifica che tss NON SIA NULL
-      .gt('tss', 0) // E che sia maggiore di 0, TSS negativo o 0 non ha senso per il PMC
-      .order('activity_date', { ascending: true }); // Ordina per data crescente
+    // STRATEGIA ADATTIVA: Prima cerca attività recenti, poi estende se necessario
+    let foundActivities: PmcActivity[] = [];
+    let adaptiveMessage: string | undefined;
+    let totalActivitiesFound = 0;
 
-    if (error) {
-      console.error('[getActivitiesForPmc] Errore nel recuperare le attività per PMC:', error);
-      return { error: `Failed to fetch activities: ${error.message}` };
-    }
-
-    if (!data || data.length === 0) {
-      // console.log(`[getActivitiesForPmc] Nessuna attività valida trovata per l'atleta con ID: ${athleteId}`);
-      return { data: [] };
-    }
+    // Prima prova: ultimi 6 mesi (per PMC attuale)
+    const sixMonthsAgo = new Date();
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
     
-    // Mappiamo i dati al tipo PmcActivity, assicurandoci che tss sia un numero.
-    // Il filtro .is('tss', 'not.null') e .gt('tss', 0) nella query dovrebbe già garantirlo.
-    const pmcActivities: PmcActivity[] = data.map(activity => ({
-      id: activity.id,
-      activity_date: activity.activity_date,
-      tss: activity.tss as number, // Cast sicuro grazie ai filtri della query
-    }));
+    const { data: recentActivities, error: recentError } = await supabase
+      .from('activities')
+      .select('id, activity_date, tss, normalized_power_watts, intensity_factor')
+      .eq('athlete_id', athleteId)
+      .not('tss', 'is', null)
+      .gt('tss', 0)
+      .gte('activity_date', sixMonthsAgo.toISOString().split('T')[0])
+      .order('activity_date', { ascending: true });
 
-    return { data: pmcActivities };
+    if (recentError) {
+      console.error('[getActivitiesForPmc] Errore attività recenti:', recentError);
+      return { error: `Failed to fetch recent activities: ${recentError.message}` };
+    }
+
+    if (recentActivities && recentActivities.length >= 5) {
+      // Abbiamo abbastanza attività recenti per un PMC significativo
+      foundActivities = recentActivities.map(activity => ({
+        id: activity.id,
+        activity_date: activity.activity_date,
+        tss: activity.tss as number,
+      }));
+      totalActivitiesFound = recentActivities.length;
+    } else {
+      // Non abbastanza attività recenti, cerchiamo in tutto lo storico
+      console.log('[getActivitiesForPmc] Poche attività recenti, estendo ricerca a tutto lo storico...');
+      
+      const { data: allActivities, error: allError } = await supabase
+        .from('activities')
+        .select('id, activity_date, tss, normalized_power_watts, intensity_factor')
+        .eq('athlete_id', athleteId)
+        .not('tss', 'is', null)
+        .gt('tss', 0)
+        .order('activity_date', { ascending: true });
+
+      if (allError) {
+        console.error('[getActivitiesForPmc] Errore recupero tutte attività:', allError);
+        return { error: `Failed to fetch all activities: ${allError.message}` };
+      }
+
+      if (!allActivities || allActivities.length === 0) {
+        return { 
+          data: [],
+          totalActivitiesFound: 0,
+          adaptiveMessage: 'Nessuna attività con TSS trovata. Carica attività per vedere l\'analisi del carico di allenamento.'
+        };
+      }
+
+      foundActivities = allActivities.map(activity => ({
+        id: activity.id,
+        activity_date: activity.activity_date,
+        tss: activity.tss as number,
+      }));
+      totalActivitiesFound = allActivities.length;
+
+      // Calcola il periodo reale delle attività trovate
+      if (foundActivities.length > 0) {
+        const oldestActivity = foundActivities[0];
+        const oldestDate = new Date(oldestActivity.activity_date);
+        const monthsSpan = Math.ceil((Date.now() - oldestDate.getTime()) / (1000 * 60 * 60 * 24 * 30));
+        
+        const timeSpanText = monthsSpan >= 12 
+          ? `${Math.floor(monthsSpan / 12)} anni e ${monthsSpan % 12} mesi`
+          : `${monthsSpan} mesi`;
+          
+        adaptiveMessage = `📊 Utilizzando tutto lo storico disponibile (${foundActivities.length} attività in ${timeSpanText})`;
+        
+        // Se abbiamo poche attività ma distribuite nel tempo, avvisiamo dell'affidabilità
+        if (foundActivities.length < 10) {
+          adaptiveMessage += `. ⚠️ Con ${foundActivities.length} attività l'analisi PMC è limitata - carica più attività per risultati migliori.`;
+        }
+      }
+    }
+
+    console.log(`[getActivitiesForPmc] Trovate ${foundActivities.length} attività per atleta ${athleteId}`);
+
+    return { 
+      data: foundActivities,
+      adaptiveMessage,
+      totalActivitiesFound
+    };
 
   } catch (e: any) {
     console.error('[getActivitiesForPmc] Eccezione durante il recupero delle attività:', e);

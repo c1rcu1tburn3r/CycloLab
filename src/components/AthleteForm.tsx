@@ -61,6 +61,7 @@ export default function AthleteForm({ initialData, onFormSubmitSuccess, mode = '
     birth_date: initialData?.birth_date || '',
     height_cm: initialData?.height_cm || null,
     weight_kg: initialData?.weight_kg || null,
+    sex: initialData?.sex || null,
     email: initialData?.email || '',
     initial_ftp: undefined,
     ftp_source: 'none',
@@ -168,7 +169,7 @@ export default function AthleteForm({ initialData, onFormSubmitSuccess, mode = '
 
     // --- INIZIO BLOCCO VALIDAZIONE ---
     const validationErrors: string[] = [];
-    const { name, surname, email, birth_date, height_cm, weight_kg, initial_ftp, ftp_source } = formData;
+    const { name, surname, email, birth_date, height_cm, weight_kg, sex, initial_ftp, ftp_source } = formData;
 
     // Nome
     if (!name.trim()) validationErrors.push("Il nome è obbligatorio.");
@@ -191,6 +192,11 @@ export default function AthleteForm({ initialData, onFormSubmitSuccess, mode = '
       const dob = new Date(birth_date);
       if (dob >= today) validationErrors.push("La data di nascita non può essere oggi o una data futura.");
       // Potremmo aggiungere un controllo sull'età minima/massima se necessario
+    }
+
+    // Sesso
+    if (!sex || (sex !== 'M' && sex !== 'F')) {
+      validationErrors.push("Il sesso biologico è obbligatorio per calcoli VO2max accurati.");
     }
 
     // Altezza (cm)
@@ -304,6 +310,7 @@ export default function AthleteForm({ initialData, onFormSubmitSuccess, mode = '
       birth_date: formData.birth_date,
       height_cm: formData.height_cm ? Number(formData.height_cm) : null,
       weight_kg: formData.weight_kg ? Number(formData.weight_kg) : null,
+      sex: formData.sex,
       email: formData.email,
       user_id: initialData?.user_id || submitUser.id,
       avatar_url: uploadedAvatarUrl,
@@ -353,22 +360,33 @@ export default function AthleteForm({ initialData, onFormSubmitSuccess, mode = '
       }
     }
 
-    // Se FTP fornito e modalità registrazione, crea anche il profilo iniziale
-    if (mode === 'registration' && formData.initial_ftp && athleteResult && !operationError) {
-      const initialProfile = {
+    // In modalità registrazione, crea sempre il profilo iniziale con i dati inseriti
+    if (mode === 'registration' && athleteResult && !operationError) {
+      const initialProfile: any = {
         athlete_id: athleteResult.id,
-        weight_kg: Number(formData.weight_kg),
-        ftp_watts: Number(formData.initial_ftp),
         effective_date: new Date().toISOString().split('T')[0],
       };
 
-      const { error: profileError } = await supabase
-        .from('athlete_profile_entries')
-        .insert([initialProfile]);
+      // Aggiungi peso se fornito (sempre richiesto in registrazione)
+      if (formData.weight_kg) {
+        initialProfile.weight_kg = Number(formData.weight_kg);
+      }
 
-      if (profileError) {
-        console.warn('Atleta creato ma errore nel salvataggio profilo iniziale:', profileError);
-        // Non blocchiamo per questo errore, l'atleta è stato comunque creato
+      // Aggiungi FTP solo se fornito
+      if (formData.initial_ftp) {
+        initialProfile.ftp_watts = Number(formData.initial_ftp);
+      }
+
+      // Salva il profilo iniziale solo se c'è almeno un dato da salvare
+      if (initialProfile.weight_kg || initialProfile.ftp_watts) {
+        const { error: profileError } = await supabase
+          .from('athlete_profile_entries')
+          .insert([initialProfile]);
+
+        if (profileError) {
+          console.warn('Atleta creato ma errore nel salvataggio profilo iniziale:', profileError);
+          // Non blocchiamo per questo errore, l'atleta è stato comunque creato
+        }
       }
     }
 
@@ -622,13 +640,6 @@ export default function AthleteForm({ initialData, onFormSubmitSuccess, mode = '
 
       {/* Sezione Dati Personali */}
       <div className="space-y-6">
-        {mode === 'registration' && (
-          <div className="pb-4 border-b border-gray-200 dark:border-gray-700/50">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Dati Personali</h3>
-            <p className="text-sm text-gray-600 dark:text-gray-400">Informazioni base dell'atleta</p>
-          </div>
-        )}
-
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-1.5">
             <Label htmlFor="name" className={labelClassName}>Nome <span className="text-red-500">*</span></Label>
@@ -685,17 +696,29 @@ export default function AthleteForm({ initialData, onFormSubmitSuccess, mode = '
             />
           </div>
         </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="space-y-1.5">
+            <Label htmlFor="sex" className={labelClassName}>Sesso <span className="text-red-500">*</span></Label>
+            <Select value={formData.sex || ''} onValueChange={(value) => handleSelectChange('sex', value)}>
+              <SelectTrigger className={commonInputClassName}>
+                <SelectValue placeholder="Seleziona..." />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="M">Maschio</SelectItem>
+                <SelectItem value="F">Femmina</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-gray-500">
+              Necessario per calcoli VO2max scientificamente accurati
+            </p>
+          </div>
+          <div></div>
+        </div>
       </div>
 
       {/* Sezione Misurazioni */}
       <div className="space-y-6">
-        {mode === 'registration' && (
-          <div className="pt-6 pb-4 border-b border-gray-200 dark:border-gray-700/50">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Misurazioni Fisiche</h3>
-            <p className="text-sm text-gray-600 dark:text-gray-400">Peso, altezza e parametri di performance</p>
-          </div>
-        )}
-
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-1.5">
             <Label htmlFor="height_cm" className={labelClassName}>Altezza (cm) <span className="text-red-500">*</span></Label>
@@ -728,17 +751,10 @@ export default function AthleteForm({ initialData, onFormSubmitSuccess, mode = '
 
         {/* Sezione FTP - solo in modalità registrazione */}
         {mode === 'registration' && (
-          <div className="space-y-4 pt-4 border-t border-gray-200 dark:border-gray-700/50">
-            <div>
-              <h4 className="text-md font-medium text-gray-900 dark:text-white mb-2">FTP Iniziale (Opzionale)</h4>
-              <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                Se conosci il tuo FTP, inseriscilo per analisi più accurate. Altrimenti potrai aggiungerlo in seguito.
-              </p>
-            </div>
-            
+          <div className="space-y-4">            
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-1.5">
-                <Label htmlFor="initial_ftp" className={labelClassName}>FTP (Watt)</Label>
+                <Label htmlFor="initial_ftp" className={labelClassName}>FTP (W) - Opzionale</Label>
                 <Input
                   id="initial_ftp"
                   name="initial_ftp"
@@ -751,21 +767,21 @@ export default function AthleteForm({ initialData, onFormSubmitSuccess, mode = '
                   className={commonInputClassName}
                 />
                 <p className="text-xs text-gray-500">
-                  Range: {FTP_VALIDATION_RANGES.absolute.min}W - {FTP_VALIDATION_RANGES.absolute.max}W
+                  Verrà rilevato automaticamente dalle attività se non specificato
                 </p>
               </div>
 
               {formData.initial_ftp && (
                 <div className="space-y-1.5">
-                  <Label htmlFor="ftp-source" className={labelClassName}>Come hai ottenuto questo FTP? <span className="text-red-500">*</span></Label>
+                  <Label htmlFor="ftp-source" className={labelClassName}>Origine FTP <span className="text-red-500">*</span></Label>
                   <Select value={formData.ftp_source} onValueChange={(value) => handleSelectChange('ftp_source', value)}>
                     <SelectTrigger className={commonInputClassName}>
                       <SelectValue placeholder="Seleziona..." />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="test">Test specifico (20min, 8min, etc.)</SelectItem>
-                      <SelectItem value="estimate">Stima da allenamenti precedenti</SelectItem>
-                      <SelectItem value="none">Preferisco non specificare</SelectItem>
+                      <SelectItem value="test">Test specifico</SelectItem>
+                      <SelectItem value="estimate">Stima precedente</SelectItem>
+                      <SelectItem value="none">Non specificato</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -773,9 +789,9 @@ export default function AthleteForm({ initialData, onFormSubmitSuccess, mode = '
             </div>
 
             {calculatedWPerKg && (
-              <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-700">
+              <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-700">
                 <p className="text-sm font-medium text-blue-800 dark:text-blue-300">
-                  W/kg risultante: <span className="text-lg font-bold">{calculatedWPerKg}</span>
+                  W/kg: <span className="text-lg font-bold">{calculatedWPerKg}</span>
                   <span className="ml-3 px-2 py-1 text-xs rounded-full bg-blue-100 dark:bg-blue-800 text-blue-700 dark:text-blue-300">
                     {Number(calculatedWPerKg) >= 4.0 ? 'Competitivo' : 
                      Number(calculatedWPerKg) >= 3.0 ? 'Buono' : 
@@ -787,13 +803,13 @@ export default function AthleteForm({ initialData, onFormSubmitSuccess, mode = '
 
             {/* Note opzionali */}
             <div className="space-y-1.5">
-              <Label htmlFor="notes" className={labelClassName}>Note aggiuntive (opzionale)</Label>
+              <Label htmlFor="notes" className={labelClassName}>Note (opzionale)</Label>
               <Input
                 id="notes"
                 name="notes"
                 value={formData.notes || ''}
                 onChange={handleInputChange}
-                placeholder="Obiettivi, note mediche, preferenze di allenamento..."
+                placeholder="Obiettivi, note mediche, preferenze..."
                 className={commonInputClassName}
               />
             </div>

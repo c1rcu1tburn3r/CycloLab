@@ -13,16 +13,46 @@ import { SupabaseClient } from '@supabase/supabase-js';
 async function getAthletesForUser(supabase: SupabaseClient, userId: string): Promise<Athlete[]> {
   const { data: athletes, error } = await supabase
     .from('athletes')
-    .select('*')
+    .select(`
+      *,
+      athlete_profile_entries(
+        ftp_watts,
+        effective_date
+      )
+    `)
     .eq('user_id', userId)
     .order('created_at', { ascending: false });
 
   if (error) {
     console.error('Error fetching athletes in getAthletesForUser:', error);
-    // Potremmo voler sollevare l'errore o ritornare un array vuoto a seconda della strategia di errore
     return [];
   }
-  return athletes || [];
+
+  // Processa i dati per estrarre l'FTP più recente per ogni atleta
+  const processedAthletes: Athlete[] = (athletes || []).map(athlete => {
+    let currentFtp = null;
+    
+    if (athlete.athlete_profile_entries && Array.isArray(athlete.athlete_profile_entries)) {
+      // Trova l'entry più recente con FTP
+      const latestEntry = athlete.athlete_profile_entries
+        .filter((entry: any) => entry.ftp_watts != null)
+        .sort((a: any, b: any) => new Date(b.effective_date).getTime() - new Date(a.effective_date).getTime())[0];
+      
+      if (latestEntry) {
+        currentFtp = latestEntry.ftp_watts;
+      }
+    }
+
+    // Rimuovi il campo athlete_profile_entries dall'oggetto finale e aggiungi current_ftp
+    const { athlete_profile_entries, ...athleteData } = athlete;
+    
+    return {
+      ...athleteData,
+      current_ftp: currentFtp
+    };
+  });
+
+  return processedAthletes;
 }
 
 export default async function AthletesPage() {

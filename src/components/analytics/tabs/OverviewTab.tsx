@@ -4,11 +4,31 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import PmcChart from '@/components/charts/PmcChart';
-import AthletePerformanceChart from '@/components/AthletePerformanceChart';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import LoadingSkeleton from '@/components/LoadingSkeleton';
 import type { Athlete, AthleteProfileEntry, Activity } from '@/lib/types';
 import { createClient } from '@/utils/supabase/client';
+import { 
+  analyzeHRFromActivities, 
+  calculateHRZonesFromMax, 
+  calculateHRZonesFromLTHR,
+  calculateHRStats,
+  shouldSuggestHRUpdate,
+  type HRZoneEstimationResult,
+  type HRZone 
+} from '@/lib/hrZoneCalculations';
+import { 
+  Activity as ActivityIcon, 
+  Heart, 
+  Zap, 
+  TrendingUp, 
+  Clock, 
+  Target,
+  AlertTriangle,
+  CheckCircle,
+  Info
+} from 'lucide-react';
 
 interface OverviewTabProps {
   athleteId: string;
@@ -23,11 +43,24 @@ interface AthleteStats {
   recentActivities: number; // Ultimi 30 giorni
 }
 
+interface PowerZone {
+  zone: string;
+  name: string;
+  minWatts: number;
+  maxWatts: number;
+  color: string;
+  percentage: number;
+}
+
 export default function OverviewTab({ athleteId, athlete }: OverviewTabProps) {
   const [profileEntries, setProfileEntries] = useState<AthleteProfileEntry[]>([]);
   const [stats, setStats] = useState<AthleteStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [selectedTimeRange, setSelectedTimeRange] = useState<'3m' | '6m' | '1y' | 'all'>('6m');
+  const [activities, setActivities] = useState<any[]>([]);
+  const [hrEstimation, setHrEstimation] = useState<HRZoneEstimationResult | null>(null);
+  const [showHrSuggestion, setShowHrSuggestion] = useState(false);
+  const [hrZones, setHrZones] = useState<HRZone[]>([]);
+  const [powerZones, setPowerZones] = useState<PowerZone[]>([]);
 
   useEffect(() => {
     const loadData = async () => {
@@ -47,15 +80,21 @@ export default function OverviewTab({ athleteId, athlete }: OverviewTabProps) {
           console.error('Errore caricamento profili:', profileError);
         }
         
-        // Carica attività reali dell'atleta
+        // Carica attività complete per analisi HR e statistiche avanzate
         const { data: activities, error: activitiesError } = await supabase
           .from('activities')
           .select(`
             id,
             activity_date,
+            title,
             duration_seconds,
             distance_meters,
             avg_power_watts,
+            max_power_watts,
+            avg_heart_rate_bpm,
+            max_heart_rate_bpm,
+            avg_cadence_rpm,
+            tss,
             activity_type
           `)
           .eq('athlete_id', athleteId)
@@ -70,12 +109,17 @@ export default function OverviewTab({ athleteId, athlete }: OverviewTabProps) {
         const realStats: AthleteStats = calculateStatsFromActivities(realActivities as any[]);
         
         setProfileEntries(profileEntries || []);
+        setActivities(realActivities);
         setStats(realStats);
+        
+        // Analisi automatica HR e calcolo zone
+        await analyzeHRAndZones(realActivities, profileEntries || []);
         
       } catch (error) {
         console.error('Errore generale caricamento dati:', error);
         // Imposta stati vuoti in caso di errore
         setProfileEntries([]);
+        setActivities([]);
         setStats({
           totalActivities: 0,
           totalDistance: 0,
@@ -90,6 +134,55 @@ export default function OverviewTab({ athleteId, athlete }: OverviewTabProps) {
 
     loadData();
   }, [athleteId]);
+
+  // Analisi automatica HR e calcolo zone di potenza/frequenza cardiaca
+  const analyzeHRAndZones = async (activities: any[], profiles: AthleteProfileEntry[]) => {
+    try {
+      // Ottieni profilo più recente
+      const currentProfile = profiles.length > 0 ? profiles[0] : null;
+      const currentFTP = currentProfile?.ftp_watts || null;
+
+      // Calcola zone di potenza se FTP disponibile
+      if (currentFTP) {
+        const zones: PowerZone[] = [
+          { zone: 'Z1', name: 'Recupero', minWatts: 0, maxWatts: Math.round(currentFTP * 0.55), color: '#6b7280', percentage: 55 },
+          { zone: 'Z2', name: 'Resistenza', minWatts: Math.round(currentFTP * 0.56), maxWatts: Math.round(currentFTP * 0.75), color: '#10b981', percentage: 75 },
+          { zone: 'Z3', name: 'Tempo', minWatts: Math.round(currentFTP * 0.76), maxWatts: Math.round(currentFTP * 0.90), color: '#f59e0b', percentage: 90 },
+          { zone: 'Z4', name: 'Soglia', minWatts: Math.round(currentFTP * 0.91), maxWatts: Math.round(currentFTP * 1.05), color: '#ef4444', percentage: 105 },
+          { zone: 'Z5', name: 'VO2max', minWatts: Math.round(currentFTP * 1.06), maxWatts: Math.round(currentFTP * 1.20), color: '#8b5cf6', percentage: 120 },
+          { zone: 'Z6', name: 'Anaerobico', minWatts: Math.round(currentFTP * 1.21), maxWatts: Math.round(currentFTP * 1.50), color: '#dc2626', percentage: 150 },
+          { zone: 'Z7', name: 'Neuromuscolare', minWatts: Math.round(currentFTP * 1.51), maxWatts: 999, color: '#7c2d12', percentage: 200 }
+        ];
+        setPowerZones(zones);
+      }
+
+      // Analisi automatica HR se ci sono dati
+      if (activities.length > 0) {
+        const hrAnalysis = analyzeHRFromActivities(activities);
+        
+        if (hrAnalysis) {
+          setHrEstimation(hrAnalysis);
+          
+          // Calcola zone HR
+          let calculatedZones: HRZone[] = [];
+          if (hrAnalysis.estimatedLTHR) {
+            calculatedZones = calculateHRZonesFromLTHR(hrAnalysis.estimatedLTHR);
+          } else {
+            calculatedZones = calculateHRZonesFromMax(hrAnalysis.estimatedHRMax);
+          }
+          setHrZones(calculatedZones);
+          
+          // Verifica se suggerire aggiornamento
+          // TODO: Qui dovremmo controllare le zone HR esistenti dal profilo
+          if (shouldSuggestHRUpdate(hrAnalysis)) {
+            setShowHrSuggestion(true);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Errore analisi HR e zone:', error);
+    }
+  };
 
   // Funzione per calcolare statistiche reali dalle attività
   const calculateStatsFromActivities = (activities: any[]): AthleteStats => {
@@ -136,13 +229,13 @@ export default function OverviewTab({ athleteId, athlete }: OverviewTabProps) {
 
   const getCurrentProfile = () => {
     if (profileEntries.length === 0) return null;
-    return profileEntries[profileEntries.length - 1];
+    return profileEntries[0]; // Più recente
   };
 
   const getProgressData = () => {
     if (profileEntries.length < 2) return null;
-    const current = profileEntries[profileEntries.length - 1];
-    const previous = profileEntries[profileEntries.length - 2];
+    const current = profileEntries[0]; // Più recente
+    const previous = profileEntries[1]; // Precedente
     
     return {
       ftpChange: current.ftp_watts && previous.ftp_watts 
@@ -167,6 +260,26 @@ export default function OverviewTab({ athleteId, athlete }: OverviewTabProps) {
     return `${hours}h ${minutes % 60}m`;
   };
 
+  // Calcola lo stato della forma fisica
+  const getFormStatus = () => {
+    if (!stats || stats.recentActivities === 0) {
+      return { status: 'unknown', color: 'gray', text: 'Sconosciuto' };
+    }
+    
+    if (stats.recentActivities >= 15) {
+      return { status: 'excellent', color: 'green', text: 'In Forma' };
+    } else if (stats.recentActivities >= 8) {
+      return { status: 'good', color: 'blue', text: 'Buona' };
+    } else if (stats.recentActivities >= 3) {
+      return { status: 'moderate', color: 'yellow', text: 'Moderata' };
+    } else {
+      return { status: 'low', color: 'red', text: 'Bassa' };
+    }
+  };
+
+  // Calcola statistiche HR recenti
+  const hrStats = calculateHRStats(activities, 30);
+
   if (isLoading) {
     return (
       <div className="space-y-6">
@@ -179,240 +292,396 @@ export default function OverviewTab({ athleteId, athlete }: OverviewTabProps) {
 
   const currentProfile = getCurrentProfile();
   const progress = getProgressData();
+  const formStatus = getFormStatus();
 
   return (
     <div className="space-y-6">
-      {/* Statistiche Generali */}
+      {/* HEADER: Alert/Notifiche Intelligenti */}
+      {showHrSuggestion && hrEstimation && (
+        <Alert className="border-green-200 bg-green-50 dark:bg-green-900/20">
+          <Heart className="h-4 w-4 text-green-600" />
+          <AlertDescription>
+            <div className="flex items-center justify-between">
+              <div>
+                <strong>Zone HR rilevate automaticamente!</strong> 
+                <span className="ml-2">{hrEstimation.reasoning}</span>
+                <span className="text-xs text-green-600 ml-2">
+                  (Confidenza: {Math.round(hrEstimation.confidence * 100)}%)
+                </span>
+              </div>
+              <div className="flex gap-2">
+                <Button size="sm" variant="outline" onClick={() => setShowHrSuggestion(false)}>
+                  Ignora
+                </Button>
+                <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white">
+                  Salva Zone
+                </Button>
+              </div>
+            </div>
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {/* ROW 1: Metriche Chiave - Cruscotto Principale */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card>
+        
+        {/* FTP Attuale */}
+        <Card className="border-l-4 border-l-blue-500">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600 dark:text-gray-400">Attività Totali</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400 font-medium">FTP Attuale</p>
                 <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                  {stats?.totalActivities || 0}
+                  {currentProfile?.ftp_watts ? `${currentProfile.ftp_watts} W` : 'N/D'}
                 </p>
-                <p className="text-xs text-green-600">
-                  {stats?.recentActivities ? `+${stats.recentActivities} ultimi 30gg` : 'Nessuna attività recente'}
-                </p>
+                {progress?.ftpChange && (
+                  <p className={`text-xs ${progress.ftpChange > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    {progress.ftpChange > 0 ? '+' : ''}{progress.ftpChange}W vs precedente
+                  </p>
+                )}
               </div>
-              <div className="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
-                <svg className="w-4 h-4 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                </svg>
+              <div className="w-12 h-12 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+                <Zap className="w-6 h-6 text-blue-600 dark:text-blue-400" />
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card>
+        {/* W/kg */}
+        <Card className="border-l-4 border-l-green-500">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600 dark:text-gray-400">Distanza Totale</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400 font-medium">W/kg</p>
                 <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                  {stats?.totalDistance ? `${stats.totalDistance.toLocaleString()} km` : 'N/D'}
+                  {currentProfile?.ftp_watts && currentProfile?.weight_kg 
+                    ? (currentProfile.ftp_watts / currentProfile.weight_kg).toFixed(2)
+                    : 'N/D'
+                  }
                 </p>
-                <p className="text-xs text-gray-500">
-                  {stats?.totalActivities && stats.totalDistance 
-                    ? `Media: ${Math.round(stats.totalDistance / stats.totalActivities)} km` 
-                    : 'Calcolo non disponibile'}
-                </p>
+                {progress?.wPerKgChange && (
+                  <p className={`text-xs ${progress.wPerKgChange > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    {progress.wPerKgChange > 0 ? '+' : ''}{progress.wPerKgChange.toFixed(2)} vs precedente
+                  </p>
+                )}
               </div>
-              <div className="w-8 h-8 rounded-lg bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
-                <svg className="w-4 h-4 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-                </svg>
+              <div className="w-12 h-12 rounded-lg bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+                <TrendingUp className="w-6 h-6 text-green-600 dark:text-green-400" />
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card>
+        {/* Forma Fisica */}
+        <Card className={`border-l-4 border-l-${formStatus.color}-500`}>
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600 dark:text-gray-400">Tempo Totale</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400 font-medium">Forma Attuale</p>
                 <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                  {stats?.totalTime ? formatTime(stats.totalTime) : 'N/D'}
+                  {formStatus.text}
                 </p>
                 <p className="text-xs text-gray-500">
-                  {stats?.totalActivities && stats.totalTime 
-                    ? `Media: ${formatTime(Math.round(stats.totalTime / stats.totalActivities))}`
-                    : 'Calcolo non disponibile'}
+                  {stats?.recentActivities || 0} attività (30gg)
                 </p>
               </div>
-              <div className="w-8 h-8 rounded-lg bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center">
-                <svg className="w-4 h-4 text-orange-600 dark:text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
+              <div className={`w-12 h-12 rounded-lg bg-${formStatus.color}-100 dark:bg-${formStatus.color}-900/30 flex items-center justify-center`}>
+                <ActivityIcon className={`w-6 h-6 text-${formStatus.color}-600 dark:text-${formStatus.color}-400`} />
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card>
+        {/* HR Media Recente */}
+        <Card className="border-l-4 border-l-red-500">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600 dark:text-gray-400">Potenza Media</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400 font-medium">HR Media</p>
                 <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                  {stats?.avgPower ? `${stats.avgPower} W` : 'N/D'}
+                  {hrStats?.avgHR ? `${hrStats.avgHR} bpm` : 'N/D'}
                 </p>
-                <p className="text-xs text-gray-500">
-                  FTP: {currentProfile?.ftp_watts ? `${currentProfile.ftp_watts} W` : 'N/D'}
-                </p>
+                {hrStats && (
+                  <p className="text-xs text-gray-500">
+                    Max: {hrStats.maxHR} bpm • {hrStats.activitiesWithHR} attività
+                  </p>
+                )}
               </div>
-              <div className="w-8 h-8 rounded-lg bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
-                <svg className="w-4 h-4 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                </svg>
+              <div className="w-12 h-12 rounded-lg bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
+                <Heart className="w-6 h-6 text-red-600 dark:text-red-400" />
               </div>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Progressi Recenti */}
-      {progress && (
+      {/* ROW 2: Zone di Potenza e HR */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        
+        {/* Zone di Potenza */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" />
-              </svg>
-              Progressi dall&apos;ultimo aggiornamento profilo
+              <Zap className="w-5 h-5 text-blue-600" />
+              Zone di Potenza
+              {currentProfile?.ftp_watts && (
+                <Badge variant="outline">FTP: {currentProfile.ftp_watts}W</Badge>
+              )}
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {progress.ftpChange !== null && (
-                <div className="flex items-center gap-3">
-                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-                    progress.ftpChange >= 0 
-                      ? 'bg-green-100 dark:bg-green-900/30' 
-                      : 'bg-red-100 dark:bg-red-900/30'
-                  }`}>
-                    <svg className={`w-4 h-4 ${
-                      progress.ftpChange >= 0 
-                        ? 'text-green-600 dark:text-green-400' 
-                        : 'text-red-600 dark:text-red-400'
-                    }`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={
-                        progress.ftpChange >= 0 
-                          ? "M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" 
-                          : "M13 17h8m0 0V9m0 8l-8-8-4 4-6-6"
-                      } />
-                    </svg>
+            {powerZones.length > 0 ? (
+              <div className="space-y-3">
+                {powerZones.map((zone, index) => (
+                  <div key={index} className="flex items-center justify-between p-3 rounded-lg border">
+                    <div className="flex items-center gap-3">
+                      <div 
+                        className="w-4 h-4 rounded" 
+                        style={{ backgroundColor: zone.color }}
+                      />
+                      <div>
+                        <span className="font-semibold">{zone.zone}</span>
+                        <span className="ml-2 text-sm text-gray-600">{zone.name}</span>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="font-medium">
+                        {zone.maxWatts === 999 ? `${zone.minWatts}+ W` : `${zone.minWatts}-${zone.maxWatts} W`}
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        {zone.percentage}% FTP
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">FTP</p>
-                    <p className="font-semibold">
-                      {progress.ftpChange >= 0 ? '+' : ''}{progress.ftpChange} W
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              {progress.weightChange !== null && (
-                <div className="flex items-center gap-3">
-                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-                    progress.weightChange <= 0 
-                      ? 'bg-green-100 dark:bg-green-900/30' 
-                      : 'bg-orange-100 dark:bg-orange-900/30'
-                  }`}>
-                    <svg className={`w-4 h-4 ${
-                      progress.weightChange <= 0 
-                        ? 'text-green-600 dark:text-green-400' 
-                        : 'text-orange-600 dark:text-orange-400'
-                    }`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16l3-1m-3 1l-3-1" />
-                    </svg>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">Peso</p>
-                    <p className="font-semibold">
-                      {progress.weightChange >= 0 ? '+' : ''}{progress.weightChange.toFixed(1)} kg
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              {progress.wPerKgChange !== null && (
-                <div className="flex items-center gap-3">
-                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-                    progress.wPerKgChange >= 0 
-                      ? 'bg-green-100 dark:bg-green-900/30' 
-                      : 'bg-red-100 dark:bg-red-900/30'
-                  }`}>
-                    <svg className={`w-4 h-4 ${
-                      progress.wPerKgChange >= 0 
-                        ? 'text-green-600 dark:text-green-400' 
-                        : 'text-red-600 dark:text-red-400'
-                    }`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                    </svg>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">W/kg</p>
-                    <p className="font-semibold">
-                      {progress.wPerKgChange >= 0 ? '+' : ''}{progress.wPerKgChange.toFixed(2)}
-                    </p>
-                  </div>
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Grafici */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Performance Management Chart */}
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle className="flex items-center gap-2">
-                <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                </svg>
-                Performance Management Chart
-              </CardTitle>
-              <div className="flex gap-2">
-                {(['3m', '6m', '1y', 'all'] as const).map((range) => (
-                  <Button
-                    key={range}
-                    variant={selectedTimeRange === range ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => setSelectedTimeRange(range)}
-                  >
-                    {range === 'all' ? 'Tutto' : range}
-                  </Button>
                 ))}
               </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <PmcChart athleteId={athleteId} />
+            ) : (
+              <div className="text-center py-8">
+                <Zap className="w-12 h-12 mx-auto text-gray-300 dark:text-gray-600 mb-4" />
+                <p className="text-gray-500 dark:text-gray-400 mb-2">Zone di potenza non disponibili</p>
+                <p className="text-sm text-gray-400 dark:text-gray-500">
+                  Aggiungi un FTP per visualizzare le zone
+                </p>
+              </div>
+            )}
           </CardContent>
         </Card>
 
-        {/* Trend Peso/FTP/W-kg */}
-        {profileEntries.length > 0 && (
-          <Card className="lg:col-span-2">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" />
-                </svg>
-                Trend Performance Fisiologica
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <AthletePerformanceChart profileEntries={profileEntries} />
-            </CardContent>
-          </Card>
-        )}
+        {/* Zone Frequenza Cardiaca */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Heart className="w-5 h-5 text-red-600" />
+              Zone Frequenza Cardiaca
+              {hrEstimation && (
+                <Badge variant="outline">
+                  {hrEstimation.estimatedLTHR ? `LTHR: ${hrEstimation.estimatedLTHR}` : `HRmax: ${hrEstimation.estimatedHRMax}`}
+                </Badge>
+              )}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {hrZones.length > 0 ? (
+              <div className="space-y-3">
+                {hrZones.map((zone, index) => (
+                  <div key={index} className="flex items-center justify-between p-3 rounded-lg border">
+                    <div className="flex items-center gap-3">
+                      <div 
+                        className="w-4 h-4 rounded" 
+                        style={{ backgroundColor: zone.color }}
+                      />
+                      <div>
+                        <span className="font-semibold">{zone.zone}</span>
+                        <span className="ml-2 text-sm text-gray-600">{zone.name}</span>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="font-medium">
+                        {zone.minBPM}-{zone.maxBPM} bpm
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        {zone.minPercent}-{zone.maxPercent}%
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <Heart className="w-12 h-12 mx-auto text-gray-300 dark:text-gray-600 mb-4" />
+                <p className="text-gray-500 dark:text-gray-400 mb-2">Zone HR non disponibili</p>
+                <p className="text-sm text-gray-400 dark:text-gray-500">
+                  Carica attività con dati HR per rilevamento automatico
+                </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* ROW 3: Statistiche Rapide (Ultimi 30 giorni) */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Clock className="w-5 h-5 text-gray-600" />
+            Statistiche Rapide (Ultimo Mese)
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="text-center p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+              <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                {stats?.totalActivities || 0}
+              </p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">Attività Totali</p>
+            </div>
+            <div className="text-center p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+              <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                {stats?.totalDistance || 0}km
+              </p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">Distanza Totale</p>
+            </div>
+            <div className="text-center p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+              <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                {stats ? formatTime(stats.totalTime) : '0h'}
+              </p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">Tempo Totale</p>
+            </div>
+            <div className="text-center p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+              <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                {stats?.avgPower ? `${stats.avgPower}W` : 'N/D'}
+              </p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">Potenza Media</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* ROW 4: Status e Raccomandazioni */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        
+        {/* Status Misurazioni */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Target className="w-5 h-5 text-purple-600" />
+              Status Misurazioni
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            
+            {/* FTP Status */}
+            <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+              <div className="flex items-center gap-3">
+                <Zap className="w-4 h-4 text-blue-600" />
+                <span className="font-medium">FTP</span>
+              </div>
+              <div className="flex items-center gap-2">
+                {currentProfile?.ftp_watts ? (
+                  <>
+                    <CheckCircle className="w-4 h-4 text-green-600" />
+                    <span className="text-sm text-green-600">Aggiornato</span>
+                  </>
+                ) : (
+                  <>
+                    <AlertTriangle className="w-4 h-4 text-yellow-600" />
+                    <span className="text-sm text-yellow-600">Da inserire</span>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* Peso Status */}
+            <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+              <div className="flex items-center gap-3">
+                <TrendingUp className="w-4 h-4 text-green-600" />
+                <span className="font-medium">Peso</span>
+              </div>
+              <div className="flex items-center gap-2">
+                {currentProfile?.weight_kg ? (
+                  <>
+                    <CheckCircle className="w-4 h-4 text-green-600" />
+                    <span className="text-sm text-green-600">{currentProfile.weight_kg}kg</span>
+                  </>
+                ) : (
+                  <>
+                    <AlertTriangle className="w-4 h-4 text-yellow-600" />
+                    <span className="text-sm text-yellow-600">Da inserire</span>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* Zone HR Status */}
+            <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+              <div className="flex items-center gap-3">
+                <Heart className="w-4 h-4 text-red-600" />
+                <span className="font-medium">Zone HR</span>
+              </div>
+              <div className="flex items-center gap-2">
+                {hrZones.length > 0 ? (
+                  <>
+                    <CheckCircle className="w-4 h-4 text-green-600" />
+                    <span className="text-sm text-green-600">Rilevate</span>
+                  </>
+                ) : (
+                  <>
+                    <Info className="w-4 h-4 text-blue-600" />
+                    <span className="text-sm text-blue-600">Auto-rilevamento</span>
+                  </>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Raccomandazioni */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Target className="w-5 h-5 text-orange-600" />
+              Raccomandazioni
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            
+            {/* Raccomandazione FTP */}
+            {!currentProfile?.ftp_watts && (
+              <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200">
+                <h4 className="font-semibold text-blue-800 dark:text-blue-300 text-sm mb-1">
+                  🎯 Aggiungi FTP
+                </h4>
+                <p className="text-xs text-blue-700 dark:text-blue-400">
+                  Inserisci il tuo FTP per sbloccare analisi di potenza avanzate e zone personalizzate
+                </p>
+              </div>
+            )}
+
+            {/* Raccomandazione Attività */}
+            {(stats?.recentActivities || 0) < 8 && (
+              <div className="p-3 bg-orange-50 dark:bg-orange-900/20 rounded-lg border border-orange-200">
+                <h4 className="font-semibold text-orange-800 dark:text-orange-300 text-sm mb-1">
+                  🚴 Aumenta Frequenza
+                </h4>
+                <p className="text-xs text-orange-700 dark:text-orange-400">
+                  Solo {stats?.recentActivities || 0} attività questo mese. Obiettivo: 12+ per progressi costanti
+                </p>
+              </div>
+            )}
+
+            {/* Raccomandazione Test */}
+            {currentProfile?.ftp_watts && (
+              <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200">
+                <h4 className="font-semibold text-green-800 dark:text-green-300 text-sm mb-1">
+                  📈 Test FTP
+                </h4>
+                <p className="text-xs text-green-700 dark:text-green-400">
+                  Ripeti il test FTP ogni 6-8 settimane per monitorare i progressi
+                </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

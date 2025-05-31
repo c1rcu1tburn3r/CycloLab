@@ -6,43 +6,28 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { RefreshCw, Zap, Target, TrendingUp, Info } from 'lucide-react';
 import LoadingSkeleton from '@/components/LoadingSkeleton';
 import type { Athlete } from '@/lib/types';
 import { PB_DURATIONS_SECONDS } from '@/lib/fitnessCalculations';
+import { 
+  getAthletePowerData, 
+  calculatePowerDistribution,
+  PowerCurveData,
+  PowerDistributionBand,
+  PowerZoneData
+} from '@/app/athletes/[id]/performanceActions';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 interface PowerAnalysisTabProps {
   athleteId: string;
-  athlete: Athlete;
-}
-
-interface PowerCurveData {
-  duration: number; // secondi
-  durationLabel: string;
-  current: number | null; // watt attuali
-  best: number | null; // PB
-  target?: number | null; // obiettivo
-  previous?: number | null; // periodo precedente per confronto
-}
-
-interface PowerDistributionBand {
-  range: string; // "0-100W", "100-200W", etc.
-  minWatts: number;
-  maxWatts: number;
-  timeSeconds: number;
-  percentage: number;
-  isTargetZone?: boolean; // se è una zona target (es. Z2, Z3)
-}
-
-interface PowerZoneData {
-  zone: string;
-  name: string;
-  minWatts: number;
-  maxWatts: number;
-  minPercent: number;
-  maxPercent: number;
-  timeSeconds: number;
-  percentage: number;
-  color: string;
+  athlete: {
+    name: string;
+    surname: string;
+    current_ftp?: number | null;
+    weight_kg?: number | null;
+  };
 }
 
 export default function PowerAnalysisTab({ athleteId, athlete }: PowerAnalysisTabProps) {
@@ -50,104 +35,67 @@ export default function PowerAnalysisTab({ athleteId, athlete }: PowerAnalysisTa
   const [powerDistribution, setPowerDistribution] = useState<PowerDistributionBand[]>([]);
   const [powerZones, setPowerZones] = useState<PowerZoneData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [selectedPeriod, setSelectedPeriod] = useState<'current' | '30d' | '90d' | '1y'>('current');
+  const [error, setError] = useState<string | null>(null);
+  const [selectedPeriod, setSelectedPeriod] = useState<number>(12); // mesi
   const [activeSubTab, setActiveSubTab] = useState<'curves' | 'distribution' | 'zones'>('curves');
 
-  // Mock FTP per i calcoli - in futuro verrà dal profilo reale
-  const currentFTP = 265;
+  // Nuovi stati per la strategia adattiva
+  const [actualPeriodUsed, setActualPeriodUsed] = useState<number | null>(null);
+  const [adaptiveMessage, setAdaptiveMessage] = useState<string | null>(null);
+
+  // FTP attuale dall'atleta o valore di default
+  const currentFTP = athlete.current_ftp || 250;
 
   useEffect(() => {
     const loadPowerData = async () => {
       setIsLoading(true);
+      setError(null);
+      setAdaptiveMessage(null);
       
-      // Simula delay API
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      // Genera dati mock realistici per le curve di potenza
-      const mockPowerCurve: PowerCurveData[] = PB_DURATIONS_SECONDS.map(duration => {
-        const durationLabels: Record<number, string> = {
-          5: '5s',
-          15: '15s', 
-          30: '30s',
-          60: '1min',
-          300: '5min',
-          600: '10min',
-          1200: '20min',
-          1800: '30min',
-          3600: '1h',
-          5400: '90min'
-        };
+      try {
+        // Recupera dati di potenza reali
+        const powerResult = await getAthletePowerData(athleteId, selectedPeriod);
+        
+        if (powerResult.error) {
+          setError(powerResult.error);
+          return;
+        }
 
-        // Calcola potenze realistiche basate su curve tipiche
-        const ftpPercentages: Record<number, number> = {
-          5: 2.5,    // 250% FTP per 5s
-          15: 2.2,   // 220% FTP per 15s
-          30: 1.9,   // 190% FTP per 30s
-          60: 1.6,   // 160% FTP per 1min
-          300: 1.2,  // 120% FTP per 5min
-          600: 1.1,  // 110% FTP per 10min
-          1200: 1.0, // 100% FTP per 20min
-          1800: 0.95, // 95% FTP per 30min
-          3600: 0.85, // 85% FTP per 1h
-          5400: 0.75  // 75% FTP per 90min
-        };
+        setPowerCurveData(powerResult.powerCurve);
+        
+        // Gestisci informazioni adattive
+        if (powerResult.actualPeriodUsed !== undefined) {
+          setActualPeriodUsed(powerResult.actualPeriodUsed);
+        }
+        if (powerResult.adaptiveMessage) {
+          setAdaptiveMessage(powerResult.adaptiveMessage);
+        }
 
-        const currentPower = Math.round(currentFTP * ftpPercentages[duration]);
-        const bestPower = Math.round(currentPower * (1 + Math.random() * 0.15)); // +0-15% rispetto al corrente
-        const previousPower = Math.round(currentPower * (0.9 + Math.random() * 0.1)); // -10% a 0% rispetto al corrente
+        // Calcola distribuzione potenza dall'ultima attività
+        const distributionResult = await calculatePowerDistribution(athleteId, undefined, currentFTP);
+        
+        if (distributionResult.error) {
+          console.warn('Errore calcolo distribuzione:', distributionResult.error);
+        } else {
+          setPowerDistribution(distributionResult.distribution);
+          setPowerZones(distributionResult.zones);
+        }
 
-        return {
-          duration,
-          durationLabel: durationLabels[duration],
-          current: currentPower,
-          best: bestPower,
-          previous: previousPower,
-          target: duration === 1200 ? currentFTP + 10 : null // Target solo per FTP
-        };
-      });
-
-      // Genera distribuzione di potenza mock
-      const mockDistribution: PowerDistributionBand[] = [];
-      const totalTime = 3600; // 1 ora di attività
-      const bands = [
-        { range: '0-100W', min: 0, max: 100, time: 180 },
-        { range: '100-150W', min: 100, max: 150, time: 300 },
-        { range: '150-200W', min: 150, max: 200, time: 900 },
-        { range: '200-250W', min: 200, max: 250, time: 1200 },
-        { range: '250-300W', min: 250, max: 300, time: 720 },
-        { range: '300-350W', min: 300, max: 350, time: 240 },
-        { range: '350W+', min: 350, max: 999, time: 60 }
-      ];
-
-      bands.forEach(band => {
-        mockDistribution.push({
-          range: band.range,
-          minWatts: band.min,
-          maxWatts: band.max,
-          timeSeconds: band.time,
-          percentage: (band.time / totalTime) * 100
-        });
-      });
-
-      // Genera zone di potenza mock basate su FTP
-      const mockZones: PowerZoneData[] = [
-        { zone: 'Z1', name: 'Recovery', minWatts: 0, maxWatts: Math.round(currentFTP * 0.55), minPercent: 0, maxPercent: 55, timeSeconds: 480, percentage: 13.3, color: '#9ca3af' },
-        { zone: 'Z2', name: 'Endurance', minWatts: Math.round(currentFTP * 0.55), maxWatts: Math.round(currentFTP * 0.75), minPercent: 55, maxPercent: 75, timeSeconds: 1800, percentage: 50.0, color: '#3b82f6' },
-        { zone: 'Z3', name: 'Tempo', minWatts: Math.round(currentFTP * 0.75), maxWatts: Math.round(currentFTP * 0.90), minPercent: 75, maxPercent: 90, timeSeconds: 900, percentage: 25.0, color: '#10b981' },
-        { zone: 'Z4', name: 'Threshold', minWatts: Math.round(currentFTP * 0.90), maxWatts: Math.round(currentFTP * 1.05), minPercent: 90, maxPercent: 105, timeSeconds: 360, percentage: 10.0, color: '#f59e0b' },
-        { zone: 'Z5', name: 'VO2max', minWatts: Math.round(currentFTP * 1.05), maxWatts: Math.round(currentFTP * 1.20), minPercent: 105, maxPercent: 120, timeSeconds: 60, percentage: 1.7, color: '#ef4444' },
-        { zone: 'Z6', name: 'Anaerobic', minWatts: Math.round(currentFTP * 1.20), maxWatts: Math.round(currentFTP * 1.50), minPercent: 120, maxPercent: 150, timeSeconds: 0, percentage: 0, color: '#8b5cf6' },
-        { zone: 'Z7', name: 'Neuromuscular', minWatts: Math.round(currentFTP * 1.50), maxWatts: 999, minPercent: 150, maxPercent: 999, timeSeconds: 0, percentage: 0, color: '#ec4899' }
-      ];
-
-      setPowerCurveData(mockPowerCurve);
-      setPowerDistribution(mockDistribution);
-      setPowerZones(mockZones);
-      setIsLoading(false);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Errore sconosciuto');
+      } finally {
+        setIsLoading(false);
+      }
     };
 
     loadPowerData();
   }, [athleteId, selectedPeriod, currentFTP]);
+
+  const handleRefresh = async () => {
+    setIsLoading(true);
+    // Forza il ricaricamento
+    window.location.reload();
+  };
 
   const powerCurveChartOptions = useMemo(() => {
     if (powerCurveData.length === 0) return {};
@@ -257,9 +205,9 @@ export default function PowerAnalysisTab({ athleteId, athlete }: PowerAnalysisTa
             name: band.range,
             itemStyle: {
               color: [
-                '#9ca3af', '#6b7280', '#3b82f6', '#1d4ed8',
-                '#10b981', '#f59e0b', '#ef4444'
-              ][index] || '#9ca3af'
+                '#3b82f6', '#10b981', '#f59e0b', '#ef4444', 
+                '#8b5cf6', '#ec4899', '#6b7280', '#1f2937'
+              ][index % 8]
             }
           })),
           emphasis: {
@@ -268,50 +216,195 @@ export default function PowerAnalysisTab({ athleteId, athlete }: PowerAnalysisTa
               shadowOffsetX: 0,
               shadowColor: 'rgba(0, 0, 0, 0.5)'
             }
-          },
-          label: {
-            formatter: '{b}\n{d}%'
           }
         }
       ]
     };
   }, [powerDistribution]);
 
+  const powerZonesChartOptions = useMemo(() => {
+    if (powerZones.length === 0) return {};
+
+    return {
+      title: {
+        text: 'Distribuzione Zone di Potenza',
+        left: 'center',
+        textStyle: { fontSize: 16, fontWeight: 'bold' }
+      },
+      tooltip: {
+        trigger: 'axis',
+        formatter: (params: any) => {
+          const zone = powerZones[params[0].dataIndex];
+          const minutes = Math.floor(zone.timeSeconds / 60);
+          return `${zone.zone} - ${zone.name}<br/>Tempo: ${minutes} min<br/>Percentuale: ${zone.percentage.toFixed(1)}%`;
+        }
+      },
+      grid: {
+        left: '3%',
+        right: '4%',
+        bottom: '10%',
+        containLabel: true
+      },
+      xAxis: {
+        type: 'category',
+        data: powerZones.map(z => z.zone)
+      },
+      yAxis: {
+        type: 'value',
+        name: 'Tempo (min)',
+        axisLabel: { formatter: '{value} min' }
+      },
+      series: [
+        {
+          type: 'bar',
+          data: powerZones.map(zone => ({
+            value: Math.floor(zone.timeSeconds / 60),
+            itemStyle: { color: zone.color }
+          })),
+          emphasis: {
+            itemStyle: {
+              shadowBlur: 10,
+              shadowOffsetX: 0,
+              shadowColor: 'rgba(0, 0, 0, 0.5)'
+            }
+          }
+        }
+      ]
+    };
+  }, [powerZones]);
+
   if (isLoading) {
     return (
       <div className="space-y-6">
-        <LoadingSkeleton />
-        <LoadingSkeleton />
-        <LoadingSkeleton />
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <RefreshCw className="w-4 h-4 animate-spin" />
+            <span>Caricamento analisi potenza...</span>
+          </div>
+        </div>
+        {[...Array(3)].map((_, i) => (
+          <Card key={i}>
+            <CardContent className="p-6">
+              <div className="animate-pulse bg-gray-200 dark:bg-gray-700 h-64 rounded"></div>
+            </CardContent>
+          </Card>
+        ))}
       </div>
+    );
+  }
+
+  if (error) {
+    const isNoDataError = error.includes('potenza trovata') || error.includes('tutto lo storico');
+    
+    return (
+      <Card>
+        <CardContent className="p-6">
+          <div className="text-center">
+            <Zap className="w-12 h-12 mx-auto text-gray-400 mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+              {isNoDataError ? 'Nessun dato di potenza disponibile' : 'Errore nel caricamento'}
+            </h3>
+            <p className="text-gray-600 dark:text-gray-400 mb-4">
+              {isNoDataError 
+                ? 'Non sono state trovate attività con dati di potenza. Carica attività con powermeter (misuratore di potenza) per vedere le analisi.'
+                : error
+              }
+            </p>
+            <Button onClick={handleRefresh} variant="outline">
+              <RefreshCw className="w-4 h-4 mr-2" />
+              Controlla aggiornamenti
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (powerCurveData.length === 0) {
+    return (
+      <Card>
+        <CardContent className="p-6">
+          <div className="text-center">
+            <Zap className="w-12 h-12 mx-auto text-gray-400 mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+              Nessun dato di potenza disponibile
+            </h3>
+            <p className="text-gray-600 dark:text-gray-400 mb-4">
+              Carica alcune attività con dati di potenza per vedere le analisi.
+            </p>
+            <Button onClick={handleRefresh} variant="outline">
+              <RefreshCw className="w-4 h-4 mr-2" />
+              Controlla aggiornamenti
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
     );
   }
 
   return (
     <div className="space-y-6">
-      {/* Header con controlli periodo */}
+      {/* Header con controlli */}
       <div className="flex items-center justify-between">
-        <div>
-          <h3 className="text-lg font-semibold">Analisi Potenza</h3>
-          <p className="text-sm text-gray-600 dark:text-gray-400">
-            FTP attuale: <span className="font-semibold">{currentFTP} W</span>
-          </p>
+        <div className="flex items-center gap-2">
+          <Zap className="w-5 h-5 text-yellow-600" />
+          <h2 className="text-xl font-semibold">Analisi Potenza</h2>
         </div>
-        <div className="flex gap-2">
-          {(['current', '30d', '90d', '1y'] as const).map((period) => (
-            <Button
-              key={period}
-              variant={selectedPeriod === period ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setSelectedPeriod(period)}
-            >
-              {period === 'current' ? 'Attuale' : period}
-            </Button>
-          ))}
+        <div className="flex items-center gap-4">
+          <Select
+            value={selectedPeriod.toString()}
+            onValueChange={(value) => setSelectedPeriod(parseInt(value))}
+          >
+            <SelectTrigger className="w-32">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="3">3 mesi</SelectItem>
+              <SelectItem value="6">6 mesi</SelectItem>
+              <SelectItem value="12">12 mesi</SelectItem>
+              <SelectItem value="24">2 anni</SelectItem>
+            </SelectContent>
+          </Select>
+          <Button onClick={handleRefresh} variant="outline" size="sm">
+            <RefreshCw className="w-4 h-4" />
+          </Button>
         </div>
       </div>
 
-      {/* Sub-tabs per diverse visualizzazioni */}
+      {/* Messaggio adattivo se il periodo è stato esteso */}
+      {adaptiveMessage && (
+        <Alert className="border-blue-200 bg-blue-50 dark:bg-blue-900/20">
+          <Info className="h-4 w-4 text-blue-600" />
+          <AlertDescription className="text-blue-800 dark:text-blue-200">
+            {adaptiveMessage}
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {/* FTP Info */}
+      <Card>
+        <CardContent className="p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-yellow-100 dark:bg-yellow-900/30 flex items-center justify-center">
+                <Target className="w-5 h-5 text-yellow-600" />
+              </div>
+              <div>
+                <p className="text-sm text-gray-600 dark:text-gray-400">FTP Attuale</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">{currentFTP} W</p>
+              </div>
+            </div>
+            <div className="text-right">
+              <p className="text-sm text-gray-600 dark:text-gray-400">W/kg</p>
+              <p className="text-lg font-semibold text-gray-900 dark:text-white">
+                {athlete.weight_kg ? (currentFTP / athlete.weight_kg).toFixed(1) : '-'}
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Tabs per diverse analisi */}
       <Tabs value={activeSubTab} onValueChange={(value: string) => setActiveSubTab(value as 'curves' | 'distribution' | 'zones')} className="w-full">
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="curves">Curve di Potenza</TabsTrigger>
@@ -333,7 +426,10 @@ export default function PowerAnalysisTab({ athleteId, athlete }: PowerAnalysisTa
           {/* Tabella Personal Bests dettagliata */}
           <Card>
             <CardHeader>
-              <CardTitle>Personal Bests Dettagliati</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                <TrendingUp className="w-5 h-5" />
+                Personal Bests Dettagliati
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="overflow-x-auto">
@@ -353,7 +449,9 @@ export default function PowerAnalysisTab({ athleteId, athlete }: PowerAnalysisTa
                       const progress = data.current && data.previous 
                         ? ((data.current - data.previous) / data.previous * 100)
                         : null;
-                      const wPerKg = data.current ? (data.current / 70).toFixed(1) : null;
+                      const wPerKg = data.current && athlete.weight_kg 
+                        ? (data.current / athlete.weight_kg).toFixed(1) 
+                        : null;
                       const ftpPercent = data.current ? Math.round((data.current / currentFTP) * 100) : null;
 
                       return (
@@ -396,83 +494,106 @@ export default function PowerAnalysisTab({ athleteId, athlete }: PowerAnalysisTa
         </TabsContent>
 
         <TabsContent value="distribution" className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Pie Chart */}
-            <Card>
-              <CardContent className="p-6">
-                <ReactECharts 
-                  option={powerDistributionChartOptions} 
-                  style={{ height: '400px', width: '100%' }} 
-                />
-              </CardContent>
-            </Card>
-
-            {/* Tabella distribuzione */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Tempo per Banda di Potenza</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  {powerDistribution.map((band, index) => {
-                    const minutes = Math.floor(band.timeSeconds / 60);
-                    const seconds = band.timeSeconds % 60;
-                    
-                    return (
-                      <div key={index} className="flex items-center justify-between p-2 rounded border">
-                        <span className="font-medium">{band.range}</span>
-                        <div className="text-right">
-                          <div className="font-semibold">
-                            {minutes}:{seconds.toString().padStart(2, '0')}
-                          </div>
-                          <div className="text-xs text-gray-600">
-                            {band.percentage.toFixed(1)}%
-                          </div>
-                        </div>
+          {powerDistribution.length > 0 ? (
+            <>
+              <Card>
+                <CardHeader>
+                  <CardTitle>Distribuzione Potenza</CardTitle>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    Ultima attività con dati di potenza
+                  </p>
+                </CardHeader>
+                <CardContent className="p-6">
+                  <ReactECharts 
+                    option={powerDistributionChartOptions} 
+                    style={{ height: '400px', width: '100%' }} 
+                  />
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardContent className="p-6">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    {powerDistribution.map((band, index) => (
+                      <div key={index} className="text-center p-3 rounded-lg bg-gray-50 dark:bg-gray-800">
+                        <p className="text-sm font-medium">{band.range}</p>
+                        <p className="text-lg font-bold text-blue-600">
+                          {Math.floor(band.timeSeconds / 60)}:{(band.timeSeconds % 60).toString().padStart(2, '0')}
+                        </p>
+                        <p className="text-xs text-gray-600">{band.percentage.toFixed(1)}%</p>
                       </div>
-                    );
-                  })}
-                </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </>
+          ) : (
+            <Card>
+              <CardContent className="p-6 text-center">
+                <p className="text-gray-600 dark:text-gray-400">
+                  Nessun dato di distribuzione potenza disponibile
+                </p>
               </CardContent>
             </Card>
-          </div>
+          )}
         </TabsContent>
 
         <TabsContent value="zones" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Zone di Allenamento (basate su FTP: {currentFTP}W)</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {powerZones.map((zone, index) => (
-                  <div key={index} className="flex items-center justify-between p-3 rounded border">
-                    <div className="flex items-center gap-3">
-                      <div 
-                        className="w-4 h-4 rounded" 
-                        style={{ backgroundColor: zone.color }}
-                      />
-                      <div>
-                        <div className="font-semibold">{zone.zone} - {zone.name}</div>
-                        <div className="text-sm text-gray-600">
-                          {zone.minWatts} - {zone.maxWatts > 900 ? `${zone.minWatts}+` : zone.maxWatts} W 
-                          ({zone.minPercent} - {zone.maxPercent > 900 ? `${zone.minPercent}+` : zone.maxPercent}% FTP)
+          {powerZones.length > 0 ? (
+            <>
+              <Card>
+                <CardHeader>
+                  <CardTitle>Zone di Potenza</CardTitle>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    Basato su FTP di {currentFTP}W
+                  </p>
+                </CardHeader>
+                <CardContent className="p-6">
+                  <ReactECharts 
+                    option={powerZonesChartOptions} 
+                    style={{ height: '300px', width: '100%' }} 
+                  />
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardContent className="p-6">
+                  <div className="space-y-3">
+                    {powerZones.map((zone, index) => (
+                      <div key={index} className="flex items-center justify-between p-3 rounded-lg border">
+                        <div className="flex items-center gap-3">
+                          <div 
+                            className="w-4 h-4 rounded"
+                            style={{ backgroundColor: zone.color }}
+                          ></div>
+                          <div>
+                            <span className="font-medium">{zone.zone}</span>
+                            <span className="text-gray-600 ml-2">{zone.name}</span>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-sm font-medium">
+                            {zone.minWatts}-{zone.maxWatts === 999 ? '∞' : zone.maxWatts}W
+                          </p>
+                          <p className="text-xs text-gray-600">
+                            {Math.floor(zone.timeSeconds / 60)}min ({zone.percentage.toFixed(1)}%)
+                          </p>
                         </div>
                       </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="font-semibold">
-                        {Math.floor(zone.timeSeconds / 60)}:{(zone.timeSeconds % 60).toString().padStart(2, '0')}
-                      </div>
-                      <div className="text-sm text-gray-600">
-                        {zone.percentage.toFixed(1)}%
-                      </div>
-                    </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+                </CardContent>
+              </Card>
+            </>
+          ) : (
+            <Card>
+              <CardContent className="p-6 text-center">
+                <p className="text-gray-600 dark:text-gray-400">
+                  Imposta un FTP per vedere le zone di potenza
+                </p>
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
       </Tabs>
     </div>

@@ -6,285 +6,136 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { RefreshCw, Mountain, Target, TrendingUp, AlertCircle } from 'lucide-react';
 import LoadingSkeleton from '@/components/LoadingSkeleton';
-import type { Athlete } from '@/lib/types';
+import { 
+  analyzeClimbingPerformance,
+  type ClimbingPerformance,
+  type VAMAnalysis,
+  type ClimbingTrends,
+  type SegmentComparison,
+  type ClimbingAnalysisData
+} from '@/app/athletes/[id]/climbingActions';
 
 interface ClimbingAnalysisTabProps {
   athleteId: string;
-  athlete: Athlete;
-}
-
-interface ClimbingPerformance {
-  climbId: string;
+  athlete: {
   name: string;
-  category: 1 | 2 | 3 | 4 | 'HC';
-  distance: number; // km
-  elevation: number; // m
-  avgGradient: number; // %
-  bestTime: number; // secondi
-  bestVAM: number; // m/h - Velocità Ascensionale Media
-  bestWatts: number;
-  bestWPerKg: number;
-  attempts: number;
-  lastAttempt: string; // ISO date
-  trend: 'improving' | 'stable' | 'declining';
+    surname: string;
+    current_ftp?: number | null;
+    weight_kg?: number | null;
+  };
 }
 
-interface VAMAnalysis {
-  category: string;
-  averageVAM: number;
-  bestVAM: number;
-  attempts: number;
-  color: string;
-  benchmark: number; // VAM di riferimento per categoria
-}
-
-interface ClimbingTrends {
-  month: string;
-  avgVAM: number;
-  maxVAM: number;
-  climbs: number;
-  totalElevation: number;
-}
-
-interface SegmentComparison {
-  segmentName: string;
-  personalTime: number;
-  personalVAM: number;
-  personalWatts: number;
-  komTime: number;
-  komVAM: number;
-  percentageOff: number;
-  rank: number;
-  totalAttempts: number;
-}
+// Componente skeleton personalizzato
+const ClimbingAnalysisSkeleton = () => (
+  <div className="space-y-6">
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      {[...Array(3)].map((_, i) => (
+        <div key={i} className="animate-pulse bg-gray-200 dark:bg-gray-700 h-32 rounded-lg"></div>
+      ))}
+    </div>
+    <div className="animate-pulse bg-gray-200 dark:bg-gray-700 h-80 rounded-lg"></div>
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {[...Array(4)].map((_, i) => (
+        <div key={i} className="animate-pulse bg-gray-200 dark:bg-gray-700 h-48 rounded-lg"></div>
+      ))}
+    </div>
+  </div>
+);
 
 export default function ClimbingAnalysisTab({ athleteId, athlete }: ClimbingAnalysisTabProps) {
-  const [climbingPerformances, setClimbingPerformances] = useState<ClimbingPerformance[]>([]);
-  const [vamAnalysis, setVamAnalysis] = useState<VAMAnalysis[]>([]);
-  const [climbingTrends, setClimbingTrends] = useState<ClimbingTrends[]>([]);
-  const [segmentComparisons, setSegmentComparisons] = useState<SegmentComparison[]>([]);
+  const [analysisData, setAnalysisData] = useState<ClimbingAnalysisData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [selectedCategory, setSelectedCategory] = useState<'all' | '1' | '2' | '3' | '4' | 'HC'>('all');
-  const [activeSubTab, setActiveSubTab] = useState<'performance' | 'vam' | 'trends' | 'segments'>('performance');
+  const [error, setError] = useState<string | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [selectedPeriod, setSelectedPeriod] = useState<number>(12); // mesi
 
-  useEffect(() => {
+  // Carica dati reali di climbing
     const loadClimbingData = async () => {
       setIsLoading(true);
+    setError(null);
+    
+    try {
+      console.log(`[ClimbingAnalysisTab] Caricamento analisi climbing per atleta ${athleteId}, periodo ${selectedPeriod}m`);
       
-      // Simula delay API
-      await new Promise(resolve => setTimeout(resolve, 1100));
+      const result = await analyzeClimbingPerformance(athleteId, selectedPeriod);
       
-      // Genera dati performance salite mock
-      const mockPerformances: ClimbingPerformance[] = [
-        {
-          climbId: '1',
-          name: 'Mortirolo da Mazzo',
-          category: 'HC',
-          distance: 12.5,
-          elevation: 1200,
-          avgGradient: 9.6,
-          bestTime: 3240, // 54 minuti
-          bestVAM: 1333,
-          bestWatts: 285,
-          bestWPerKg: 4.1,
-          attempts: 8,
-          lastAttempt: '2024-09-15',
-          trend: 'improving'
-        },
-        {
-          climbId: '2',
-          name: 'Passo Gavia',
-          category: 'HC',
-          distance: 17.8,
-          elevation: 1240,
-          avgGradient: 7.0,
-          bestTime: 4680, // 78 minuti
-          bestVAM: 952,
-          bestWatts: 270,
-          bestWPerKg: 3.9,
-          attempts: 5,
-          lastAttempt: '2024-08-22',
-          trend: 'stable'
-        },
-        {
-          climbId: '3',
-          name: 'Alpe di Siusi',
-          category: 1,
-          distance: 11.2,
-          elevation: 980,
-          avgGradient: 8.8,
-          bestTime: 2520, // 42 minuti
-          bestVAM: 1400,
-          bestWatts: 295,
-          bestWPerKg: 4.2,
-          attempts: 12,
-          lastAttempt: '2024-10-05',
-          trend: 'improving'
-        },
-        {
-          climbId: '4',
-          name: 'Monte Grappa',
-          category: 1,
-          distance: 18.5,
-          elevation: 1240,
-          avgGradient: 6.7,
-          bestTime: 3900, // 65 minuti
-          bestVAM: 1138,
-          bestWatts: 278,
-          bestWPerKg: 4.0,
-          attempts: 7,
-          lastAttempt: '2024-09-30',
-          trend: 'improving'
-        },
-        {
-          climbId: '5',
-          name: 'Passo Rolle',
-          category: 2,
-          distance: 19.7,
-          elevation: 1080,
-          avgGradient: 5.5,
-          bestTime: 3420, // 57 minuti
-          bestVAM: 1137,
-          bestWatts: 265,
-          bestWPerKg: 3.8,
-          attempts: 6,
-          lastAttempt: '2024-07-18',
-          trend: 'stable'
-        },
-        {
-          climbId: '6',
-          name: 'Muro di Sormano',
-          category: 3,
-          distance: 2.1,
-          elevation: 190,
-          avgGradient: 9.1,
-          bestTime: 420, // 7 minuti
-          bestVAM: 1623,
-          bestWatts: 350,
-          bestWPerKg: 5.0,
-          attempts: 15,
-          lastAttempt: '2024-10-12',
-          trend: 'improving'
-        }
-      ];
-
-      // Genera analisi VAM per categoria
-      const mockVAMAnalysis: VAMAnalysis[] = [
-        { category: 'HC', averageVAM: 1142, bestVAM: 1400, attempts: 13, color: '#dc2626', benchmark: 1200 },
-        { category: 'Cat 1', averageVAM: 1269, bestVAM: 1400, attempts: 19, color: '#ea580c', benchmark: 1300 },
-        { category: 'Cat 2', averageVAM: 1137, bestVAM: 1137, attempts: 6, color: '#d97706', benchmark: 1100 },
-        { category: 'Cat 3', averageVAM: 1623, bestVAM: 1623, attempts: 15, color: '#65a30d', benchmark: 1400 },
-        { category: 'Cat 4', averageVAM: 0, bestVAM: 0, attempts: 0, color: '#16a34a', benchmark: 1000 }
-      ];
-
-      // Genera trend temporali
-      const mockTrends: ClimbingTrends[] = [];
-      const monthNames = ['Apr', 'Mag', 'Giu', 'Lug', 'Ago', 'Set', 'Ott', 'Nov'];
-      for (let i = 0; i < 8; i++) {
-        mockTrends.push({
-          month: monthNames[i],
-          avgVAM: 1100 + Math.random() * 200 + i * 20,
-          maxVAM: 1300 + Math.random() * 300 + i * 25,
-          climbs: Math.round(2 + Math.random() * 4),
-          totalElevation: Math.round(2000 + Math.random() * 3000)
-        });
+      if (result.error) {
+        setError(result.error);
+        console.error('[ClimbingAnalysisTab] Errore server:', result.error);
+        return;
       }
 
-      // Genera confronti segmenti mock
-      const mockSegments: SegmentComparison[] = [
-        {
-          segmentName: 'Mortirolo - Last 3km',
-          personalTime: 780, // 13 minuti
-          personalVAM: 1385,
-          personalWatts: 295,
-          komTime: 615, // 10:15
-          komVAM: 1756,
-          percentageOff: 26.8,
-          rank: 342,
-          totalAttempts: 3200
-        },
-        {
-          segmentName: 'Gavia - Ponte di Legno',
-          personalTime: 1680, // 28 minuti
-          personalVAM: 971,
-          personalWatts: 275,
-          komTime: 1380, // 23 minuti
-          komVAM: 1183,
-          percentageOff: 21.7,
-          rank: 158,
-          totalAttempts: 1850
-        },
-        {
-          segmentName: 'Alpe Siusi - Final Wall',
-          personalTime: 420, // 7 minuti
-          personalVAM: 1571,
-          personalWatts: 310,
-          komTime: 325, // 5:25
-          komVAM: 2031,
-          percentageOff: 29.2,
-          rank: 89,
-          totalAttempts: 950
-        },
-        {
-          segmentName: 'Grappa - Via Cadorna',
-          personalTime: 2160, // 36 minuti
-          personalVAM: 1167,
-          personalWatts: 280,
-          komTime: 1800, // 30 minuti
-          komVAM: 1400,
-          percentageOff: 20.0,
-          rank: 234,
-          totalAttempts: 2100
-        }
-      ];
+      if (!result.data) {
+        setError('Nessun dato ricevuto dal server');
+        return;
+      }
 
-      setClimbingPerformances(mockPerformances);
-      setVamAnalysis(mockVAMAnalysis);
-      setClimbingTrends(mockTrends);
-      setSegmentComparisons(mockSegments);
+      setAnalysisData(result.data);
+      console.log(`[ClimbingAnalysisTab] Analisi caricata: ${result.data.performances.length} salite, ${result.data.vamAnalysis.length} categorie`);
+
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Errore sconosciuto nel caricamento';
+      setError(errorMessage);
+      console.error('[ClimbingAnalysisTab] Errore caricamento:', err);
+    } finally {
       setIsLoading(false);
-    };
+    }
+  };
 
+  useEffect(() => {
     loadClimbingData();
-  }, [athleteId]);
+  }, [athleteId, selectedPeriod]);
 
+  const handleRefresh = () => {
+    console.log('[ClimbingAnalysisTab] Refresh manuale richiesto');
+    loadClimbingData();
+  };
+
+  const handlePeriodChange = (value: string) => {
+    const newPeriod = parseInt(value);
+    console.log(`[ClimbingAnalysisTab] Cambio periodo: ${selectedPeriod}m -> ${newPeriod}m`);
+    setSelectedPeriod(newPeriod);
+  };
+
+  // Filtra performance per categoria selezionata
   const filteredPerformances = useMemo(() => {
-    if (selectedCategory === 'all') return climbingPerformances;
-    return climbingPerformances.filter(p => p.category.toString() === selectedCategory);
-  }, [climbingPerformances, selectedCategory]);
+    if (!analysisData?.performances) return [];
+    if (selectedCategory === 'all') return analysisData.performances;
+    return analysisData.performances.filter(p => p.category.toString() === selectedCategory);
+  }, [analysisData?.performances, selectedCategory]);
 
   const vamChartOptions = useMemo(() => {
-    if (vamAnalysis.length === 0) return {};
+    if (!analysisData?.vamAnalysis || analysisData.vamAnalysis.length === 0) return {};
 
-    const categories = vamAnalysis.filter(v => v.attempts > 0);
+    const categories = analysisData.vamAnalysis.filter(v => v.attempts > 0);
     
     return {
       title: {
-        text: 'VAM per Categoria Salita',
+        text: 'VAM per Categoria',
         left: 'center',
         textStyle: { fontSize: 16, fontWeight: 'bold' }
       },
       tooltip: {
         trigger: 'axis',
         formatter: (params: any) => {
-          const data = categories[params[0].dataIndex];
-          return `${data.category}<br/>
-                  VAM Media: <strong>${data.averageVAM} m/h</strong><br/>
-                  VAM Migliore: <strong>${data.bestVAM} m/h</strong><br/>
-                  Benchmark: <strong>${data.benchmark} m/h</strong><br/>
-                  Tentativi: <strong>${data.attempts}</strong>`;
+          if (!params || params.length === 0) return '';
+          
+          const category = categories[params[0].dataIndex];
+          if (!category) return '';
+
+          return `${category.category}<br/>
+                  VAM Media: <strong>${category.averageVAM} m/h</strong><br/>
+                  VAM Migliore: <strong>${category.bestVAM} m/h</strong><br/>
+                  Tentativi: <strong>${category.attempts}</strong><br/>
+                  Benchmark: <strong>${category.benchmark} m/h</strong>`;
         }
       },
       legend: {
         data: ['VAM Media', 'VAM Migliore', 'Benchmark'],
-        bottom: 5
-      },
-      grid: {
-        left: '3%',
-        right: '4%',
-        bottom: '15%',
-        containLabel: true
+        bottom: 10
       },
       xAxis: {
         type: 'category',
@@ -293,7 +144,8 @@ export default function ClimbingAnalysisTab({ athleteId, athlete }: ClimbingAnal
       yAxis: {
         type: 'value',
         name: 'VAM (m/h)',
-        axisLabel: { formatter: '{value}' }
+        min: 500,
+        max: 2000
       },
       series: [
         {
@@ -314,63 +166,66 @@ export default function ClimbingAnalysisTab({ athleteId, athlete }: ClimbingAnal
           data: categories.map(c => c.benchmark),
           lineStyle: { width: 2, type: 'dashed' },
           itemStyle: { color: '#ef4444' },
-          symbol: 'diamond'
+          symbol: 'diamond',
+          symbolSize: 8
         }
       ]
     };
-  }, [vamAnalysis]);
+  }, [analysisData?.vamAnalysis]);
 
   const trendsChartOptions = useMemo(() => {
-    if (climbingTrends.length === 0) return {};
+    if (!analysisData?.trends || analysisData.trends.length === 0) return {};
 
     return {
       title: {
-        text: 'Trend Stagionale Climbing',
+        text: 'Trend Climbing nel Tempo',
         left: 'center',
         textStyle: { fontSize: 16, fontWeight: 'bold' }
       },
       tooltip: {
         trigger: 'axis',
         formatter: (params: any) => {
-          const data = climbingTrends[params[0].dataIndex];
+          if (!params || params.length === 0) return '';
+          
+          const data = analysisData.trends[params[0].dataIndex];
+          if (!data) return '';
+
           return `${params[0].axisValue}<br/>
                   VAM Media: <strong>${Math.round(data.avgVAM)} m/h</strong><br/>
                   VAM Max: <strong>${Math.round(data.maxVAM)} m/h</strong><br/>
                   Salite: <strong>${data.climbs}</strong><br/>
-                  Dislivello: <strong>${data.totalElevation.toLocaleString()} m</strong>`;
+                  Dislivello: <strong>${Math.round(data.totalElevation)}m</strong>`;
         }
       },
       legend: {
-        data: ['VAM Media', 'VAM Max', 'Salite', 'Dislivello'],
-        bottom: 5
-      },
-      grid: {
-        left: '3%',
-        right: '4%',
-        bottom: '15%',
-        containLabel: true
+        data: ['VAM Media', 'VAM Max', 'Salite', 'Dislivello (x100)'],
+        bottom: 10
       },
       xAxis: {
         type: 'category',
-        data: climbingTrends.map(t => t.month)
+        data: analysisData.trends.map(t => t.month)
       },
       yAxis: [
         {
           type: 'value',
           name: 'VAM (m/h)',
-          position: 'left'
+          position: 'left',
+          min: 800,
+          max: 1800
         },
         {
           type: 'value',
           name: 'Salite / Dislivello',
-          position: 'right'
+          position: 'right',
+          min: 0,
+          max: 80
         }
       ],
       series: [
         {
           name: 'VAM Media',
           type: 'line',
-          data: climbingTrends.map(t => Math.round(t.avgVAM)),
+          data: analysisData.trends.map(t => Math.round(t.avgVAM)),
           smooth: true,
           lineStyle: { width: 3 },
           itemStyle: { color: '#3b82f6' }
@@ -378,7 +233,7 @@ export default function ClimbingAnalysisTab({ athleteId, athlete }: ClimbingAnal
         {
           name: 'VAM Max',
           type: 'line',
-          data: climbingTrends.map(t => Math.round(t.maxVAM)),
+          data: analysisData.trends.map(t => Math.round(t.maxVAM)),
           smooth: true,
           lineStyle: { width: 2, type: 'dashed' },
           itemStyle: { color: '#10b981' }
@@ -387,67 +242,188 @@ export default function ClimbingAnalysisTab({ athleteId, athlete }: ClimbingAnal
           name: 'Salite',
           type: 'bar',
           yAxisIndex: 1,
-          data: climbingTrends.map(t => t.climbs),
+          data: analysisData.trends.map(t => t.climbs),
           itemStyle: { color: '#f59e0b', opacity: 0.7 }
         },
         {
-          name: 'Dislivello',
+          name: 'Dislivello (x100)',
           type: 'line',
           yAxisIndex: 1,
-          data: climbingTrends.map(t => t.totalElevation / 100), // Scala per visualizzazione
+          data: analysisData.trends.map(t => t.totalElevation / 100), // Scala per visualizzazione
           lineStyle: { width: 2, type: 'dotted' },
           itemStyle: { color: '#8b5cf6' }
         }
       ]
     };
-  }, [climbingTrends]);
+  }, [analysisData?.trends]);
 
   if (isLoading) {
     return (
       <div className="space-y-6">
-        <LoadingSkeleton />
-        <LoadingSkeleton />
-        <LoadingSkeleton />
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <RefreshCw className="w-4 h-4 animate-spin" />
+            <span>Analizzando performance salite...</span>
+          </div>
+        </div>
+        <ClimbingAnalysisSkeleton />
       </div>
     );
   }
 
-  const formatTime = (seconds: number) => {
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    const secs = seconds % 60;
+  if (error) {
+    const isNoDataError = error.includes('Nessuna attività') || error.includes('GPS');
     
-    if (hours > 0) {
-      return `${hours}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-    }
-    return `${minutes}:${secs.toString().padStart(2, '0')}`;
-  };
+    return (
+      <Card>
+        <CardContent className="p-6">
+          <div className="text-center">
+            <AlertCircle className="w-12 h-12 mx-auto text-red-500 mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+              {isNoDataError ? 'Nessun dato disponibile' : 'Errore nell\'analisi'}
+            </h3>
+            <p className="text-red-600 mb-4 max-w-md mx-auto">
+              {isNoDataError 
+                ? 'Non sono stati trovati dati GPS per salite nel periodo selezionato. Prova ad estendere il periodo o caricare attività con traccia GPS.'
+                : error
+              }
+            </p>
+            <div className="flex gap-2 justify-center">
+              <Button onClick={handleRefresh} variant="outline">
+                <RefreshCw className="w-4 h-4 mr-2" />
+                Riprova
+              </Button>
+              {isNoDataError && (
+                <Button 
+                  onClick={() => setSelectedPeriod(24)}
+                  variant="secondary"
+                >
+                  Estendi a 2 anni
+                </Button>
+              )}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
-  const getCategoryColor = (category: ClimbingPerformance['category']) => {
-    switch (category) {
-      case 'HC': return 'bg-red-100 text-red-800 border-red-200';
-      case 1: return 'bg-orange-100 text-orange-800 border-orange-200';
-      case 2: return 'bg-amber-100 text-amber-800 border-amber-200';
-      case 3: return 'bg-green-100 text-green-800 border-green-200';
-      case 4: return 'bg-blue-100 text-blue-800 border-blue-200';
-      default: return 'bg-gray-100 text-gray-800 border-gray-200';
-    }
-  };
+  if (!analysisData) {
+    return (
+      <Card>
+        <CardContent className="p-6">
+          <div className="text-center">
+            <Mountain className="w-12 h-12 mx-auto text-gray-400 mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+              Dati non disponibili
+            </h3>
+            <p className="text-gray-600 dark:text-gray-400 mb-4">
+              L'analisi non ha prodotto risultati. Controlla che le attività abbiano tracce GPS con dati di elevazione.
+            </p>
+            <Button onClick={handleRefresh} variant="outline">
+              <RefreshCw className="w-4 h-4 mr-2" />
+              Ricarica
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Calcolo statistiche summary
+  const totalClimbs = analysisData.trends.reduce((sum, t) => sum + t.climbs, 0);
+  const avgVAM = analysisData.trends.length > 0 
+    ? Math.round(analysisData.trends.reduce((sum, t) => sum + t.avgVAM, 0) / analysisData.trends.length)
+    : 0;
+  const bestVAM = analysisData.trends.length > 0 
+    ? Math.round(Math.max(...analysisData.trends.map(t => t.maxVAM)))
+    : 0;
+  const totalElevation = Math.round(analysisData.trends.reduce((sum, t) => sum + t.totalElevation, 0) / 1000);
 
   return (
     <div className="space-y-6">
-      {/* Header */}
+      {/* Header con controlli */}
       <div className="flex items-center justify-between">
-        <div>
-          <h3 className="text-lg font-semibold">Analisi Climbing Performance</h3>
-          <p className="text-sm text-gray-600 dark:text-gray-400">
-            VAM, categorie salite e confronti segmenti
-          </p>
+        <div className="flex items-center gap-2">
+          <Mountain className="w-5 h-5 text-blue-600" />
+          <h2 className="text-xl font-semibold">Analisi Performance Salite</h2>
+          {analysisData.performances.length > 0 && (
+            <Badge variant="outline">{analysisData.performances.length} salite</Badge>
+          )}
+        </div>
+        <div className="flex items-center gap-4">
+          <Select
+            value={selectedPeriod.toString()}
+            onValueChange={handlePeriodChange}
+            disabled={isLoading}
+          >
+            <SelectTrigger className="w-32">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="6">6 mesi</SelectItem>
+              <SelectItem value="12">12 mesi</SelectItem>
+              <SelectItem value="18">18 mesi</SelectItem>
+              <SelectItem value="24">2 anni</SelectItem>
+            </SelectContent>
+          </Select>
+          <Button 
+            onClick={handleRefresh} 
+            variant="outline" 
+            size="sm"
+            disabled={isLoading}
+          >
+            <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+          </Button>
         </div>
       </div>
 
+      {/* Overview statistiche */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <Card>
+          <CardContent className="p-4">
+            <div className="text-center">
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Salite Totali</p>
+              <p className="text-2xl font-bold text-blue-600">
+                {totalClimbs}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="text-center">
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">VAM Media</p>
+              <p className="text-2xl font-bold text-green-600">
+                {avgVAM} m/h
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="text-center">
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">VAM Migliore</p>
+              <p className="text-2xl font-bold text-purple-600">
+                {bestVAM} m/h
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="text-center">
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Dislivello Totale</p>
+              <p className="text-2xl font-bold text-orange-600">
+                {totalElevation}k m
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
       {/* Sub-tabs */}
-      <Tabs value={activeSubTab} onValueChange={(value: string) => setActiveSubTab(value as 'performance' | 'vam' | 'trends' | 'segments')} className="w-full">
+      <Tabs value="performance" className="w-full">
         <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="performance">Performance</TabsTrigger>
           <TabsTrigger value="vam">Analisi VAM</TabsTrigger>
@@ -456,18 +432,25 @@ export default function ClimbingAnalysisTab({ athleteId, athlete }: ClimbingAnal
         </TabsList>
 
         <TabsContent value="performance" className="space-y-6">
-          {/* Filtri categoria */}
-          <div className="flex gap-2">
-            {(['all', 'HC', '1', '2', '3', '4'] as const).map((category) => (
-              <Button
-                key={category}
-                variant={selectedCategory === category ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setSelectedCategory(category)}
-              >
-                {category === 'all' ? 'Tutte' : category === 'HC' ? 'Hors Catégorie' : `Cat. ${category}`}
-              </Button>
-            ))}
+          {/* Filtro per categoria */}
+          <div className="flex items-center gap-4">
+            <span className="text-sm font-medium">Categoria:</span>
+            <Select
+              value={selectedCategory}
+              onValueChange={setSelectedCategory}
+            >
+              <SelectTrigger className="w-40">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tutte</SelectItem>
+                <SelectItem value="HC">Hors Catégorie</SelectItem>
+                <SelectItem value="1">Categoria 1</SelectItem>
+                <SelectItem value="2">Categoria 2</SelectItem>
+                <SelectItem value="3">Categoria 3</SelectItem>
+                <SelectItem value="4">Categoria 4</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Lista performance salite */}
@@ -506,45 +489,43 @@ export default function ClimbingAnalysisTab({ athleteId, athlete }: ClimbingAnal
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <div className="text-center p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                      <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Miglior Tempo</p>
-                      <p className="text-lg font-bold text-blue-600">{formatTime(climb.bestTime)}</p>
+                  <div className="grid grid-cols-2 md:grid-cols-6 gap-4 text-center">
+                    <div>
+                      <p className="text-xs text-gray-500 mb-1">Tempo Migliore</p>
+                      <p className="font-semibold">{formatTime(climb.bestTime)}</p>
                     </div>
-                    <div className="text-center p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
-                      <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">VAM</p>
-                      <p className="text-lg font-bold text-green-600">{climb.bestVAM} m/h</p>
+                    <div>
+                      <p className="text-xs text-gray-500 mb-1">VAM</p>
+                      <p className="font-semibold text-blue-600">{climb.bestVAM} m/h</p>
                     </div>
-                    <div className="text-center p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
-                      <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Potenza</p>
-                      <p className="text-lg font-bold text-purple-600">{climb.bestWatts}W</p>
-                      <p className="text-xs text-gray-500">{climb.bestWPerKg} W/kg</p>
+                    <div>
+                      <p className="text-xs text-gray-500 mb-1">Potenza</p>
+                      <p className="font-semibold text-green-600">{climb.bestWatts || 'N/D'} W</p>
                     </div>
-                    <div className="text-center p-3 bg-orange-50 dark:bg-orange-900/20 rounded-lg">
-                      <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Tentativi</p>
-                      <p className="text-lg font-bold text-orange-600">{climb.attempts}</p>
-                      <p className="text-xs text-gray-500">
-                        {new Date(climb.lastAttempt).toLocaleDateString('it-IT')}
-                      </p>
+                    <div>
+                      <p className="text-xs text-gray-500 mb-1">W/kg</p>
+                      <p className="font-semibold text-purple-600">{climb.bestWPerKg || 'N/D'}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500 mb-1">Tentativi</p>
+                      <p className="font-semibold">{climb.attempts}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500 mb-1">Ultimo</p>
+                      <p className="font-semibold">{new Date(climb.lastAttempt).toLocaleDateString('it-IT')}</p>
                     </div>
                   </div>
                 </CardContent>
               </Card>
             ))}
           </div>
-
-          {filteredPerformances.length === 0 && (
-            <div className="text-center py-12">
-              <svg className="w-16 h-16 text-gray-300 dark:text-gray-600 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M5 10l7-7m0 0l7 7m-7-7v18" />
-              </svg>
-              <p className="text-gray-500 dark:text-gray-400">Nessuna salita per questa categoria</p>
-            </div>
-          )}
         </TabsContent>
 
         <TabsContent value="vam" className="space-y-6">
           <Card>
+            <CardHeader>
+              <CardTitle>VAM per Categoria</CardTitle>
+            </CardHeader>
             <CardContent className="p-6">
               <ReactECharts 
                 option={vamChartOptions} 
@@ -559,7 +540,7 @@ export default function ClimbingAnalysisTab({ athleteId, athlete }: ClimbingAnal
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {vamAnalysis.filter(v => v.attempts > 0).map((analysis, index) => {
+                {analysisData.vamAnalysis.filter(v => v.attempts > 0).map((analysis, index) => {
                   const isAboveBenchmark = analysis.averageVAM > analysis.benchmark;
                   const percentVsBenchmark = ((analysis.averageVAM - analysis.benchmark) / analysis.benchmark) * 100;
                   
@@ -594,55 +575,13 @@ export default function ClimbingAnalysisTab({ athleteId, athlete }: ClimbingAnal
               </div>
             </CardContent>
           </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Livelli VAM Interpretativi</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                <div>
-                  <h4 className="font-semibold mb-3">VAM per Categoria</h4>
-                  <ul className="space-y-2">
-                    <li className="flex justify-between">
-                      <span>Cat 4 (Buono):</span>
-                      <span>1000-1200 m/h</span>
-                    </li>
-                    <li className="flex justify-between">
-                      <span>Cat 3 (Molto Buono):</span>
-                      <span>1200-1400 m/h</span>
-                    </li>
-                    <li className="flex justify-between">
-                      <span>Cat 2 (Eccellente):</span>
-                      <span>1100-1300 m/h</span>
-                    </li>
-                    <li className="flex justify-between">
-                      <span>Cat 1 (Pro Level):</span>
-                      <span>1300-1500 m/h</span>
-                    </li>
-                    <li className="flex justify-between">
-                      <span>HC (Elite):</span>
-                      <span>1200-1400 m/h</span>
-                    </li>
-                  </ul>
-                </div>
-                <div>
-                  <h4 className="font-semibold mb-3">Note VAM</h4>
-                  <ul className="space-y-1 text-gray-600">
-                    <li>• VAM = Velocità Ascensionale Media (m/h)</li>
-                    <li>• Dipende da pendenza e durata</li>
-                    <li>• Salite brevi: VAM più elevato</li>
-                    <li>• Salite lunghe: VAM più sostenuto</li>
-                    <li>• Condizioni influenzano il risultato</li>
-                  </ul>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
         </TabsContent>
 
         <TabsContent value="trends" className="space-y-6">
           <Card>
+            <CardHeader>
+              <CardTitle>Trend Performance Salite</CardTitle>
+            </CardHeader>
             <CardContent className="p-6">
               <ReactECharts 
                 option={trendsChartOptions} 
@@ -650,60 +589,29 @@ export default function ClimbingAnalysisTab({ athleteId, athlete }: ClimbingAnal
               />
             </CardContent>
           </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Statistiche Stagionali</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="text-center p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Salite Totali</p>
-                  <p className="text-2xl font-bold text-blue-600">
-                    {climbingTrends.reduce((sum, t) => sum + t.climbs, 0)}
-                  </p>
-                </div>
-                <div className="text-center p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">VAM Media</p>
-                  <p className="text-2xl font-bold text-green-600">
-                    {Math.round(climbingTrends.reduce((sum, t) => sum + t.avgVAM, 0) / climbingTrends.length)} m/h
-                  </p>
-                </div>
-                <div className="text-center p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">VAM Migliore</p>
-                  <p className="text-2xl font-bold text-purple-600">
-                    {Math.round(Math.max(...climbingTrends.map(t => t.maxVAM)))} m/h
-                  </p>
-                </div>
-                <div className="text-center p-4 bg-orange-50 dark:bg-orange-900/20 rounded-lg">
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Dislivello Totale</p>
-                  <p className="text-2xl font-bold text-orange-600">
-                    {Math.round(climbingTrends.reduce((sum, t) => sum + t.totalElevation, 0) / 1000)}k m
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
         </TabsContent>
 
         <TabsContent value="segments" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Confronti Segmenti Strava</CardTitle>
+              <CardTitle>Confronto Segmenti</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {segmentComparisons.map((segment, index) => (
+                {analysisData.segments.map((segment, index) => (
                   <div key={index} className="border rounded-lg p-4">
                     <div className="flex items-start justify-between mb-4">
                       <div>
                         <h4 className="font-semibold">{segment.segmentName}</h4>
                         <p className="text-sm text-gray-600">
-                          Rank: #{segment.rank} di {segment.totalAttempts.toLocaleString()}
+                          Rank: #{segment.rank || 'N/D'} di {segment.totalAttempts.toLocaleString()}
                         </p>
                       </div>
-                      <Badge variant={segment.percentageOff < 20 ? 'default' : segment.percentageOff < 30 ? 'secondary' : 'outline'}>
-                        -{segment.percentageOff.toFixed(1)}% dal KOM
+                      <Badge variant={
+                        segment.percentageOff && segment.percentageOff < 20 ? 'default' : 
+                        segment.percentageOff && segment.percentageOff < 30 ? 'secondary' : 'outline'
+                      }>
+                        {segment.percentageOff ? `-${segment.percentageOff.toFixed(1)}% dal KOM` : 'N/D'}
                       </Badge>
                     </div>
 
@@ -715,32 +623,23 @@ export default function ClimbingAnalysisTab({ athleteId, athlete }: ClimbingAnal
                       </div>
                       <div className="text-center">
                         <p className="text-xs text-gray-500 mb-1">Tempo KOM</p>
-                        <p className="font-semibold text-green-600">{formatTime(segment.komTime)}</p>
-                        <p className="text-xs text-gray-500">{segment.komVAM} m/h</p>
+                        <p className="font-semibold text-green-600">
+                          {segment.komTime ? formatTime(segment.komTime) : 'N/D'}
+                        </p>
+                        <p className="text-xs text-gray-500">{segment.komVAM || 'N/D'} m/h</p>
                       </div>
                       <div className="text-center">
                         <p className="text-xs text-gray-500 mb-1">Differenza</p>
-                        <p className="font-semibold text-red-600">+{formatTime(segment.personalTime - segment.komTime)}</p>
-                        <p className="text-xs text-gray-500">-{segment.komVAM - segment.personalVAM} m/h</p>
+                        <p className="font-semibold text-red-600">
+                          {segment.komTime ? `+${formatTime(segment.personalTime - segment.komTime)}` : 'N/D'}
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          {segment.komVAM ? `-${segment.komVAM - segment.personalVAM} m/h` : 'N/D'}
+                        </p>
                       </div>
                       <div className="text-center">
                         <p className="text-xs text-gray-500 mb-1">Potenza</p>
-                        <p className="font-semibold">{segment.personalWatts}W</p>
-                        <p className="text-xs text-gray-500">Personal</p>
-                      </div>
-                    </div>
-
-                    {/* Progress bar per percentuale dal KOM */}
-                    <div className="mt-4">
-                      <div className="flex justify-between text-xs text-gray-500 mb-1">
-                        <span>Progresso verso KOM</span>
-                        <span>{(100 - segment.percentageOff).toFixed(1)}%</span>
-                      </div>
-                      <div className="w-full bg-gray-200 rounded-full h-2">
-                        <div 
-                          className="bg-blue-500 h-2 rounded-full transition-all duration-300"
-                          style={{ width: `${100 - segment.percentageOff}%` }}
-                        />
+                        <p className="font-semibold text-blue-600">{segment.personalWatts || 'N/D'} W</p>
                       </div>
                     </div>
                   </div>
@@ -758,15 +657,15 @@ export default function ClimbingAnalysisTab({ athleteId, athlete }: ClimbingAnal
                 <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded border border-green-200 dark:border-green-800">
                   <h4 className="font-semibold text-green-800 dark:text-green-300 mb-1">🎯 Obiettivi Raggiungibili</h4>
                   <ul className="text-green-700 dark:text-green-400 space-y-1">
-                    <li>• Mortirolo Last 3km: Top 300 (mancano 42 posizioni)</li>
-                    <li>• Grappa Via Cadorna: Top 200 (mancano 34 posizioni)</li>
+                    <li>• Focalizzati su salite con pochi tentativi (&lt; 5)</li>
+                    <li>• Migliora la cadenza su pendenze &gt; 8%</li>
                   </ul>
                 </div>
                 <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded border border-blue-200 dark:border-blue-800">
                   <h4 className="font-semibold text-blue-800 dark:text-blue-300 mb-1">🔥 Obiettivi Sfida</h4>
                   <ul className="text-blue-700 dark:text-blue-400 space-y-1">
-                    <li>• Alpe Siusi Final Wall: Top 50 (39 posizioni)</li>
-                    <li>• Gavia Ponte di Legno: Top 100 (58 posizioni)</li>
+                    <li>• Migliora VAM su categorie HC e Cat 1</li>
+                    <li>• Target: +5% VAM su salite abituali</li>
                   </ul>
                 </div>
               </div>
@@ -776,4 +675,30 @@ export default function ClimbingAnalysisTab({ athleteId, athlete }: ClimbingAnal
       </Tabs>
     </div>
   );
+}
+
+// Helper functions
+function getCategoryColor(category: string | number): string {
+  switch (category.toString()) {
+    case 'HC': return 'border-red-600 text-red-600 bg-red-50';
+    case '1': return 'border-orange-600 text-orange-600 bg-orange-50';
+    case '2': return 'border-yellow-600 text-yellow-600 bg-yellow-50';
+    case '3': return 'border-green-600 text-green-600 bg-green-50';
+    case '4': return 'border-blue-600 text-blue-600 bg-blue-50';
+    default: return 'border-gray-600 text-gray-600 bg-gray-50';
+  }
+}
+
+function formatTime(seconds: number): string {
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  const remainingSeconds = seconds % 60;
+  
+  if (hours > 0) {
+    return `${hours}h ${minutes}m`;
+  } else if (minutes > 0) {
+    return `${minutes}m ${remainingSeconds}s`;
+  } else {
+    return `${remainingSeconds}s`;
+  }
 } 

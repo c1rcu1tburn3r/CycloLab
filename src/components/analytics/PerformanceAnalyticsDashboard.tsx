@@ -5,6 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { 
   Dialog, 
   DialogContent, 
@@ -28,15 +29,37 @@ import { useCycloLabToast } from "@/hooks/use-cyclolab-toast";
 import { estimateFTPFromActivities, shouldSuggestFTPUpdate, formatFTPSuggestionMessage, type FTPEstimationResult } from "@/lib/ftpEstimation";
 import { createClient } from '@/utils/supabase/client';
 import { saveAthleteProfileEntry } from '@/app/athletes/athleteProfileActions';
+import { getTabNotifications, markTabAsVisited, type NotificationStatus } from '@/app/athletes/[id]/notificationActions';
+import { 
+  analyzeHRFromActivities, 
+  calculateHRZonesFromMax, 
+  calculateHRZonesFromLTHR,
+  calculateHRStats,
+  shouldSuggestHRUpdate,
+  type HRZoneEstimationResult,
+  type HRZone 
+} from '@/lib/hrZoneCalculations';
+import { 
+  Activity as ActivityIcon, 
+  Heart, 
+  Zap, 
+  TrendingUp, 
+  Clock, 
+  Target,
+  AlertTriangle,
+  CheckCircle,
+  Info
+} from 'lucide-react';
 
-// Import dei componenti per ogni tab
-import OverviewTab from './tabs/OverviewTab';
+// Import dei componenti per ogni tab (rimuovo OverviewTab)
 import PowerAnalysisTab from './tabs/PowerAnalysisTab';
 import TrainingLoadTab from './tabs/TrainingLoadTab';
 import PerformanceTrendsTab from './tabs/PerformanceTrendsTab';
 import ClimbingAnalysisTab from './tabs/ClimbingAnalysisTab';
+import CadenceAnalysisTab from './tabs/CadenceAnalysisTab';
 
-type TabId = 'overview' | 'power' | 'training-load' | 'trends' | 'climbing';
+// Rimuovo 'overview' dai tipi
+type TabId = 'power' | 'training-load' | 'cadence' | 'trends' | 'climbing';
 
 interface PerformanceAnalyticsDashboardProps {
   athleteId: string;
@@ -53,6 +76,15 @@ interface TabConfig {
   disabled?: boolean;
 }
 
+interface PowerZone {
+  zone: string;
+  name: string;
+  minWatts: number;
+  maxWatts: number;
+  color: string;
+  percentage: number;
+}
+
 // Validazione range FTP realistici per tutti i livelli
 const FTP_VALIDATION_RANGES = {
   absolute: { min: 80, max: 600 }, // 80W (principiante) - 600W (professionista elite)
@@ -62,22 +94,12 @@ const FTP_VALIDATION_RANGES = {
   }
 };
 
+// Rimuovo la tab Overview dalla configurazione
 const TABS_CONFIG: TabConfig[] = [
   {
-    id: 'overview',
-    label: 'Overview',
-    description: 'Riepilogo generale e Performance Management Chart',
-    icon: (
-      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-      </svg>
-    ),
-  },
-  {
     id: 'power',
-    label: 'Power Analysis',
-    description: 'Curve di potenza, distribuzione e personal bests',
-    badge: 'Nuovo',
+    label: 'Analisi Potenza',
+    description: 'Curve di potenza, distribuzione e personal bests avanzati',
     icon: (
       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
@@ -86,8 +108,8 @@ const TABS_CONFIG: TabConfig[] = [
   },
   {
     id: 'training-load',
-    label: 'Training Load',
-    description: 'Carico di allenamento, fatica e forma fisica',
+    label: 'Carico Allenamento',
+    description: 'PMC scientifico, fatica e forma fisica',
     icon: (
       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -95,10 +117,19 @@ const TABS_CONFIG: TabConfig[] = [
     ),
   },
   {
+    id: 'cadence',
+    label: 'Analisi Cadenza',
+    description: 'Efficienza pedalata e cadenza ottimale',
+    icon: (
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+      </svg>
+    ),
+  },
+  {
     id: 'trends',
-    label: 'Performance Trends',
-    description: 'Confronti temporali e analisi miglioramenti',
-    badge: 'Nuovo',
+    label: 'Trend Performance',
+    description: 'Confronti temporali e analisi predittive',
     icon: (
       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" />
@@ -107,8 +138,8 @@ const TABS_CONFIG: TabConfig[] = [
   },
   {
     id: 'climbing',
-    label: 'Climbing Analysis',
-    description: 'Analisi salite e performance su segmenti',
+    label: 'Analisi Salite',
+    description: 'Performance su segmenti e climbing analytics',
     icon: (
       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />
@@ -122,7 +153,11 @@ export default function PerformanceAnalyticsDashboard({
   athlete,
   userId,
 }: PerformanceAnalyticsDashboardProps) {
-  const [activeTab, setActiveTab] = useState<TabId>('overview');
+  // AGGIUNGO GESTIONE IDRATAZIONE SICURA
+  const [isHydrated, setIsHydrated] = useState(false);
+  
+  // Cambiato default da 'overview' a 'power'
+  const [activeTab, setActiveTab] = useState<TabId>('power');
   const [isLoading, setIsLoading] = useState(true);
   const [activities, setActivities] = useState<any[]>([]);
   const [ftpEstimation, setFtpEstimation] = useState<FTPEstimationResult | null>(null);
@@ -144,7 +179,21 @@ export default function PerformanceAnalyticsDashboard({
   const [ftpSource, setFtpSource] = useState<'test' | 'estimate' | 'activity'>('test');
   const [isUpdating, setIsUpdating] = useState(false);
 
+  // Stati per il sistema HR avanzato
+  const [hrEstimation, setHrEstimation] = useState<HRZoneEstimationResult | null>(null);
+  const [showHrSuggestion, setShowHrSuggestion] = useState(false);
+  const [hrZones, setHrZones] = useState<HRZone[]>([]);
+  const [powerZones, setPowerZones] = useState<PowerZone[]>([]);
+
   const { showSuccess, showError } = useCycloLabToast();
+
+  const [notifications, setNotifications] = useState<NotificationStatus | null>(null);
+  const [visitedTabs, setVisitedTabs] = useState<Set<string>>(new Set());
+
+  // EFFETTO PER IDRATAZIONE SICURA
+  useEffect(() => {
+    setIsHydrated(true);
+  }, []);
 
   // Calcola metriche dalle informazioni del profilo corrente
   const currentFTP = currentProfile.ftp;
@@ -152,8 +201,18 @@ export default function PerformanceAnalyticsDashboard({
   const currentWPerKg = currentFTP && currentWeight ? (currentFTP / currentWeight).toFixed(2) : 'N/A';
   const lastMeasurementDate = currentProfile.lastMeasurementDate;
 
-  // Carica dati e analizza FTP automaticamente
+  // Crea oggetto athlete aggiornato con dati corretti
+  const athleteWithCorrectData = {
+    ...athlete,
+    current_ftp: currentFTP,
+    weight_kg: currentWeight
+  };
+
+  // Carica dati e analizza FTP automaticamente + sistema HR
   useEffect(() => {
+    // CONDIZIONO IL CARICAMENTO ALL'IDRATAZIONE
+    if (!isHydrated) return;
+    
     const loadDataAndAnalyzeFTP = async () => {
       setIsLoading(true);
       try {
@@ -174,14 +233,9 @@ export default function PerformanceAnalyticsDashboard({
             weight: profileEntry.weight_kg || null,
             lastMeasurementDate: profileEntry.effective_date || null
           });
-        } else {
-          console.log('Nessun profilo trovato per l\'atleta:', profileError?.message);
         }
         
-        // Carica attività reali dell'atleta (ultimi 3 mesi per analisi FTP)
-        const threeMonthsAgo = new Date();
-        threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
-        
+        // Carica attività complete per analisi FTP e HR
         const { data: activities, error: activitiesError } = await supabase
           .from('activities')
           .select(`
@@ -189,490 +243,505 @@ export default function PerformanceAnalyticsDashboard({
             activity_date,
             title,
             duration_seconds,
+            distance_meters,
             avg_power_watts,
             max_power_watts,
             normalized_power_watts,
-            intensity_factor
+            avg_heart_rate,
+            max_heart_rate,
+            avg_cadence,
+            tss,
+            activity_type
           `)
           .eq('athlete_id', athleteId)
-          .gte('activity_date', threeMonthsAgo.toISOString().split('T')[0])
-          .order('activity_date', { ascending: false })
-          .limit(100); // Limit ragionevole per analisi
+          .order('activity_date', { ascending: false });
         
         if (activitiesError) {
-          console.warn('Errore caricamento attività:', activitiesError.message);
+          console.error('Errore nel caricamento delle attività:', activitiesError);
+          setActivities([]);
+        } else {
+          setActivities(activities || []);
+          
+          // Analizza FTP automaticamente (mantiene la logica esistente)
+          if (activities && activities.length > 0) {
+            try {
+              const estimation = await estimateFTPFromActivities(
+                activities as any[], 
+                profileEntry?.ftp_watts || null, 
+                3 // minActivities - il sistema ora sceglie automaticamente il periodo ottimale
+              );
+              setFtpEstimation(estimation);
+              
+              const shouldSuggest = estimation ? shouldSuggestFTPUpdate(estimation, profileEntry?.ftp_watts) : false;
+              
+              if (estimation && shouldSuggest) {
+                setShowFtpSuggestion(true);
+              }
+            } catch (error) {
+              console.error('Errore nell\'analisi FTP:', error);
+            }
+          }
+          
+          // Analisi automatica HR e calcolo zone
+          await analyzeHRAndZones(activities || [], profileEntry);
         }
         
-        const loadedActivities = activities || [];
-        setActivities(loadedActivities);
-        
-        // Stima FTP dalle attività se ci sono dati sufficienti
-        if (loadedActivities.length > 0) {
-          const estimation = estimateFTPFromActivities(loadedActivities as any[], profileEntry?.ftp_watts || null);
-          
-          if (estimation && shouldSuggestFTPUpdate(estimation, profileEntry?.ftp_watts || null)) {
-            setFtpEstimation(estimation);
-            setShowFtpSuggestion(true);
-            setNewFTP(estimation.estimatedFTP.toString());
-            setFtpSource('activity');
+        // Carica notifiche tab
+        try {
+          const tabNotifications = await getTabNotifications(athleteId);
+          if (tabNotifications.data) {
+            setNotifications(tabNotifications.data);
           }
+        } catch (error) {
+          console.error('Errore nel caricamento delle notifiche:', error);
         }
         
       } catch (error) {
-        console.error('Errore caricamento dati:', error);
-        showError('Errore nel caricamento dei dati del profilo');
+        console.error('Errore generale nel caricamento dei dati:', error);
+        setActivities([]);
       } finally {
         setIsLoading(false);
       }
     };
 
     loadDataAndAnalyzeFTP();
-  }, [athleteId]);
+  }, [athleteId, isHydrated]); // AGGIUNGO isHydrated ALLE DIPENDENZE
 
-  // Gestisci suggerimento FTP automatico
-  const handleAcceptFTPSuggestion = () => {
-    if (ftpEstimation) {
-      setNewFTP(ftpEstimation.estimatedFTP.toString());
-      setFtpSource('activity');
-      setShowUpdatePanel(true);
-      setShowFtpSuggestion(false);
+  // Analisi automatica HR e calcolo zone di potenza/frequenza cardiaca
+  const analyzeHRAndZones = async (activities: any[], profileEntry: any) => {
+    try {
+      // Calcola zone di potenza se FTP disponibile
+      if (profileEntry?.ftp_watts) {
+        const zones: PowerZone[] = [
+          { zone: 'Z1', name: 'Recupero', minWatts: 0, maxWatts: Math.round(profileEntry.ftp_watts * 0.55), color: '#6b7280', percentage: 55 },
+          { zone: 'Z2', name: 'Resistenza', minWatts: Math.round(profileEntry.ftp_watts * 0.56), maxWatts: Math.round(profileEntry.ftp_watts * 0.75), color: '#10b981', percentage: 75 },
+          { zone: 'Z3', name: 'Tempo', minWatts: Math.round(profileEntry.ftp_watts * 0.76), maxWatts: Math.round(profileEntry.ftp_watts * 0.90), color: '#f59e0b', percentage: 90 },
+          { zone: 'Z4', name: 'Soglia', minWatts: Math.round(profileEntry.ftp_watts * 0.91), maxWatts: Math.round(profileEntry.ftp_watts * 1.05), color: '#ef4444', percentage: 105 },
+          { zone: 'Z5', name: 'VO2max', minWatts: Math.round(profileEntry.ftp_watts * 1.06), maxWatts: Math.round(profileEntry.ftp_watts * 1.20), color: '#8b5cf6', percentage: 120 },
+          { zone: 'Z6', name: 'Anaerobico', minWatts: Math.round(profileEntry.ftp_watts * 1.21), maxWatts: Math.round(profileEntry.ftp_watts * 1.50), color: '#dc2626', percentage: 150 },
+          { zone: 'Z7', name: 'Neuromuscolare', minWatts: Math.round(profileEntry.ftp_watts * 1.51), maxWatts: 999, color: '#7c2d12', percentage: 200 }
+        ];
+        setPowerZones(zones);
+      }
+
+      // Analisi automatica HR se ci sono dati
+      if (activities.length > 0) {
+        const hrAnalysis = analyzeHRFromActivities(activities);
+        
+        if (hrAnalysis) {
+          setHrEstimation(hrAnalysis);
+          
+          // Calcola zone HR
+          let calculatedZones: HRZone[] = [];
+          if (hrAnalysis.estimatedLTHR) {
+            calculatedZones = calculateHRZonesFromLTHR(hrAnalysis.estimatedLTHR);
+          } else {
+            calculatedZones = calculateHRZonesFromMax(hrAnalysis.estimatedHRMax);
+          }
+          setHrZones(calculatedZones);
+          
+          // Verifica se suggerire aggiornamento
+          if (shouldSuggestHRUpdate(hrAnalysis)) {
+            setShowHrSuggestion(true);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Errore analisi HR e zone:', error);
     }
   };
 
-  const handleDismissFTPSuggestion = () => {
-    setShowFtpSuggestion(false);
-    setFtpEstimation(null);
+  // Calcola statistiche complete dalle attività
+  const calculateStatsFromActivities = (activities: any[]) => {
+    if (activities.length === 0) {
+      return {
+        totalActivities: 0,
+        totalDistance: 0,
+        totalTime: 0,
+        avgPower: null,
+        recentActivities: 0,
+      };
+    }
+
+    const totalActivities = activities.length;
+    const totalDistance = activities.reduce((sum, activity) => 
+      sum + (activity.distance_meters ? activity.distance_meters / 1000 : 0), 0
+    );
+    const totalTime = activities.reduce((sum, activity) => 
+      sum + (activity.duration_seconds ? Math.round(activity.duration_seconds / 60) : 0), 0
+    );
+    
+    // Calcola potenza media solo per attività che hanno dati di potenza
+    const activitiesWithPower = activities.filter(a => a.avg_power_watts && a.avg_power_watts > 0);
+    const avgPower = activitiesWithPower.length > 0 
+      ? Math.round(activitiesWithPower.reduce((sum, a) => sum + (a.avg_power_watts || 0), 0) / activitiesWithPower.length)
+      : null;
+    
+    // Calcola attività degli ultimi 30 giorni
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const recentActivities = activities.filter(a => {
+      const activityDate = new Date(a.activity_date || '');
+      return activityDate >= thirtyDaysAgo;
+    }).length;
+
+    return {
+      totalActivities,
+      totalDistance: Math.round(totalDistance * 10) / 10,
+      totalTime,
+      avgPower,
+      recentActivities,
+    };
   };
 
-  // Validazione misurazioni
-  const validateMeasurements = () => {
-    const errors: string[] = [];
-    const ftp = parseFloat(newFTP);
-    const weight = parseFloat(newWeight);
-
-    if (newFTP && (isNaN(ftp) || ftp < FTP_VALIDATION_RANGES.absolute.min || ftp > FTP_VALIDATION_RANGES.absolute.max)) {
-      errors.push(`FTP deve essere tra ${FTP_VALIDATION_RANGES.absolute.min}W e ${FTP_VALIDATION_RANGES.absolute.max}W`);
+  // Calcola lo stato della forma fisica
+  const getFormStatus = () => {
+    const stats = calculateStatsFromActivities(activities);
+    if (!stats || stats.recentActivities === 0) {
+      return { status: 'unknown', color: 'gray', text: 'Sconosciuto' };
     }
-
-    if (newWeight && (isNaN(weight) || weight < 30 || weight > 200)) {
-      errors.push('Peso deve essere tra 30kg e 200kg');
+    
+    if (stats.recentActivities >= 15) {
+      return { status: 'excellent', color: 'green', text: 'In Forma' };
+    } else if (stats.recentActivities >= 8) {
+      return { status: 'good', color: 'blue', text: 'Buona' };
+    } else if (stats.recentActivities >= 3) {
+      return { status: 'moderate', color: 'yellow', text: 'Moderata' };
+    } else {
+      return { status: 'low', color: 'red', text: 'Bassa' };
     }
+  };
 
-    if (newFTP && newWeight) {
-      const wPerKg = ftp / weight;
-      if (wPerKg < FTP_VALIDATION_RANGES.wPerKg.min || wPerKg > FTP_VALIDATION_RANGES.wPerKg.max) {
-        errors.push(`W/kg risultante (${wPerKg.toFixed(2)}) deve essere tra ${FTP_VALIDATION_RANGES.wPerKg.min} e ${FTP_VALIDATION_RANGES.wPerKg.max}`);
+  const formatTime = (minutes: number) => {
+    const hours = Math.floor(minutes / 60);
+    if (hours >= 24) {
+      const days = Math.floor(hours / 24);
+      const remainingHours = hours % 24;
+      return `${days}g ${remainingHours}h`;
+    }
+    return `${hours}h ${minutes % 60}m`;
+  };
+
+  // Carica notifiche dinamiche e tab visitati
+  useEffect(() => {
+    // CONDIZIONO ANCHE QUESTO ALL'IDRATAZIONE
+    if (!isHydrated) return;
+    
+    const loadNotifications = async () => {
+      try {
+        const result = await getTabNotifications(athleteId);
+        if (result.data) {
+          setNotifications(result.data);
+        }
+      } catch (error) {
+        console.error('Errore nel caricamento delle notifiche:', error);
+      }
+    };
+
+    loadNotifications();
+  }, [athleteId, isHydrated]); // AGGIUNGO isHydrated ALLE DIPENDENZE
+
+  const isTabNew = (tabId: TabId) => {
+    if (!notifications) return false;
+    // Semplificato per ora - possiamo estendere dopo aver verificato la struttura di NotificationStatus
+    return !visitedTabs.has(tabId);
+  };
+
+  const handleTabChange = async (newTab: TabId) => {
+    setActiveTab(newTab);
+    
+    // Marca il tab come visitato
+    if (!visitedTabs.has(newTab)) {
+      setVisitedTabs(prev => new Set([...prev, newTab]));
+      
+      try {
+        await markTabAsVisited(athleteId, newTab);
+      } catch (error) {
+        console.error('Errore nel marcare il tab come visitato:', error);
       }
     }
-
-    return errors.length === 0;
   };
 
-  const handleUpdateMeasurements = async () => {
-    if (!validateMeasurements()) return;
-
-    setIsUpdating(true);
+  const handleAcceptFTPSuggestion = async () => {
+    if (!ftpEstimation) return;
     
     try {
-      // Usa l'API reale per salvare il profilo atleta
+      setIsUpdating(true);
+      
+      const ftpValue = Math.round(ftpEstimation.estimatedFTP);
+      const today = new Date().toISOString().split('T')[0];
+      
       const result = await saveAthleteProfileEntry(athleteId, {
-        effectiveDate: new Date().toISOString().split('T')[0], // Formato YYYY-MM-DD
-        ftp: newFTP ? parseFloat(newFTP) : null,
-        weight: newWeight ? parseFloat(newWeight) : null,
+        effectiveDate: today,
+        ftp: ftpValue,
+        weight: currentWeight
       });
       
       if (result.success) {
-        // Aggiorna lo stato locale con i nuovi valori
-        setCurrentProfile({
-          ftp: newFTP ? parseFloat(newFTP) : currentProfile.ftp,
-          weight: newWeight ? parseFloat(newWeight) : currentProfile.weight,
-          lastMeasurementDate: new Date().toISOString().split('T')[0]
-        });
+        setCurrentProfile(prev => ({
+          ...prev,
+          ftp: ftpValue,
+          lastMeasurementDate: today
+        }));
         
-        // Reset form e chiudi dialog
-        setNewFTP('');
-        setNewWeight('');
-        setFtpSource('test');
-        setShowUpdatePanel(false);
+        setShowFtpSuggestion(false);
+        setFtpEstimation(null);
         
-        // Messaggio di successo specifico per stima automatica
-        if (ftpSource === 'activity' && ftpEstimation) {
-          showSuccess(`FTP aggiornato a ${newFTP}W tramite stima automatica (${ftpEstimation.method.replace('_', ' ')})`);
-        } else {
-          showSuccess('Misurazioni aggiornate con successo');
-        }
+        showSuccess(`FTP aggiornato a ${ftpValue}W con successo!`);
       } else {
-        showError(result.error || 'Errore durante il salvataggio');
+        showError(result.error || 'Errore nell\'aggiornamento dell\'FTP');
       }
-      
     } catch (error) {
-      console.error('Errore aggiornamento misurazioni:', error);
-      showError('Errore durante il salvataggio delle misurazioni');
+      console.error('Errore aggiornamento FTP:', error);
+      showError('Errore nell\'aggiornamento dell\'FTP');
     } finally {
       setIsUpdating(false);
     }
   };
 
-  // Determina se le misurazioni sono obsolete (più di 30 giorni)
-  const measurementsAreOld = () => {
-    if (!lastMeasurementDate) return true; // Se non c'è data, considera obsoleto
-    const lastDate = new Date(lastMeasurementDate!);
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-    return lastDate < thirtyDaysAgo;
+  const handleQuickUpdate = async () => {
+    if (!newFTP && !newWeight) {
+      showError('Inserisci almeno un valore da aggiornare');
+      return;
+    }
+
+    try {
+      setIsUpdating(true);
+      
+      const ftpValue = newFTP ? Math.round(parseFloat(newFTP)) : currentFTP;
+      const weightValue = newWeight ? parseFloat(newWeight) : currentWeight;
+      const today = new Date().toISOString().split('T')[0];
+      
+      if (ftpValue && (ftpValue < FTP_VALIDATION_RANGES.absolute.min || ftpValue > FTP_VALIDATION_RANGES.absolute.max)) {
+        showError(`FTP deve essere tra ${FTP_VALIDATION_RANGES.absolute.min} e ${FTP_VALIDATION_RANGES.absolute.max} watts`);
+        return;
+      }
+      
+      if (weightValue && ftpValue) {
+        const wPerKg = ftpValue / weightValue;
+        if (wPerKg < FTP_VALIDATION_RANGES.wPerKg.min || wPerKg > FTP_VALIDATION_RANGES.wPerKg.max) {
+          showError(`Rapporto W/kg (${wPerKg.toFixed(2)}) non realistico. Verifica i valori inseriti.`);
+          return;
+        }
+      }
+      
+      const result = await saveAthleteProfileEntry(athleteId, {
+        effectiveDate: today,
+        ftp: ftpValue,
+        weight: weightValue
+      });
+      
+      if (result.success) {
+        setCurrentProfile({
+          ftp: ftpValue,
+          weight: weightValue,
+          lastMeasurementDate: today
+        });
+        
+        setShowUpdatePanel(false);
+        setNewFTP('');
+        setNewWeight('');
+        setFtpSource('test');
+        
+        showSuccess('Dati atleta aggiornati con successo!');
+      } else {
+        showError(result.error || 'Errore nell\'aggiornamento dei dati');
+      }
+    } catch (error) {
+      console.error('Errore aggiornamento:', error);
+      showError('Errore nell\'aggiornamento dei dati');
+    } finally {
+      setIsUpdating(false);
+    }
   };
 
+  // Calcola statistiche per il cruscotto
+  const stats = calculateStatsFromActivities(activities);
+  const formStatus = getFormStatus();
+
+  // SICUREZZA IDRATAZIONE: Non renderizzare nulla fino all'idratazione completa
+  if (!isHydrated) {
+    return (
+      <div className="space-y-6">
+        <LoadingSkeleton />
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-6">
-      {/* Quick Update Panel */}
-      <Card className={`border-2 ${measurementsAreOld() ? 'border-amber-200 bg-amber-50 dark:bg-amber-900/10' : 'border-blue-200 bg-blue-50 dark:bg-blue-900/10'}`}>
-        <CardContent className="p-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${measurementsAreOld() ? 'bg-amber-100 dark:bg-amber-900/30' : 'bg-blue-100 dark:bg-blue-900/30'}`}>
-                <svg className={`w-4 h-4 ${measurementsAreOld() ? 'text-amber-600 dark:text-amber-400' : 'text-blue-600 dark:text-blue-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                </svg>
-              </div>
+    <div className="space-y-8">
+      {isLoading ? (
+        <div className="space-y-6">
+          <LoadingSkeleton />
+          <LoadingSkeleton />
+          <LoadingSkeleton />
+        </div>
+      ) : (
+        <>
+          {/* HEADER ANALYTICS PROFESSIONALE */}
+          <div className="space-y-6">
+            
+            {/* Header Analytics */}
+            <div className="flex items-center justify-between">
               <div>
-                <div className="flex items-center gap-4 text-sm">
-                  <span className="text-gray-600 dark:text-gray-400">Ultima misurazione:</span>
-                  <span className="font-semibold">
-                    FTP: {currentFTP ? `${currentFTP}W` : 'N/D'} • Peso: {currentWeight ? `${currentWeight}kg` : 'N/D'} • W/kg: {currentWPerKg || 'N/D'}
-                  </span>
-                  <span className="text-gray-500">
-                    {lastMeasurementDate ? `(${new Date(lastMeasurementDate).toLocaleDateString('it-IT')})` : '(Nessuna misurazione)'}
+                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Analytics Avanzate</h1>
+                <p className="text-gray-600 dark:text-gray-400">Analisi scientifiche approfondite per l'ottimizzazione delle performance</p>
+              </div>
+              
+              {/* Badge Stato */}
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2 px-3 py-1.5 bg-green-100 dark:bg-green-900/30 rounded-full">
+                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                  <span className="text-sm font-medium text-green-700 dark:text-green-300">
+                    {stats.recentActivities} attività recenti
                   </span>
                 </div>
-                {measurementsAreOld() && (
-                  <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
-                    ⚠️ I dati sono vecchi di oltre 30 giorni. Aggiorna per analisi più accurate.
-                  </p>
+                
+                {currentFTP && (
+                  <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-100 dark:bg-blue-900/30 rounded-full">
+                    <span className="text-sm font-medium text-blue-700 dark:text-blue-300">
+                      FTP: {currentFTP}W ({currentWPerKg})
+                    </span>
+                  </div>
                 )}
               </div>
             </div>
-            
-            <Dialog open={showUpdatePanel} onOpenChange={setShowUpdatePanel}>
-              <DialogTrigger asChild>
-                <Button size="sm" className="flex items-center gap-2">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                  </svg>
-                  Aggiorna Misurazioni
-                </Button>
-              </DialogTrigger>
-              
-              <DialogContent className="sm:max-w-md">
-                <DialogHeader>
-                  <DialogTitle>Aggiorna Misurazioni</DialogTitle>
-                  <DialogDescription>
-                    Inserisci nuovi valori di FTP e/o peso per mantenere aggiornate le analisi.
-                  </DialogDescription>
-                </DialogHeader>
-                
-                <div className="space-y-4 py-4">
-                  {/* FTP */}
-                  <div className="space-y-2">
-                    <Label htmlFor="ftp">FTP (Watt)</Label>
-                    <Input
-                      id="ftp"
-                      type="number"
-                      min={FTP_VALIDATION_RANGES.absolute.min}
-                      max={FTP_VALIDATION_RANGES.absolute.max}
-                      placeholder={currentFTP ? `Attuale: ${currentFTP}W` : 'Es. 250W'}
-                      value={newFTP}
-                      onChange={(e) => setNewFTP(e.target.value)}
-                    />
-                    {ftpSource === 'activity' && ftpEstimation && (
-                      <div className="text-xs text-green-600 dark:text-green-400 mt-1 flex items-center gap-1">
-                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        Valore stimato automaticamente ({ftpEstimation.method.replace('_', ' ')})
-                      </div>
-                    )}
-                  </div>
+          </div>
 
-                  {/* Fonte FTP */}
-                  {newFTP && (
-                    <div className="space-y-2">
-                      <Label htmlFor="ftp-source">Come hai ottenuto questo FTP?</Label>
-                      <Select value={ftpSource} onValueChange={(value: 'test' | 'estimate' | 'activity') => setFtpSource(value)}>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="test">Test specifico (20min, 8min, etc.)</SelectItem>
-                          <SelectItem value="activity">Da attività recente</SelectItem>
-                          <SelectItem value="estimate">Stima personale</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  )}
+          {/* NAVIGAZIONE VERSO LE TAB DI ANALISI APPROFONDITA */}
+          <div className="space-y-6">
+            <div className="text-center">
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
+                Analisi Approfondite
+              </h2>
+              <p className="text-gray-600 dark:text-gray-400">
+                Esplora strumenti professionali per l'analisi delle performance
+              </p>
+            </div>
 
-                  {/* Peso */}
-                  <div className="space-y-2">
-                    <Label htmlFor="weight">Peso (kg)</Label>
-                    <Input
-                      id="weight"
-                      type="number"
-                      min="30"
-                      max="200"
-                      step="0.1"
-                      placeholder={currentWeight ? `Attuale: ${currentWeight}kg` : 'Es. 70.5kg'}
-                      value={newWeight}
-                      onChange={(e) => setNewWeight(e.target.value)}
-                    />
-                  </div>
-
-                  {/* W/kg Preview */}
-                  {newFTP && newWeight && (
-                    <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                      <p className="text-sm font-medium">
-                        W/kg risultante: {(parseFloat(newFTP) / parseFloat(newWeight)).toFixed(2)}
-                      </p>
-                    </div>
-                  )}
-                </div>
-
-                <div className="flex justify-end gap-2">
-                  <Button variant="outline" onClick={() => setShowUpdatePanel(false)}>
-                    Annulla
-                  </Button>
-                  <Button 
-                    onClick={handleUpdateMeasurements}
-                    disabled={(!newFTP && !newWeight) || isUpdating}
+            {/* Tabs Navigation */}
+            <Tabs value={activeTab} onValueChange={(value: string) => handleTabChange(value as TabId)} className="w-full">
+              <TabsList className="grid grid-cols-2 md:grid-cols-5 w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-1">
+                {TABS_CONFIG.map((tab) => (
+                  <TabsTrigger
+                    key={tab.id}
+                    value={tab.id}
+                    disabled={tab.disabled}
+                    className="flex items-center gap-2 px-3 py-2 data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700 dark:data-[state=active]:bg-blue-900/30 dark:data-[state=active]:text-blue-400"
                   >
-                    {isUpdating ? 'Aggiornamento...' : 'Salva Misurazioni'}
-                  </Button>
-                </div>
-              </DialogContent>
-            </Dialog>
-          </div>
-        </CardContent>
-      </Card>
+                    {tab.icon}
+                    <span className="hidden md:block">{tab.label}</span>
+                    <span className="md:hidden text-xs">{tab.label.split(' ')[0]}</span>
+                    {isTabNew(tab.id) && (
+                      <Badge variant="secondary" className="ml-1 text-xs bg-orange-100 text-orange-600 border-orange-200">
+                        Nuovo
+                      </Badge>
+                    )}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
 
-      {/* Banner Suggerimento FTP Automatico */}
-      {showFtpSuggestion && ftpEstimation && (
-        <div className="mb-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border border-blue-200 dark:border-blue-700 rounded-xl">
-          <div className="flex items-start justify-between gap-4">
-            <div className="flex items-start gap-3">
-              <div className="w-10 h-10 rounded-xl bg-blue-500 flex items-center justify-center">
-                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                </svg>
+              {/* Tab Contents */}
+              <div className="mt-6">
+                <TabsContent value="power" className="space-y-6">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        {TABS_CONFIG[0].icon}
+                        Analisi Potenza Avanzata
+                      </CardTitle>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        {TABS_CONFIG[0].description}
+                      </p>
+                    </CardHeader>
+                    <CardContent>
+                      <Suspense fallback={<LoadingSkeleton />}>
+                        <PowerAnalysisTab athleteId={athleteId} athlete={athleteWithCorrectData} />
+                      </Suspense>
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+
+                <TabsContent value="training-load" className="space-y-6">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        {TABS_CONFIG[1].icon}
+                        Carico Allenamento Scientifico
+                      </CardTitle>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        {TABS_CONFIG[1].description}
+                      </p>
+                    </CardHeader>
+                    <CardContent>
+                      <Suspense fallback={<LoadingSkeleton />}>
+                        <TrainingLoadTab athleteId={athleteId} athlete={athleteWithCorrectData} />
+                      </Suspense>
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+
+                <TabsContent value="cadence" className="space-y-6">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        {TABS_CONFIG[2].icon}
+                        Analisi Cadenza e Efficienza
+                      </CardTitle>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        {TABS_CONFIG[2].description}
+                      </p>
+                    </CardHeader>
+                    <CardContent>
+                      <Suspense fallback={<LoadingSkeleton />}>
+                        <CadenceAnalysisTab athleteId={athleteId} athlete={athleteWithCorrectData} />
+                      </Suspense>
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+
+                <TabsContent value="trends" className="space-y-6">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        {TABS_CONFIG[3].icon}
+                        Trend Performance e Machine Learning
+                      </CardTitle>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        {TABS_CONFIG[3].description}
+                      </p>
+                    </CardHeader>
+                    <CardContent>
+                      <Suspense fallback={<LoadingSkeleton />}>
+                        <PerformanceTrendsTab athleteId={athleteId} athlete={athleteWithCorrectData} />
+                      </Suspense>
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+
+                <TabsContent value="climbing" className="space-y-6">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        {TABS_CONFIG[4].icon}
+                        Analisi Salite Professionale
+                      </CardTitle>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        {TABS_CONFIG[4].description}
+                      </p>
+                    </CardHeader>
+                    <CardContent>
+                      <Suspense fallback={<LoadingSkeleton />}>
+                        <ClimbingAnalysisTab athleteId={athleteId} athlete={athleteWithCorrectData} />
+                      </Suspense>
+                    </CardContent>
+                  </Card>
+                </TabsContent>
               </div>
-              <div className="flex-1">
-                <h3 className="text-lg font-semibold text-blue-900 dark:text-blue-100 mb-1">
-                  🎯 FTP Stimato Automaticamente
-                </h3>
-                <p className="text-blue-700 dark:text-blue-300 text-sm mb-2">
-                  {formatFTPSuggestionMessage(ftpEstimation, currentFTP)}
-                </p>
-                <div className="flex items-center gap-4 text-xs text-blue-600 dark:text-blue-400">
-                  <span>
-                    <strong>Metodo:</strong> {ftpEstimation.method.replace('_', ' ')}
-                  </span>
-                  <span>
-                    <strong>Confidenza:</strong> {Math.round(ftpEstimation.confidence * 100)}%
-                  </span>
-                  {ftpEstimation.sourceActivity && (
-                    <span>
-                      <strong>Da attività:</strong> {ftpEstimation.sourceActivity.name}
-                    </span>
-                  )}
-                </div>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={handleDismissFTPSuggestion}
-                className="text-blue-600 border-blue-200 hover:bg-blue-100 dark:text-blue-400 dark:border-blue-700 dark:hover:bg-blue-900/30"
-              >
-                Ignora
-              </Button>
-              <Button
-                size="sm"
-                onClick={handleAcceptFTPSuggestion}
-                className="bg-blue-500 hover:bg-blue-600 text-white"
-              >
-                Aggiorna FTP
-              </Button>
-            </div>
+            </Tabs>
           </div>
-        </div>
+        </>
       )}
-
-      {/* Metriche Rapide */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
-                <svg className="w-4 h-4 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-                </svg>
-              </div>
-              <div>
-                <p className="text-sm text-gray-600 dark:text-gray-400">FTP Attuale</p>
-                <p className="text-lg font-semibold text-gray-900 dark:text-white">
-                  {currentFTP ? `${currentFTP} W` : 'N/A'}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
-                <svg className="w-4 h-4 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" />
-                </svg>
-              </div>
-              <div>
-                <p className="text-sm text-gray-600 dark:text-gray-400">W/kg</p>
-                <p className="text-lg font-semibold text-gray-900 dark:text-white">
-                  {currentWPerKg}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
-                <svg className="w-4 h-4 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                </svg>
-              </div>
-              <div>
-                <p className="text-sm text-gray-600 dark:text-gray-400">Forma Attuale</p>
-                <p className="text-lg font-semibold text-gray-900 dark:text-white">
-                  <Badge variant="outline" className="text-green-600 border-green-600">
-                    In Forma
-                  </Badge>
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Tabs Navigation */}
-      <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as TabId)} className="w-full">
-        <TabsList className="grid grid-cols-2 md:grid-cols-5 w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-1">
-          {TABS_CONFIG.map((tab) => (
-            <TabsTrigger
-              key={tab.id}
-              value={tab.id}
-              disabled={tab.disabled}
-              className="flex items-center gap-2 px-3 py-2 data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700 dark:data-[state=active]:bg-blue-900/30 dark:data-[state=active]:text-blue-400"
-            >
-              {tab.icon}
-              <span className="hidden md:block">{tab.label}</span>
-              <span className="md:hidden text-xs">{tab.label.split(' ')[0]}</span>
-              {tab.badge && (
-                <Badge variant="secondary" className="ml-1 text-xs">
-                  {tab.badge}
-                </Badge>
-              )}
-            </TabsTrigger>
-          ))}
-        </TabsList>
-
-        {/* Tab Contents */}
-        <div className="mt-6">
-          <TabsContent value="overview" className="space-y-6">
-            <Suspense fallback={<LoadingSkeleton />}>
-              <OverviewTab athleteId={athleteId} athlete={athlete} />
-            </Suspense>
-          </TabsContent>
-
-          <TabsContent value="power" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  {TABS_CONFIG[1].icon}
-                  Power Analysis
-                  <Badge variant="secondary">Nuovo</Badge>
-                </CardTitle>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  {TABS_CONFIG[1].description}
-                </p>
-              </CardHeader>
-              <CardContent>
-                <Suspense fallback={<LoadingSkeleton />}>
-                  <PowerAnalysisTab athleteId={athleteId} athlete={athlete} />
-                </Suspense>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="training-load" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  {TABS_CONFIG[2].icon}
-                  Training Load
-                </CardTitle>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  {TABS_CONFIG[2].description}
-                </p>
-              </CardHeader>
-              <CardContent>
-                <Suspense fallback={<LoadingSkeleton />}>
-                  <TrainingLoadTab athleteId={athleteId} athlete={athlete} />
-                </Suspense>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="trends" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  {TABS_CONFIG[3].icon}
-                  Performance Trends
-                  <Badge variant="secondary">Nuovo</Badge>
-                </CardTitle>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  {TABS_CONFIG[3].description}
-                </p>
-              </CardHeader>
-              <CardContent>
-                <Suspense fallback={<LoadingSkeleton />}>
-                  <PerformanceTrendsTab athleteId={athleteId} athlete={athlete} />
-                </Suspense>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="climbing" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  {TABS_CONFIG[4].icon}
-                  Climbing Analysis
-                </CardTitle>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  {TABS_CONFIG[4].description}
-                </p>
-              </CardHeader>
-              <CardContent>
-                <Suspense fallback={<LoadingSkeleton />}>
-                  <ClimbingAnalysisTab athleteId={athleteId} athlete={athlete} />
-                </Suspense>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </div>
-      </Tabs>
     </div>
   );
 } 

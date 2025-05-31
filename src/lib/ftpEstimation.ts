@@ -208,39 +208,57 @@ export function estimateFTPFromActivities(
   activities: Activity[], 
   currentFTP?: number | null,
   minActivities: number = 3,
-  daysLookback: number = 90
+  daysLookback: number = 90 // Ripristino a 90 giorni come punto di partenza
 ): FTPEstimationResult | null {
   
-  // Filtra attività recenti con dati di potenza
-  const cutoffDate = new Date();
-  cutoffDate.setDate(cutoffDate.getDate() - daysLookback);
+  // LOGICA INTELLIGENTE: Prova prima con dati recenti, poi espande se necessario
+  const lookbackPeriods = [90, 180, 365, 1095, 1460, 2190]; // 3 mesi, 6 mesi, 1 anno, 3 anni, 4 anni, 6 anni
   
-  const recentActivities: ActivityPowerData[] = activities
-    .filter(a => {
-      const activityDate = new Date(a.activity_date || '');
-      return activityDate >= cutoffDate && 
-             a.avg_power_watts && 
-             a.avg_power_watts > 0 &&
-             a.duration_seconds && 
-             a.duration_seconds > 300; // Almeno 5 minuti
-    })
-    .map(a => ({
-      id: a.id,
-      date: a.activity_date || '',
-      name: a.title || 'Attività senza nome',
-      duration: a.duration_seconds!,
-      avgPower: a.avg_power_watts!,
-      normalizedPower: a.normalized_power_watts,
-      maxPower: a.max_power_watts,
-      intensityFactor: a.intensity_factor,
-      workType: 'unknown' as const
-    }))
-    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()); // Più recenti prima
-  
-  if (recentActivities.length < minActivities) {
-    return null; // Non abbastanza dati
+  for (const period of lookbackPeriods) {
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - period);
+    
+    const recentActivities: ActivityPowerData[] = activities
+      .filter(a => {
+        const activityDate = new Date(a.activity_date || '');
+        const hasValidDate = activityDate >= cutoffDate;
+        const hasValidPower = a.avg_power_watts && a.avg_power_watts > 0;
+        const hasValidDuration = a.duration_seconds && a.duration_seconds > 300;
+        
+        return hasValidDate && hasValidPower && hasValidDuration;
+      })
+      .map(a => ({
+        id: a.id,
+        date: a.activity_date || '',
+        name: a.title || 'Attività senza nome',
+        duration: a.duration_seconds!,
+        avgPower: a.avg_power_watts!,
+        normalizedPower: a.normalized_power_watts,
+        maxPower: a.max_power_watts,
+        intensityFactor: a.intensity_factor,
+        workType: 'unknown' as const
+      }))
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()); // Più recenti prima
+    
+    // Se abbiamo abbastanza attività in questo periodo, procedi con l'analisi
+    if (recentActivities.length >= minActivities) {
+      return performFTPEstimation(recentActivities, period);
+    }
+    
+    // FALLBACK: Se siamo all'ultimo periodo e abbiamo almeno 1 attività, prova comunque
+    if (period === 2190 && recentActivities.length >= 1) {
+      return performFTPEstimation(recentActivities, period);
+    }
   }
   
+  // Se nemmeno con 3 anni troviamo abbastanza attività, restituisci null
+  return null;
+}
+
+/**
+ * Esegue la stima FTP sulle attività filtrate
+ */
+function performFTPEstimation(recentActivities: ActivityPowerData[], periodUsed: number): FTPEstimationResult | null {
   // Classifica i tipi di allenamento
   recentActivities.forEach(activity => {
     activity.workType = classifyWorkoutType(activity);
@@ -268,7 +286,7 @@ export function estimateFTPFromActivities(
           avgPower: test.avgPower,
           normalizedPower: test.normalizedPower
         },
-        reasoning: `Test FTP di 20 minuti identificato. FTP stimato: ${estimatedFTP}W (95% di ${test.avgPower}W)`,
+        reasoning: `Test FTP di 20 minuti identificato (ultimi ${periodUsed} giorni). FTP stimato: ${estimatedFTP}W (95% di ${test.avgPower}W)`,
         isReliable: true,
         lastUpdated: new Date().toISOString()
       };
@@ -289,7 +307,7 @@ export function estimateFTPFromActivities(
           avgPower: test.avgPower,
           normalizedPower: test.normalizedPower
         },
-        reasoning: `Test FTP di 8 minuti identificato. FTP stimato: ${estimatedFTP}W (90% di ${test.avgPower}W)`,
+        reasoning: `Test FTP di 8 minuti identificato (ultimi ${periodUsed} giorni). FTP stimato: ${estimatedFTP}W (90% di ${test.avgPower}W)`,
         isReliable: true,
         lastUpdated: new Date().toISOString()
       };
@@ -310,7 +328,7 @@ export function estimateFTPFromActivities(
           avgPower: test.avgPower,
           normalizedPower: test.normalizedPower
         },
-        reasoning: `Test FTP di 60 minuti identificato. FTP stimato: ${estimatedFTP}W (100% di ${test.avgPower}W)`,
+        reasoning: `Test FTP di 60 minuti identificato (ultimi ${periodUsed} giorni). FTP stimato: ${estimatedFTP}W (100% di ${test.avgPower}W)`,
         isReliable: true,
         lastUpdated: new Date().toISOString()
       };
@@ -340,7 +358,7 @@ export function estimateFTPFromActivities(
         avgPower: activity.avgPower,
         normalizedPower: activity.normalizedPower
       } : undefined,
-      reasoning: `FTP stimato da analisi curve di potenza. Basato su ${Object.keys(bestEfforts).length} best efforts recenti`,
+      reasoning: `FTP stimato da analisi curve di potenza (ultimi ${periodUsed} giorni). Basato su ${Object.keys(bestEfforts).length} best efforts`,
       isReliable: Object.keys(bestEfforts).length >= 3,
       lastUpdated: new Date().toISOString()
     };
@@ -373,7 +391,7 @@ export function estimateFTPFromActivities(
         avgPower: bestThresholdWorkout.avgPower,
         normalizedPower: bestThresholdWorkout.normalizedPower
       },
-      reasoning: `FTP stimato da allenamento in zona soglia (IF: ${bestThresholdWorkout.intensityFactor?.toFixed(2)}). Stima conservativa`,
+      reasoning: `FTP stimato da allenamento in zona soglia (ultimi ${periodUsed} giorni, IF: ${bestThresholdWorkout.intensityFactor?.toFixed(2)}). Stima conservativa`,
       isReliable: false, // Meno affidabile dei test
       lastUpdated: new Date().toISOString()
     };

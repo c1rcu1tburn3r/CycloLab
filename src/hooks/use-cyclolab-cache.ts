@@ -12,14 +12,45 @@ export function useAthletes(userId?: string) {
   const query = useCallback(async () => {
     if (!userId) throw new Error('User ID required');
     
-    const result = await supabase
+    const { data: athletes, error } = await supabase
       .from('athletes')
-      .select('*')
+      .select(`
+        *,
+        athlete_profile_entries(
+          ftp_watts,
+          effective_date
+        )
+      `)
       .eq('user_id', userId)
       .order('created_at', { ascending: false });
     
-    if (result.error) throw new Error(result.error.message);
-    return result.data || [];
+    if (error) throw new Error(error.message);
+    
+    // Processa i dati per estrarre l'FTP più recente per ogni atleta
+    const processedAthletes: Athlete[] = (athletes || []).map(athlete => {
+      let currentFtp = null;
+      
+      if (athlete.athlete_profile_entries && Array.isArray(athlete.athlete_profile_entries)) {
+        // Trova l'entry più recente con FTP
+        const latestEntry = athlete.athlete_profile_entries
+          .filter((entry: any) => entry.ftp_watts != null)
+          .sort((a: any, b: any) => new Date(b.effective_date).getTime() - new Date(a.effective_date).getTime())[0];
+        
+        if (latestEntry) {
+          currentFtp = latestEntry.ftp_watts;
+        }
+      }
+
+      // Rimuovi il campo athlete_profile_entries dall'oggetto finale e aggiungi current_ftp
+      const { athlete_profile_entries, ...athleteData } = athlete;
+      
+      return {
+        ...athleteData,
+        current_ftp: currentFtp
+      };
+    });
+
+    return processedAthletes;
   }, [userId]);
 
   const cacheKey = createCacheKey('athletes', { userId: userId || 'none' });
@@ -72,7 +103,7 @@ export function useCycloLabCacheInvalidation() {
   
   // Invalida cache quando viene aggiunto un nuovo atleta
   const invalidateOnAthleteChange = useCallback((userId: string) => {
-    invalidatePattern(`athletes:.*userId:${userId}`);
+    invalidatePattern(`athletes:.*userId:${userId}.*`);
   }, [invalidatePattern]);
   
   // Invalida cache quando viene aggiunta/modificata un'attività

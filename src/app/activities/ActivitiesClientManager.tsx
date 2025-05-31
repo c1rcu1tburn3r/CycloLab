@@ -17,6 +17,7 @@ import DeleteActivityButton from '@/components/DeleteActivityButton';
 import ActivityPreviewCard from '@/components/ActivityPreviewCard';
 import { useFilterPreferences } from '@/hooks/useFilterPreferences';
 import ExportControls from '@/components/ExportControls';
+import { useRouter } from 'next/navigation';
 
 interface ActivitiesClientManagerProps {
   initialActivities: Activity[];
@@ -133,6 +134,11 @@ export default function ActivitiesClientManager({ initialActivities, coachAthlet
   const [currentPage, setCurrentPage] = useState(1);
   const ACTIVITIES_PER_PAGE = 12;
 
+  // NUOVO: Filtro sensori semplice con dropdown
+  const [sensorFilter, setSensorFilter] = useState<'all' | 'power' | 'heartrate' | 'cadence' | 'complete'>('all');
+
+  const router = useRouter();
+
   // Carica le preferenze salvate quando il componente è pronto
   useEffect(() => {
     if (isLoaded && preferences) {
@@ -185,7 +191,6 @@ export default function ActivitiesClientManager({ initialActivities, coachAthlet
 
   const handleMaxDistanceChange = (value: string) => {
     setMaxDistance(value);
-    updatePreference('maxDistance', value);
   };
 
   const handleResetFilters = () => {
@@ -195,8 +200,9 @@ export default function ActivitiesClientManager({ initialActivities, coachAthlet
     setSearchTerm('');
     setMinDistance('');
     setMaxDistance('');
-    setCurrentPage(1); // Reset anche la pagina
-    resetPreferences();
+    setSensorFilter('all');
+    setCurrentPage(1);
+    router.push('/activities');
   };
 
   // Funzioni per la comparazione
@@ -236,10 +242,28 @@ export default function ActivitiesClientManager({ initialActivities, coachAthlet
       Math.abs((a.distance_meters || 0) - (firstActivity.distance_meters || 0)) < 5000 // 5km tolerance
     );
     
+    // NUOVO: Analizza compatibilità sensori
+    const hasPowerData = (activity: Activity) => activity.avg_power_watts && activity.avg_power_watts > 0;
+    const hasHeartRateData = (activity: Activity) => activity.avg_heart_rate && activity.avg_heart_rate > 0;
+    const hasCadenceData = (activity: Activity) => activity.avg_cadence && activity.avg_cadence > 0;
+    
+    const allHavePower = selected.every(hasPowerData);
+    const allHaveHeartRate = selected.every(hasHeartRateData);
+    const allHaveCadence = selected.every(hasCadenceData);
+    const sameSensorType = selected.every(a => 
+      hasPowerData(a) === hasPowerData(firstActivity) && 
+      hasHeartRateData(a) === hasHeartRateData(firstActivity) &&
+      hasCadenceData(a) === hasCadenceData(firstActivity)
+    );
+    
     return {
       sameType,
       similarDuration,
       similarDistance,
+      sameSensorType,
+      allHavePower,
+      allHaveHeartRate,
+      allHaveCadence,
       recommendedMetrics: sameType ? ['power', 'speed', 'heartRate'] : ['relative_effort', 'efficiency']
     };
   };
@@ -297,13 +321,35 @@ export default function ActivitiesClientManager({ initialActivities, coachAthlet
       );
     }
 
+    // NUOVO: Filtro per sensori
+    if (sensorFilter !== 'all') {
+      activities = activities.filter(act => {
+        const hasPower = act.avg_power_watts && act.avg_power_watts > 0;
+        const hasHeartRate = act.avg_heart_rate && act.avg_heart_rate > 0;
+        const hasCadence = act.avg_cadence && act.avg_cadence > 0;
+        
+        switch (sensorFilter) {
+          case 'power':
+            return hasPower;
+          case 'heartrate':
+            return hasHeartRate;
+          case 'cadence':
+            return hasCadence;
+          case 'complete':
+            return hasPower && hasHeartRate && hasCadence;
+          default:
+            return true;
+        }
+      });
+    }
+
     return activities.sort((a,b) => new Date(b.activity_date).getTime() - new Date(a.activity_date).getTime());
-  }, [initialActivities, selectedAthleteId, startDate, endDate, searchTerm, minDistance, maxDistance]);
+  }, [initialActivities, selectedAthleteId, startDate, endDate, searchTerm, minDistance, maxDistance, sensorFilter]);
 
   // Reset pagina quando cambiano i filtri
   useEffect(() => {
     setCurrentPage(1);
-  }, [selectedAthleteId, startDate, endDate, searchTerm, minDistance, maxDistance]);
+  }, [selectedAthleteId, startDate, endDate, searchTerm, minDistance, maxDistance, sensorFilter]);
 
   // Calcola le attività da mostrare per la pagina corrente
   const paginatedActivities = useMemo(() => {
@@ -375,16 +421,17 @@ export default function ActivitiesClientManager({ initialActivities, coachAthlet
       </div>
 
       {/* Filtri */}
-      <div className="stats-card mb-8 p-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-6">
+      <div className="stats-card mb-6 p-4">
+        {/* Prima riga - Filtri principali */}
+        <div className="flex flex-wrap items-end gap-3 mb-4">
           {/* Atleta */}
-          <div className="space-y-2">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+          <div className="min-w-[180px] flex-1">
+            <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
               Atleta
             </label>
             <Select value={selectedAthleteId} onValueChange={handleAthleteChange}>
-              <SelectTrigger className="h-10">
-                <SelectValue placeholder="Seleziona atleta" />
+              <SelectTrigger className="h-9 text-sm">
+                <SelectValue placeholder="Tutti gli atleti" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Tutti gli Atleti</SelectItem>
@@ -394,93 +441,130 @@ export default function ActivitiesClientManager({ initialActivities, coachAthlet
               </SelectContent>
             </Select>
           </div>
+
+          {/* Sensori */}
+          <div className="min-w-[140px] flex-1">
+            <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+              Sensori
+            </label>
+            <Select value={sensorFilter} onValueChange={(value) => setSensorFilter(value as 'all' | 'power' | 'heartrate' | 'cadence' | 'complete')}>
+              <SelectTrigger className="h-9 text-sm">
+                <SelectValue placeholder="Tutti" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">🎯 Tutti</SelectItem>
+                <SelectItem value="power">⚡ Con PowerMeter</SelectItem>
+                <SelectItem value="heartrate">❤️ Con Cardio</SelectItem>
+                <SelectItem value="cadence">🚲 Con Cadenza</SelectItem>
+                <SelectItem value="complete">✅ Completi</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
           
           {/* Ricerca */}
-          <div className="space-y-2">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-              Cerca attività
+          <div className="min-w-[200px] flex-1">
+            <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+              Cerca
             </label>
             <Input
               type="text"
-              placeholder="Titolo, descrizione, tipo..."
+              placeholder="Titolo, descrizione..."
               value={searchTerm}
               onChange={(e) => handleSearchChange(e.target.value)}
-              className="h-10"
+              className="h-9 text-sm"
             />
           </div>
 
-          {/* Data da */}
-          <div className="space-y-2">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+          {/* Data compatta - Da/A in un unico gruppo */}
+          <div className="min-w-[120px]">
+            <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
               Da
             </label>
             <Input
               type="date"
               value={startDate}
               onChange={(e) => handleStartDateChange(e.target.value)}
-              className="h-10"
+              className="h-9 text-sm"
             />
           </div>
 
-          {/* Data a */}
-          <div className="space-y-2">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+          <div className="min-w-[120px]">
+            <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
               A
             </label>
             <Input
               type="date"
               value={endDate}
               onChange={(e) => handleEndDateChange(e.target.value)}
-              className="h-10"
+              className="h-9 text-sm"
             />
           </div>
 
-          {/* Distanza minima */}
-          <div className="space-y-2">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-              Distanza min (km)
+          {/* Distanza compatta - Min/Max in un unico gruppo */}
+          <div className="min-w-[100px]">
+            <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+              Min km
             </label>
             <Input
               type="number"
               placeholder="0"
               value={minDistance}
               onChange={(e) => handleMinDistanceChange(e.target.value)}
-              className="h-10"
+              className="h-9 text-sm"
               min="0"
               step="0.1"
             />
           </div>
 
-          {/* Distanza massima */}
-          <div className="space-y-2">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-              Distanza max (km)
+          <div className="min-w-[100px]">
+            <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+              Max km
             </label>
             <Input
               type="number"
               placeholder="∞"
               value={maxDistance}
               onChange={(e) => handleMaxDistanceChange(e.target.value)}
-              className="h-10"
+              className="h-9 text-sm"
               min="0"
               step="0.1"
             />
           </div>
-        </div>
 
-        {/* Pulsante reset filtri */}
-        {(selectedAthleteId !== 'all' || startDate || endDate || searchTerm || minDistance || maxDistance) && (
-          <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
+          {/* Reset e azioni */}
+          {(selectedAthleteId !== 'all' || startDate || endDate || searchTerm || minDistance || maxDistance || (sensorFilter !== 'all')) && (
             <Button
               variant="outline"
+              size="sm"
               onClick={handleResetFilters}
-              className="text-sm"
+              className="h-9 px-3 text-xs"
             >
-              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
               </svg>
-              Reset Filtri
+              Reset
             </Button>
+          )}
+        </div>
+
+        {/* Contatore risultati compatto */}
+        {(selectedAthleteId !== 'all' || startDate || endDate || searchTerm || minDistance || maxDistance || (sensorFilter !== 'all')) && (
+          <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 pt-2 border-t border-gray-100 dark:border-gray-700">
+            <span>
+              {filteredActivities.length > 0 ? (
+                <>
+                  <span className="font-medium text-emerald-600 dark:text-emerald-400">{filteredActivities.length}</span> attività trovate
+                  {filteredActivities.length !== initialActivities.length && (
+                    <span className="ml-1">di {initialActivities.length} totali</span>
+                  )}
+                </>
+              ) : (
+                "Nessun risultato"
+              )}
+            </span>
+            <span className="text-gray-400">
+              Filtri attivi
+            </span>
           </div>
         )}
       </div>
@@ -585,6 +669,19 @@ export default function ActivitiesClientManager({ initialActivities, coachAthlet
                         }`}>
                           {suggestions.similarDuration ? '✓ Durata simile' : '⚠ Durata diversa'}
                         </div>
+                        <div className={`px-2 py-1 rounded-full text-xs ${
+                          suggestions.sameSensorType ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                        }`}>
+                          {suggestions.sameSensorType ? '✓ Sensori compatibili' : '⚠ Sensori diversi'}
+                        </div>
+                        {!suggestions.sameSensorType && (
+                          <div className="text-xs text-gray-600 ml-2">
+                            {suggestions.allHavePower ? '⚡' : ''} 
+                            {suggestions.allHaveHeartRate ? '❤️' : ''} 
+                            {suggestions.allHaveCadence ? '🔄' : ''} 
+                            {!suggestions.allHavePower && !suggestions.allHaveHeartRate && !suggestions.allHaveCadence ? '📍' : ''}
+                          </div>
+                        )}
                       </div>
                     );
                   }

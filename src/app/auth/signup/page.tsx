@@ -16,6 +16,8 @@ interface ValidationResult {
 }
 
 interface FormErrors {
+  firstName?: string;
+  lastName?: string;
   email?: string;
   password?: string;
   confirmPassword?: string;
@@ -55,6 +57,8 @@ export default function SignupPage() {
 
   // Stati del form
   const [formData, setFormData] = useState({
+    firstName: '',
+    lastName: '',
     email: '',
     password: '',
     confirmPassword: '',
@@ -67,6 +71,8 @@ export default function SignupPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [touched, setTouched] = useState({
+    firstName: false,
+    lastName: false,
     email: false,
     password: false,
     confirmPassword: false,
@@ -210,6 +216,34 @@ export default function SignupPage() {
     return { isValid: true, message: '' };
   };
 
+  // Validazione nome
+  const validateFirstName = (firstName: string): ValidationResult => {
+    if (!firstName.trim()) {
+      return { isValid: false, message: 'Il nome è obbligatorio' };
+    }
+    if (firstName.trim().length < 2) {
+      return { isValid: false, message: 'Il nome deve avere almeno 2 caratteri' };
+    }
+    if (!/^[a-zA-ZÀ-ÿ\s'-]+$/.test(firstName.trim())) {
+      return { isValid: false, message: 'Il nome contiene caratteri non validi' };
+    }
+    return { isValid: true, message: '' };
+  };
+
+  // Validazione cognome
+  const validateLastName = (lastName: string): ValidationResult => {
+    if (!lastName.trim()) {
+      return { isValid: false, message: 'Il cognome è obbligatorio' };
+    }
+    if (lastName.trim().length < 2) {
+      return { isValid: false, message: 'Il cognome deve avere almeno 2 caratteri' };
+    }
+    if (!/^[a-zA-ZÀ-ÿ\s'-]+$/.test(lastName.trim())) {
+      return { isValid: false, message: 'Il cognome contiene caratteri non validi' };
+    }
+    return { isValid: true, message: '' };
+  };
+
   // Validazione password
   const validatePassword = (password: string): ValidationResult => {
     if (!password) {
@@ -269,33 +303,52 @@ export default function SignupPage() {
     return { score: 100, label: 'Molto forte', color: 'bg-green-500' };
   };
 
-  // Validazione in tempo reale
+  // Validazione form completa
   useEffect(() => {
     const validateForm = async () => {
-      const newErrors: FormErrors = {};
-
-      if (touched.email) {
-        const emailValidation = await validateEmail(formData.email);
-        if (!emailValidation.isValid) {
-          newErrors.email = emailValidation.message;
+      const errors: FormErrors = {};
+      
+      // Validazione nome
+      if (touched.firstName) {
+        const firstNameValidation = validateFirstName(formData.firstName);
+        if (!firstNameValidation.isValid) {
+          errors.firstName = firstNameValidation.message;
         }
       }
-
+      
+      // Validazione cognome
+      if (touched.lastName) {
+        const lastNameValidation = validateLastName(formData.lastName);
+        if (!lastNameValidation.isValid) {
+          errors.lastName = lastNameValidation.message;
+        }
+      }
+      
+      // Validazione email
+      if (touched.email && formData.email) {
+        const emailValidation = await validateEmail(formData.email);
+        if (!emailValidation.isValid) {
+          errors.email = emailValidation.message;
+        }
+      }
+      
+      // Validazione password
       if (touched.password) {
         const passwordValidation = validatePassword(formData.password);
         if (!passwordValidation.isValid) {
-          newErrors.password = passwordValidation.message;
+          errors.password = passwordValidation.message;
         }
       }
-
+      
+      // Validazione conferma password
       if (touched.confirmPassword) {
         const confirmPasswordValidation = validateConfirmPassword(formData.confirmPassword, formData.password);
         if (!confirmPasswordValidation.isValid) {
-          newErrors.confirmPassword = confirmPasswordValidation.message;
+          errors.confirmPassword = confirmPasswordValidation.message;
         }
       }
-
-      setFormErrors(newErrors);
+      
+      setFormErrors(errors);
     };
 
     validateForm();
@@ -303,7 +356,6 @@ export default function SignupPage() {
 
   const handleInputChange = (field: keyof typeof formData, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
-    setError(null); // Reset errore generale
   };
 
   const handleBlur = (field: keyof typeof touched) => {
@@ -326,14 +378,16 @@ export default function SignupPage() {
     }
 
     // Segna tutti i campi come touched per mostrare errori
-    setTouched({ email: true, password: true, confirmPassword: true });
+    setTouched({ firstName: true, lastName: true, email: true, password: true, confirmPassword: true });
 
     // Validazione finale
+    const firstNameValidation = validateFirstName(formData.firstName);
+    const lastNameValidation = validateLastName(formData.lastName);
     const emailValidation = await validateEmail(formData.email);
     const passwordValidation = validatePassword(formData.password);
     const confirmPasswordValidation = validateConfirmPassword(formData.confirmPassword, formData.password);
 
-    if (!emailValidation.isValid || !passwordValidation.isValid || !confirmPasswordValidation.isValid) {
+    if (!firstNameValidation.isValid || !lastNameValidation.isValid || !emailValidation.isValid || !passwordValidation.isValid || !confirmPasswordValidation.isValid) {
       setError('Correggi gli errori nel form prima di continuare');
       setIsLoading(false);
       updateRateLimit(); // Conta come tentativo fallito
@@ -346,6 +400,9 @@ export default function SignupPage() {
         password: formData.password,
         options: {
           data: {
+            full_name: `${formData.firstName.trim()} ${formData.lastName.trim()}`,
+            first_name: formData.firstName.trim(),
+            last_name: formData.lastName.trim(),
             registration_timestamp: new Date().toISOString(),
             user_agent: navigator.userAgent,
             registration_ip: 'hidden', // In produzione ottenere IP dal server
@@ -406,7 +463,7 @@ export default function SignupPage() {
 
   const passwordStrength = getPasswordStrength(formData.password);
   const isFormValid = Object.keys(formErrors).length === 0 && 
-                     formData.email && formData.password && formData.confirmPassword;
+                     formData.firstName && formData.lastName && formData.email && formData.password && formData.confirmPassword;
 
   if (isSuccess) {
     return (
@@ -479,11 +536,6 @@ export default function SignupPage() {
           {/* Signup Card */}
           <div className="stats-card animate-fade-in">
             <div className="space-y-6">
-              <div className="text-center">
-                <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Crea il tuo account</h2>
-                <p className="text-gray-600 dark:text-gray-300">Registrati gratuitamente per iniziare</p>
-              </div>
-
               {error && (
                 <div className={`border rounded-xl text-sm animate-slide-up ${
                   isRateLimited 
@@ -525,6 +577,86 @@ export default function SignupPage() {
               
               <form onSubmit={handleSignup} className="space-y-6">
                 <div className="space-y-4">
+                  {/* Campo Nome */}
+                  <div>
+                    <label htmlFor="firstName" className="block text-sm font-medium text-gray-900 dark:text-white mb-2">
+                      Nome <span className="text-red-500">*</span>
+                    </label>
+                    <div className="relative">
+                      <input
+                        id="firstName"
+                        type="text"
+                        value={formData.firstName}
+                        onChange={(e) => handleInputChange('firstName', e.target.value)}
+                        onBlur={() => handleBlur('firstName')}
+                        required
+                        className={`w-full px-4 py-3 bg-white/50 dark:bg-gray-800/50 border rounded-xl focus:outline-none focus:ring-2 transition-all placeholder:text-gray-400 dark:placeholder:text-gray-500 ${
+                          formErrors.firstName 
+                            ? 'border-red-300 focus:ring-red-500/50 focus:border-red-500' 
+                            : touched.firstName && !formErrors.firstName
+                            ? 'border-green-300 focus:ring-green-500/50 focus:border-green-500'
+                            : 'border-gray-200/50 dark:border-gray-700/50 focus:ring-emerald-500/50 focus:border-transparent'
+                        }`}
+                        placeholder="Mario"
+                      />
+                      {touched.firstName && (
+                        <div className="absolute inset-y-0 right-0 flex items-center pr-3">
+                          {formErrors.firstName ? (
+                            <AlertCircle className="w-5 h-5 text-red-500" />
+                          ) : (
+                            <Check className="w-5 h-5 text-green-500" />
+                          )}
+                        </div>
+                      )}
+                    </div>
+                    {formErrors.firstName && (
+                      <p className="mt-1 text-sm text-red-600 dark:text-red-400 flex items-center">
+                        <AlertCircle className="w-4 h-4 mr-1 flex-shrink-0" />
+                        {formErrors.firstName}
+                      </p>
+                    )}
+                  </div>
+                  
+                  {/* Campo Cognome */}
+                  <div>
+                    <label htmlFor="lastName" className="block text-sm font-medium text-gray-900 dark:text-white mb-2">
+                      Cognome <span className="text-red-500">*</span>
+                    </label>
+                    <div className="relative">
+                      <input
+                        id="lastName"
+                        type="text"
+                        value={formData.lastName}
+                        onChange={(e) => handleInputChange('lastName', e.target.value)}
+                        onBlur={() => handleBlur('lastName')}
+                        required
+                        className={`w-full px-4 py-3 bg-white/50 dark:bg-gray-800/50 border rounded-xl focus:outline-none focus:ring-2 transition-all placeholder:text-gray-400 dark:placeholder:text-gray-500 ${
+                          formErrors.lastName 
+                            ? 'border-red-300 focus:ring-red-500/50 focus:border-red-500' 
+                            : touched.lastName && !formErrors.lastName
+                            ? 'border-green-300 focus:ring-green-500/50 focus:border-green-500'
+                            : 'border-gray-200/50 dark:border-gray-700/50 focus:ring-emerald-500/50 focus:border-transparent'
+                        }`}
+                        placeholder="Rossi"
+                      />
+                      {touched.lastName && (
+                        <div className="absolute inset-y-0 right-0 flex items-center pr-3">
+                          {formErrors.lastName ? (
+                            <AlertCircle className="w-5 h-5 text-red-500" />
+                          ) : (
+                            <Check className="w-5 h-5 text-green-500" />
+                          )}
+                        </div>
+                      )}
+                    </div>
+                    {formErrors.lastName && (
+                      <p className="mt-1 text-sm text-red-600 dark:text-red-400 flex items-center">
+                        <AlertCircle className="w-4 h-4 mr-1 flex-shrink-0" />
+                        {formErrors.lastName}
+                      </p>
+                    )}
+                  </div>
+                  
                   {/* Campo Email */}
                   <div>
                     <label htmlFor="email" className="block text-sm font-medium text-gray-900 dark:text-white mb-2">

@@ -8,6 +8,7 @@ import { useRouter } from 'next/navigation';
 import { createBrowserClient } from '@supabase/ssr';
 import type { Athlete } from '@/lib/types'; // MODIFICATO PERCORSO IMPORT
 import { Button } from '@/components/ui/button';
+import { useCycloLabCacheInvalidation } from '@/hooks/use-cyclolab-cache';
 
 interface DeleteAthleteButtonProps {
   athlete: Athlete;
@@ -16,6 +17,8 @@ interface DeleteAthleteButtonProps {
 
 export default function DeleteAthleteButton({ athlete, onDeleteSuccess }: DeleteAthleteButtonProps) {
   const router = useRouter();
+  const { invalidateOnAthleteChange } = useCycloLabCacheInvalidation();
+  
   // Inizializza il client Supabase per il browser
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -103,6 +106,9 @@ export default function DeleteAthleteButton({ athlete, onDeleteSuccess }: Delete
       }
 
       setShowConfirmDialog(false);
+      
+      // Invalida la cache degli atleti per aggiornare automaticamente la lista
+      invalidateOnAthleteChange(athlete.user_id);
       
       if (onDeleteSuccess) {
         onDeleteSuccess();

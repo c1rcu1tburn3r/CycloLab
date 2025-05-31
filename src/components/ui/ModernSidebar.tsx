@@ -185,13 +185,21 @@ export function ModernSidebar({ user }: SidebarProps) {
             <div className="flex items-center justify-between mb-4">
               <ThemeToggle />
               {!collapsed && user && (
-                <div className="flex items-center space-x-3">
-                  <div className="w-8 h-8 bg-gradient-to-br from-emerald-500 to-blue-500 rounded-lg flex items-center justify-center text-white text-sm font-semibold">
-                    {user.email?.charAt(0).toUpperCase()}
+                <div className="flex items-center space-x-3 max-w-full overflow-hidden">
+                  <div className="w-8 h-8 bg-gradient-to-br from-emerald-500 to-blue-500 rounded-lg flex items-center justify-center text-white text-sm font-semibold flex-shrink-0">
+                    {user.user_metadata?.full_name 
+                      ? user.user_metadata.full_name.charAt(0).toUpperCase()
+                      : user.email?.charAt(0).toUpperCase()
+                    }
                   </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
-                      {user.email}
+                  <div className="min-w-0 flex-1 overflow-hidden">
+                    <p className="text-sm font-medium text-gray-900 dark:text-white truncate max-w-[140px]">
+                      {user.user_metadata?.full_name || 
+                        (user.email && user.email.length > 20 
+                          ? `${user.email.substring(0, 17)}...` 
+                          : user.email
+                        )
+                      }
                     </p>
                     <p className="text-xs text-gray-500 dark:text-gray-400">Coach</p>
                   </div>

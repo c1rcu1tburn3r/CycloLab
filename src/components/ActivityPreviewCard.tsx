@@ -36,6 +36,87 @@ function formatDuration(seconds: number | null | undefined): string {
   }
 }
 
+// Funzione per ottenere il badge del tipo di sensori
+const getSensorBadge = (activity: Activity) => {
+  const hasPower = activity.avg_power_watts && activity.avg_power_watts > 0;
+  const hasHeartRate = activity.avg_heart_rate && activity.avg_heart_rate > 0;
+  const hasCadence = activity.avg_cadence && activity.avg_cadence > 0;
+  
+  // Determina il tipo di setup in base ai sensori disponibili
+  if (hasPower && hasHeartRate && hasCadence) {
+    return { 
+      icon: '⚡', 
+      text: 'Completo', 
+      bg: 'bg-emerald-500', 
+      textColor: 'text-white',
+      tooltip: 'PowerMeter + Cardio + Cadenza'
+    };
+  }
+  if (hasPower && hasHeartRate) {
+    return { 
+      icon: '⚡', 
+      text: 'PowerMeter+', 
+      bg: 'bg-blue-500', 
+      textColor: 'text-white',
+      tooltip: 'PowerMeter + Cardio'
+    };
+  }
+  if (hasPower && hasCadence) {
+    return { 
+      icon: '⚡', 
+      text: 'PowerMeter+', 
+      bg: 'bg-blue-500', 
+      textColor: 'text-white',
+      tooltip: 'PowerMeter + Cadenza'
+    };
+  }
+  if (hasPower) {
+    return { 
+      icon: '⚡', 
+      text: 'PowerMeter', 
+      bg: 'bg-blue-600', 
+      textColor: 'text-white',
+      tooltip: 'Solo PowerMeter'
+    };
+  }
+  if (hasHeartRate && hasCadence) {
+    return { 
+      icon: '❤️', 
+      text: 'Cardio+', 
+      bg: 'bg-red-500', 
+      textColor: 'text-white',
+      tooltip: 'Cardio + Cadenza'
+    };
+  }
+  if (hasHeartRate) {
+    return { 
+      icon: '❤️', 
+      text: 'Cardio', 
+      bg: 'bg-red-600', 
+      textColor: 'text-white',
+      tooltip: 'Solo Cardio'
+    };
+  }
+  if (hasCadence) {
+    return { 
+      icon: '🔄', 
+      text: 'Cadenza', 
+      bg: 'bg-orange-500', 
+      textColor: 'text-white',
+      tooltip: 'Solo Cadenza'
+    };
+  }
+  
+  // Solo GPS e velocità di base
+  return { 
+    icon: '📍', 
+    text: 'Base', 
+    bg: 'bg-gray-500', 
+    textColor: 'text-white',
+    tooltip: 'Solo GPS + Velocità'
+  };
+};
+
 // Funzione per ottenere l'icona del tipo di attività
 const getActivityIcon = (type: string | null | undefined) => {
   switch (type) {
@@ -238,6 +319,15 @@ const CardContentWrapper: React.FC<{
               : 'Attività'
             }
           </span>
+        </div>
+
+        {/* Badge sensori sovrapposto */}
+        <div 
+          className={`absolute top-3 left-3 flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium backdrop-blur-sm shadow-lg ${getSensorBadge(activity).bg} ${getSensorBadge(activity).textColor} border border-white/20`}
+          title={getSensorBadge(activity).tooltip}
+        >
+          <span>{getSensorBadge(activity).icon}</span>
+          <span className="hidden sm:inline">{getSensorBadge(activity).text}</span>
         </div>
       </div>
 
