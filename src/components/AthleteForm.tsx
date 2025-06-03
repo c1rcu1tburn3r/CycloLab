@@ -95,7 +95,8 @@ export default function AthleteForm({ initialData, onFormSubmitSuccess, mode = '
     const { name, value, type } = e.target;
     let processedValue: string | number | null = value;
 
-    if (type === 'number') {
+    // Gestisci solo i campi numerici, lascia gli altri (incluso date) come stringhe
+    if (type === 'number' && name !== 'birth_date') {
       processedValue = value === '' ? null : parseFloat(value);
       if (isNaN(processedValue as number)) processedValue = null;
     }

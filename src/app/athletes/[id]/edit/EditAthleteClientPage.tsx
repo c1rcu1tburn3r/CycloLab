@@ -1754,7 +1754,7 @@ export default function EditAthleteClientPage({
                     <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-lg">
                       
                       {/* Header discreto */}
-                      <div className="px-6 py-4 bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
+                      <div className="px-6 py-4 bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 rounded-t-2xl">
                         <div className="flex items-center gap-3">
                           <div className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
                             <svg className="w-4 h-4 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1773,16 +1773,16 @@ export default function EditAthleteClientPage({
                         <div className="space-y-4">
                           
                           {/* Azione di esportazione CSV */}
-                          <div className="flex items-center justify-between p-3 border border-gray-200 dark:border-gray-700 rounded-lg">
+                          <div className="flex items-center justify-between p-4 border border-blue-200 dark:border-blue-700/50 rounded-xl bg-blue-50/50 dark:bg-blue-900/10">
                             <div className="flex items-center gap-3">
-                              <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center">
-                                <svg className="w-4 h-4 text-blue-500 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+                                <svg className="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                 </svg>
                               </div>
                               <div>
-                                <div className="text-sm font-medium text-gray-900 dark:text-white">Esporta Profilo</div>
-                                <div className="text-xs text-gray-500 dark:text-gray-400">Download dati in formato CSV</div>
+                                <div className="text-sm font-semibold text-blue-900 dark:text-blue-100">Esporta Profilo</div>
+                                <div className="text-xs text-blue-700 dark:text-blue-300">Download in formato CSV</div>
                               </div>
                             </div>
 
@@ -1886,7 +1886,7 @@ export default function EditAthleteClientPage({
                               }}
                               variant="outline"
                               size="sm"
-                              className="text-blue-600 border-blue-200 hover:bg-blue-50 hover:text-blue-700 hover:border-blue-300 dark:text-blue-400 dark:border-blue-800 dark:hover:bg-blue-900/20 dark:hover:text-blue-300 transition-colors"
+                              className="h-9 text-blue-600 border-blue-200 hover:bg-blue-50 hover:text-blue-700 hover:border-blue-300 dark:text-blue-400 dark:border-blue-800 dark:hover:bg-blue-900/20 dark:hover:text-blue-300 transition-colors"
                               style={{
                                 position: 'relative',
                                 zIndex: 10
@@ -1899,43 +1899,29 @@ export default function EditAthleteClientPage({
                             </Button>
                           </div>
                             
-                          {/* Azione di eliminazione - design discreto */}
-                          <div className="flex items-center justify-between p-3 border border-gray-200 dark:border-gray-700 rounded-lg">
+                          {/* Azione di eliminazione - design migliorato */}
+                          <div className="flex items-center justify-between p-4 border border-red-200 dark:border-red-700/50 rounded-xl bg-red-50/50 dark:bg-red-900/10">
                             <div className="flex items-center gap-3">
-                              <div className="w-8 h-8 rounded-lg bg-red-50 dark:bg-red-900/20 flex items-center justify-center">
-                                <svg className="w-4 h-4 text-red-500 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <div className="w-10 h-10 rounded-xl bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
+                                <svg className="w-5 h-5 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                                 </svg>
                               </div>
                               <div>
-                                <div className="text-sm font-medium text-gray-900 dark:text-white">Elimina Atleta</div>
+                                <div className="text-sm font-semibold text-red-900 dark:text-red-100">Elimina Atleta</div>
+                                <div className="text-xs text-red-700 dark:text-red-300">Azione irreversibile</div>
+                              </div>
                             </div>
-                          </div>
                           
-                            {/* PULSANTE ELEGANTE E FUNZIONANTE */}
-                            <Button
-                              onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                console.log('Button clicked!'); // Debug
-                                if (confirm(`Sei sicuro di voler eliminare ${athleteData.name} ${athleteData.surname}? Questa azione è irreversibile.`)) {
-                                  alert('Pulsante funziona! Elimineremmo l\'atleta qui.');
-                                }
+                            {/* Componente DeleteAthleteButton funzionante */}
+                            <DeleteAthleteButton 
+                              athlete={athleteData}
+                              onDeleteSuccess={() => {
+                                // L'atleta è stato eliminato, reindirizza alla lista atleti
+                                router.push('/athletes');
                               }}
-                              variant="outline"
-                              size="sm"
-                              className="text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700 hover:border-red-300 dark:text-red-400 dark:border-red-800 dark:hover:bg-red-900/20 dark:hover:text-red-300 transition-colors"
-                              style={{
-                                position: 'relative',
-                                zIndex: 10
-                              }}
-                            >
-                              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                              </svg>
-                              Elimina
-                            </Button>
-                      </div>
+                            />
+                          </div>
                       
                           {/* Info disclaimer */}
                           <div className="flex items-start gap-2 p-3 bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800 rounded-lg">
