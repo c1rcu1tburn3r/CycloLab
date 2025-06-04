@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { createBrowserClient } from '@supabase/ssr';
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/design-system';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -63,7 +64,7 @@ export default function LoginPage() {
           </div>
 
           {/* Login Card */}
-          <div className="stats-card animate-fade-in">
+          <Card variant="glass" className="animate-fade-in">
             <div className="space-y-6">
               <div className="text-center">
                 <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Bentornato</h2>
@@ -155,7 +156,7 @@ export default function LoginPage() {
                 </Button>
               </Link>
             </div>
-          </div>
+          </Card>
           
           {/* Footer */}
           <div className="mt-8 text-center text-gray-500 dark:text-gray-400 text-sm animate-fade-in">

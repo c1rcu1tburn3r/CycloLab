@@ -1,6 +1,8 @@
 import AthleteCardSkeleton from '@/components/AthleteCardSkeleton';
 import { Button } from "@/components/ui/button"; // Assuming similar button for consistency
 import Link from 'next/link'; // If the "Add Athlete" button is a Link
+import { Card } from '@/components/design-system';
+import { getGridClasses, spacing } from '@/lib/design-system';
 
 export default function AthletesLoading() {
   const skeletonCount = 6; // Numero di skeleton da mostrare
@@ -44,7 +46,7 @@ export default function AthletesLoading() {
           {/* Quick Stats (Skeleton) */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
             {[...Array(4)].map((_, i) => (
-              <div key={i} className="stats-card group animate-pulse">
+              <div key={i} className="group animate-pulse">
                 <div className="flex items-center justify-between mb-4">
                   <div className="h-4 bg-gray-300 dark:bg-gray-600 rounded w-1/2"></div>
                   <div className="w-5 h-5 bg-gray-300 dark:bg-gray-600 rounded-full"></div>

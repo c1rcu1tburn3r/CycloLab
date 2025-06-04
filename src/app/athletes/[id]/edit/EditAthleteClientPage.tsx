@@ -16,6 +16,8 @@ import { it } from 'date-fns/locale';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 // Importa i componenti Card di Shadcn/ui
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+// Importa Card dal design system
+import { Card as DesignCard } from '@/components/design-system';
 // Importa Button di Shadcn/ui
 import { Button } from "@/components/ui/button";
 
@@ -1071,7 +1073,7 @@ export default function EditAthleteClientPage({
                     <div className="text-center py-8">
                       <div className="w-16 h-16 rounded-2xl bg-gray-100 dark:bg-gray-700 flex items-center justify-center mx-auto mb-4">
                         <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
                         </svg>
                       </div>
                       <p className="text-gray-500 dark:text-gray-400 mb-2 font-medium">Zone non disponibili</p>
@@ -1682,7 +1684,7 @@ export default function EditAthleteClientPage({
                       {/* Parametri Cards */}
                       <div className="space-y-4">
                         {/* FTP */}
-                        <div className="bg-blue-50/50 dark:bg-blue-900/30 rounded-xl p-4 border border-blue-200/50 dark:border-blue-800/50">
+                        <DesignCard variant="glass" className="border border-blue-200/50 dark:border-blue-800/50 p-4">
                           <div className="flex items-center justify-between mb-2">
                             <div className="flex items-center gap-2">
                               <svg className="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1695,10 +1697,10 @@ export default function EditAthleteClientPage({
                           <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
                             {getCurrentProfile()?.ftp_watts ? `${getCurrentProfile()?.ftp_watts}W` : '--- W'}
                           </div>
-                        </div>
+                        </DesignCard>
 
                         {/* Peso */}
-                        <div className="bg-emerald-50/50 dark:bg-emerald-900/30 rounded-xl p-4 border border-emerald-200/50 dark:border-emerald-800/50">
+                        <DesignCard variant="glass" className="border border-emerald-200/50 dark:border-emerald-800/50 p-4">
                           <div className="flex items-center justify-between mb-2">
                             <div className="flex items-center gap-2">
                               <svg className="w-5 h-5 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1714,10 +1716,10 @@ export default function EditAthleteClientPage({
                               <div className="w-2 h-2 bg-emerald-500 rounded-full mt-1"></div>
                             )}
                           </div>
-                        </div>
+                        </DesignCard>
 
                         {/* W/kg */}
-                        <div className="bg-purple-50/50 dark:bg-purple-900/30 rounded-xl p-4 border border-purple-200/50 dark:border-purple-800/50">
+                        <DesignCard variant="glass" className="border border-purple-200/50 dark:border-purple-800/50 p-4">
                           <div className="flex items-center justify-between mb-2">
                             <div className="flex items-center gap-2">
                               <svg className="w-5 h-5 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1733,7 +1735,7 @@ export default function EditAthleteClientPage({
                               '---'
                             }
                           </div>
-                        </div>
+                        </DesignCard>
 
                         {/* VO2max Display */}
                         <VO2maxDisplay

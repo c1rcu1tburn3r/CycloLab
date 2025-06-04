@@ -1,0 +1,38 @@
+{
+  "timestamp": "2025-06-04T19:52:31.919Z",
+  "totalFiles": 122,
+  "filesNeedingMigration": 67,
+  "estimatedHours": 124,
+  "phases": [
+    {
+      "name": "Fase 1: Componenti Core",
+      "priority": "Alta",
+      "files": [
+        "src/components/AthleteCard.tsx",
+        "src/components/AthleteSummaryCard.tsx",
+        "src/components/LoadingSkeleton.tsx"
+      ],
+      "estimatedHours": 4
+    },
+    {
+      "name": "Fase 2: Pagine Dashboard",
+      "priority": "Alta",
+      "files": [
+        "src/app/page.tsx",
+        "src/app/athletes/page.tsx",
+        "src/app/activities/ActivitiesClientManager.tsx"
+      ],
+      "estimatedHours": 8
+    },
+    {
+      "name": "Fase 3: Form e Settings",
+      "priority": "Media",
+      "files": [
+        "src/app/account/settings/**/*.tsx",
+        "src/components/AthleteForm.tsx",
+        "src/components/ActivityUploadForm.tsx"
+      ],
+      "estimatedHours": 12
+    }
+  ]
+}

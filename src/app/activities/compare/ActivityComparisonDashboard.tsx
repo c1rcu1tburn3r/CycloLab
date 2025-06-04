@@ -170,7 +170,7 @@ export default function ActivityComparisonDashboard({ activities }: ActivityComp
       </div>
 
       {/* Analisi di Comparabilità */}
-      <Card className="stats-card p-4">
+      <Card className="p-4">
         <CardHeader className="pb-2">
           <CardTitle className="flex items-center gap-2 text-base">
             <svg className="w-4 h-4 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -245,7 +245,7 @@ export default function ActivityComparisonDashboard({ activities }: ActivityComp
       </Card>
 
       {/* Mappa Interattiva per Selezione Segmenti */}
-      <Card className="stats-card p-4">
+      <Card className="p-4">
         <CardContent>
           <VisualSegmentSelector activities={activities} />
         </CardContent>
@@ -259,7 +259,7 @@ export default function ActivityComparisonDashboard({ activities }: ActivityComp
           const athleteName = activity.athletes?.name ? `${activity.athletes.name} ${activity.athletes.surname}` : 'Atleta';
 
           return (
-            <Card key={activity.id} className="stats-card group hover:shadow-xl transition-all duration-300 overflow-hidden">
+            <Card key={activity.id} className="group hover:shadow-xl transition-all duration-300 overflow-hidden">
               <div className={`absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r ${accent} rounded-t-2xl`} />
               
               <CardHeader className="pb-4">

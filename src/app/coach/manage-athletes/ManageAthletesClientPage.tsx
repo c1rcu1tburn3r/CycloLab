@@ -207,29 +207,29 @@ export default function ManageAthletesClientPage() {
           {/* Quick Stats - Solo dati reali */}
           {isHydrated && managedAthletes.length > 0 && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-              <div className="stats-card group">
+              <Card className="group">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400">Atleti Gestiti</h3>
                   <Users className="w-5 h-5 text-blue-500" />
                 </div>
                 <p className="text-3xl font-bold text-gray-900 dark:text-white">{managedAthletes.length}</p>
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">sotto la tua guida</p>
-              </div>
+              </Card>
 
-              <div className="stats-card group">
+              <Card className="group">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400">Statistiche Avanzate</h3>
                   <Activity className="w-5 h-5 text-emerald-500" />
                 </div>
                 <p className="text-lg font-semibold text-gray-900 dark:text-white">In Sviluppo</p>
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Metriche dettagliate prossimamente</p>
-              </div>
+              </Card>
             </div>
           )}
 
           {/* Sezione Attività Recenti - Solo se ci sono atleti */}
           {isHydrated && managedAthletes.length > 0 && (
-            <div className="stats-card mb-8">
+            <Card className="mb-8">
               <div className="flex items-center justify-between mb-6">
                 <div>
                   <h3 className="text-xl font-semibold text-gray-900 dark:text-white">I Tuoi Atleti</h3>
@@ -269,11 +269,11 @@ export default function ManageAthletesClientPage() {
                   </div>
                 ))}
               </div>
-            </div>
+            </Card>
           )}
 
           {/* Aggiungi Nuovo Atleta */}
-          <div className="stats-card mb-8">
+          <Card className="mb-8">
             <div className="flex items-center gap-3 mb-6">
               <UserPlus className="w-6 h-6 text-blue-600" />
               <div>
@@ -361,10 +361,10 @@ export default function ManageAthletesClientPage() {
                 </div>
               )}
             </div>
-          </div>
+          </Card>
 
           {/* I Miei Atleti */}
-          <div className="stats-card">
+          <Card>
             <div className="flex items-center gap-3 mb-6">
               <Users className="w-6 h-6 text-blue-600" />
               <div>
@@ -431,7 +431,7 @@ export default function ManageAthletesClientPage() {
 
                     {/* Actions */}
                     <div className="flex gap-2">
-                      <Link href={`/athletes/${athlete.id}`} className="flex-1">
+                      <Link href={`/athletes/${athlete.id}/edit`} className="flex-1">
                         <Button variant="outline" size="sm" className="w-full border-gray-200 dark:border-gray-700 hover:bg-blue-50 dark:hover:bg-blue-900/20">
                           <Activity className="w-4 h-4 mr-2" />
                           Visualizza
@@ -455,7 +455,7 @@ export default function ManageAthletesClientPage() {
                 ))}
               </div>
             )}
-          </div>
+          </Card>
         </div>
       </div>
     </div>

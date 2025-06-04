@@ -3,6 +3,7 @@
 import { useState, useTransition } from 'react';
 import { saveAthleteProfileEntry, type SaveAthleteProfileEntryResult } from '../app/athletes/athleteProfileActions'; 
 import { useRouter } from 'next/navigation';
+import { getGridClasses, spacing } from '@/lib/design-system';
 
 // Importa i componenti Shadcn/ui
 import { Input } from "@/components/ui/input";
@@ -73,7 +74,7 @@ export default function AthleteProfileEntryForm({ athleteId, onEntrySaved }: Ath
         />
       </div>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className={getGridClasses(2, 'md')}>
         <div className="space-y-2">
           <Label htmlFor="ftp">
             FTP (watt)

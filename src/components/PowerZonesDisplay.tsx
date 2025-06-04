@@ -1,6 +1,8 @@
 'use client';
 
 import { Zap } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/design-system';
+import { spacing } from '@/lib/design-system';
 
 interface PowerZonesDisplayProps {
   currentFtp: number | null;
@@ -56,36 +58,42 @@ const PowerZonesDisplay: React.FC<PowerZonesDisplayProps> = ({ currentFtp }) => 
   });
 
   return (
-    <div className="space-y-3">
-      {calculatedZones.map((zone, index) => (
-        <div 
-          key={zone.name} 
-          className="flex items-center justify-between p-4 rounded-xl bg-gray-50/50 dark:bg-gray-800/50 hover:bg-gray-100/50 dark:hover:bg-gray-700/50 transition-all duration-200 group"
-        >
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-3">
-              <span className={`font-bold text-lg w-8 ${zone.color} group-hover:scale-110 transition-transform`}>
-                {zone.name}
-              </span>
-              <div>
-                <p className="font-medium text-gray-900 dark:text-white text-sm">
-                  {zone.description}
-                </p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  {zone.maxPercent ? `${zone.minPercent}% - ${zone.maxPercent}% FTP` : `${zone.minPercent}%+ FTP`}
-                </p>
-              </div>
-            </div>
-          </div>
-          
-          <div className="text-right">
-            <p className="font-bold text-gray-900 dark:text-white">
-              {zone.wattsHigh}
-            </p>
+    <Card variant="default">
+      <CardHeader>
+        <CardTitle className={spacing.bottom.md}>Zone di Potenza</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className={`space-y-3 ${spacing.all.md}`}>
+          <div className={`space-y-2 ${spacing.vertical.sm}`}>
+            {calculatedZones.map((zone, index) => (
+              <Card key={index} variant="glass">
+                <CardContent className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <span className={`font-bold text-lg w-8 ${zone.color} group-hover:scale-110 transition-transform`}>
+                      {zone.name}
+                    </span>
+                    <div>
+                      <p className="font-medium text-gray-900 dark:text-white text-sm">
+                        {zone.description}
+                      </p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        {zone.maxPercent ? `${zone.minPercent}% - ${zone.maxPercent}% FTP` : `${zone.minPercent}%+ FTP`}
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div className="text-right">
+                    <p className="font-bold text-gray-900 dark:text-white">
+                      {zone.wattsHigh}
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
           </div>
         </div>
-      ))}
-    </div>
+      </CardContent>
+    </Card>
   );
 };
 

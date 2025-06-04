@@ -733,7 +733,7 @@ export default function ActivityUploadForm({ userId, athletes }: ActivityUploadF
           id="fit_file"
           accept=".fit"
           onChange={handleFileChange}
-          className="w-full px-3 py-2 text-sm bg-white/80 dark:bg-gray-800/80 border border-gray-300 dark:border-gray-700/50 rounded-xl focus:outline-none focus:ring-1 focus:ring-blue-500/70 placeholder:text-gray-400 dark:placeholder:text-gray-500 transition-all stats-card-bg-input"
+          className="w-full px-3 py-2 text-sm bg-white/80 dark:bg-gray-800/80 border border-gray-300 dark:border-gray-700/50 rounded-xl focus:outline-none focus:ring-1 focus:ring-blue-500/70 placeholder:text-gray-400 dark:placeholder:text-gray-500 transition-all "
           required
           disabled={isSubmitDisabled}
         />
@@ -823,7 +823,7 @@ export default function ActivityUploadForm({ userId, athletes }: ActivityUploadF
             name="athlete_id"
             value={formData.athlete_id}
             onChange={handleInputChange}
-            className="w-full px-3 py-2 text-sm bg-white/80 dark:bg-gray-800/80 border border-gray-300 dark:border-gray-700/50 rounded-xl focus:outline-none focus:ring-1 focus:ring-blue-500/70 placeholder:text-gray-400 dark:placeholder:text-gray-500 transition-all appearance-none stats-card-bg-input pr-8"
+            className="w-full px-3 py-2 text-sm bg-white/80 dark:bg-gray-800/80 border border-gray-300 dark:border-gray-700/50 rounded-xl focus:outline-none focus:ring-1 focus:ring-blue-500/70 placeholder:text-gray-400 dark:placeholder:text-gray-500 transition-all appearance-none  pr-8"
             required
             disabled={isSubmitDisabled}
           >
@@ -846,7 +846,7 @@ export default function ActivityUploadForm({ userId, athletes }: ActivityUploadF
             name="activity_date"
             value={formData.activity_date}
             onChange={handleInputChange}
-            className="w-full px-3 py-2 text-sm bg-white/80 dark:bg-gray-800/80 border border-gray-300 dark:border-gray-700/50 rounded-xl focus:outline-none focus:ring-1 focus:ring-blue-500/70 placeholder:text-gray-400 dark:placeholder:text-gray-500 transition-all stats-card-bg-input"
+            className="w-full px-3 py-2 text-sm bg-white/80 dark:bg-gray-800/80 border border-gray-300 dark:border-gray-700/50 rounded-xl focus:outline-none focus:ring-1 focus:ring-blue-500/70 placeholder:text-gray-400 dark:placeholder:text-gray-500 transition-all "
             required
             disabled={isSubmitDisabled}
           />
@@ -1102,7 +1102,7 @@ export default function ActivityUploadForm({ userId, athletes }: ActivityUploadF
           name="title"
           value={formData.title}
           onChange={handleInputChange}
-          className="w-full px-3 py-2 text-sm bg-white/80 dark:bg-gray-800/80 border border-gray-300 dark:border-gray-700/50 rounded-xl focus:outline-none focus:ring-1 focus:ring-blue-500/70 placeholder:text-gray-400 dark:placeholder:text-gray-500 transition-all stats-card-bg-input"
+          className="w-full px-3 py-2 text-sm bg-white/80 dark:bg-gray-800/80 border border-gray-300 dark:border-gray-700/50 rounded-xl focus:outline-none focus:ring-1 focus:ring-blue-500/70 placeholder:text-gray-400 dark:placeholder:text-gray-500 transition-all "
           required
           disabled={isSubmitDisabled}
         />
@@ -1117,7 +1117,7 @@ export default function ActivityUploadForm({ userId, athletes }: ActivityUploadF
           name="description"
           value={formData.description}
           onChange={handleInputChange}
-          className="w-full px-3 py-2 text-sm bg-white/80 dark:bg-gray-800/80 border border-gray-300 dark:border-gray-700/50 rounded-xl focus:outline-none focus:ring-1 focus:ring-blue-500/70 placeholder:text-gray-400 dark:placeholder:text-gray-500 transition-all stats-card-bg-input"
+          className="w-full px-3 py-2 text-sm bg-white/80 dark:bg-gray-800/80 border border-gray-300 dark:border-gray-700/50 rounded-xl focus:outline-none focus:ring-1 focus:ring-blue-500/70 placeholder:text-gray-400 dark:placeholder:text-gray-500 transition-all "
           rows={3}
           disabled={isSubmitDisabled}
         ></textarea>
@@ -1133,7 +1133,7 @@ export default function ActivityUploadForm({ userId, athletes }: ActivityUploadF
             name="activity_type"
             value={formData.activity_type}
             onChange={handleInputChange}
-            className="w-full px-3 py-2 text-sm bg-white/80 dark:bg-gray-800/80 border border-gray-300 dark:border-gray-700/50 rounded-xl focus:outline-none focus:ring-1 focus:ring-blue-500/70 placeholder:text-gray-400 dark:placeholder:text-gray-500 transition-all appearance-none stats-card-bg-input pr-8"
+            className="w-full px-3 py-2 text-sm bg-white/80 dark:bg-gray-800/80 border border-gray-300 dark:border-gray-700/50 rounded-xl focus:outline-none focus:ring-1 focus:ring-blue-500/70 placeholder:text-gray-400 dark:placeholder:text-gray-500 transition-all appearance-none  pr-8"
             required
             disabled={isSubmitDisabled}
           >

@@ -8,6 +8,8 @@ import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { Checkbox } from "@/components/ui/checkbox"; // Importa Checkbox
 import { Label } from "@/components/ui/label";   // Importa Label
+import { spacing } from '@/lib/design-system';
+import { CardContent } from "@/components/ui/card";
 
 interface AthletePerformanceChartProps {
   profileEntries: AthleteProfileEntry[];
@@ -51,7 +53,7 @@ const AthletePerformanceChart: React.FC<AthletePerformanceChartProps> = ({ profi
   }, []);
 
   if (!profileEntries || profileEntries.length === 0) {
-    return <p className="text-sm text-slate-500 p-4 text-center">Nessun dato disponibile per il grafico.</p>;
+    return <p className={`text-sm text-slate-500 p-4 text-center ${spacing.bottom.md}`}>Nessun dato disponibile per il grafico.</p>;
   }
 
   const sortedEntries = [...profileEntries].sort((a, b) => new Date(a.effective_date).getTime() - new Date(b.effective_date).getTime());
@@ -208,8 +210,10 @@ const AthletePerformanceChart: React.FC<AthletePerformanceChartProps> = ({ profi
   };
 
   return (
-    <div className="mt-6 bg-white dark:bg-gray-800 p-4 md:p-6 rounded-lg shadow border border-slate-200 dark:border-gray-600">
-      <h3 className="text-md font-semibold text-slate-700 dark:text-slate-200 mb-4">Andamento Peso, FTP & W/kg</h3>
+    <div className={`mt-6 bg-white dark:bg-gray-800 p-4 md:p-6 rounded-lg shadow border border-slate-200 dark:border-gray-600 ${spacing.all.md}`}>
+      <div className={`text-center ${spacing.all.lg} ${spacing.all.lg}`}>
+        <h3 className={`text-lg font-medium text-gray-900 dark:text-white ${spacing.bottom.md}`}>Andamento Peso, FTP & W/kg</h3>
+      </div>
       
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mb-4 p-2 bg-slate-50 dark:bg-gray-700 rounded-md border border-slate-200 dark:border-gray-600">
         <div className="flex items-center space-x-2">

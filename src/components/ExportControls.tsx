@@ -12,6 +12,7 @@ import {
   exportAthleteProfile,
   exportSingleActivity 
 } from '@/lib/exportUtils';
+import { spacing } from '@/lib/design-system';
 
 interface ExportControlsProps {
   activities: Activity[];
@@ -119,7 +120,7 @@ export default function ExportControls({
   };
 
   return (
-    <Card className={`${className} stats-card`}>
+    <Card className={className}>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-lg">
           <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -161,7 +162,7 @@ export default function ExportControls({
         </div>
 
         {/* Descrizione formato selezionato */}
-        <div className="p-3 bg-blue-50/50 dark:bg-blue-900/20 rounded-lg border border-blue-200/50 dark:border-blue-700/50">
+        <div className={`${spacing.all.sm} bg-blue-50/50 dark:bg-blue-900/20 rounded-lg border border-blue-200/50 dark:border-blue-700/50`}>
           <p className="text-sm text-blue-700 dark:text-blue-300">
             {getExportDescription(selectedFormat)}
           </p>
@@ -169,12 +170,12 @@ export default function ExportControls({
 
         {/* Informazioni aggiuntive */}
         <div className="grid grid-cols-2 gap-4 text-sm">
-          <div className="bg-gray-50/50 dark:bg-gray-800/50 rounded-lg p-3">
+          <div className={`bg-gray-50/50 dark:bg-gray-800/50 rounded-lg ${spacing.all.sm}`}>
             <div className="font-medium text-gray-900 dark:text-white">Attività</div>
             <div className="text-gray-600 dark:text-gray-400">{activities.length} selezionate</div>
           </div>
           {athlete && (
-            <div className="bg-gray-50/50 dark:bg-gray-800/50 rounded-lg p-3">
+            <div className={`bg-gray-50/50 dark:bg-gray-800/50 rounded-lg ${spacing.all.sm}`}>
               <div className="font-medium text-gray-900 dark:text-white">Atleta</div>
               <div className="text-gray-600 dark:text-gray-400">{athlete.name} {athlete.surname}</div>
             </div>
@@ -185,7 +186,7 @@ export default function ExportControls({
         <Button 
           onClick={handleExport}
           disabled={isExporting || activities.length === 0 || isFormatDisabled(selectedFormat)}
-          className="w-full bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-semibold py-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+          className="w-full bg-gradient-to-r from-blue-500 to-purple-700 text-white font-semibold py-3 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
         >
           {isExporting ? (
             <>

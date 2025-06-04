@@ -4,6 +4,8 @@ import Image from 'next/image';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
+import { getGridClasses, spacing } from '@/lib/design-system';
+import { Card } from '@/components/design-system';
 
 export default async function HomePage() {
   const cookieStore = await cookies();
@@ -40,7 +42,7 @@ export default async function HomePage() {
         <div className="absolute bottom-20 right-10 w-96 h-96 bg-gradient-to-br from-purple-500/20 to-emerald-500/20 rounded-full blur-3xl animate-pulse delay-1000"></div>
         
         <div className="container mx-auto px-6 relative z-10">
-          <div className="grid lg:grid-cols-2 gap-12 items-center">
+          <div className={getGridClasses(5, 'lg')}>
             {/* Hero Content */}
             <div className="space-y-8 animate-slide-up">
               <div className="space-y-4">
@@ -110,7 +112,7 @@ export default async function HomePage() {
             <div className="relative animate-fade-in">
               <div className="relative">
                 {/* Main Dashboard Mockup */}
-                <div className="stats-card transform rotate-3 hover:rotate-0 transition-transform duration-500">
+                <Card variant="glass" className="transform rotate-3 hover:rotate-0 transition-transform duration-500">
                   <div className="space-y-6">
                     {/* Header */}
                     <div className="flex items-center justify-between">
@@ -124,25 +126,25 @@ export default async function HomePage() {
                     
                     {/* Metrics Cards */}
                     <div className="grid grid-cols-2 gap-4">
-                      <div className="bg-blue-50/50 dark:bg-blue-900/30 rounded-xl p-4">
+                      <Card variant="glass" className="border border-blue-200/50 dark:border-blue-800/50 p-4">
                         <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Potenza Media</div>
                         <div className="text-lg font-bold text-blue-600 dark:text-blue-400">285W</div>
                         <div className="w-full h-2 bg-blue-100 dark:bg-blue-900/50 rounded-full mt-2">
                           <div className="w-3/4 h-full bg-gradient-to-r from-blue-500 to-purple-500 rounded-full"></div>
                         </div>
-                      </div>
+                      </Card>
                       
-                      <div className="bg-orange-50/50 dark:bg-orange-900/30 rounded-xl p-4">
+                      <Card variant="glass" className="border border-orange-200/50 dark:border-orange-800/50 p-4">
                         <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">FC Media</div>
                         <div className="text-lg font-bold text-orange-600 dark:text-orange-400">156 bpm</div>
                         <div className="w-full h-2 bg-orange-100 dark:bg-orange-900/50 rounded-full mt-2">
                           <div className="w-4/5 h-full bg-gradient-to-r from-orange-500 to-red-500 rounded-full"></div>
                         </div>
-                      </div>
+                      </Card>
                     </div>
                     
                     {/* Chart Area */}
-                    <div className="bg-gray-50/50 dark:bg-gray-800/50 rounded-xl p-4 h-32">
+                    <Card variant="glass" className="border border-gray-200/50 dark:border-gray-700/50 p-4 h-32">
                       <div className="flex items-end space-x-1 h-full">
                         {[...Array(12)].map((_, i) => (
                           <div
@@ -156,9 +158,9 @@ export default async function HomePage() {
                           />
                         ))}
                       </div>
-                    </div>
+                    </Card>
                   </div>
-                </div>
+                </Card>
 
                 {/* Floating Elements */}
                 <div className="absolute -top-6 -right-6 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-2xl p-4 shadow-lg animate-bounce">
@@ -260,9 +262,9 @@ export default async function HomePage() {
                 iconColor: "text-indigo-600 dark:text-indigo-400"
               }
             ].map((feature, index) => (
-              <div
-                key={index}
-                className="stats-card group animate-slide-up"
+              <Card
+                variant="glass"
+                className="group animate-slide-up"
                 style={{ animationDelay: `${index * 100}ms` }}
               >
                 <div className="flex items-center gap-3 mb-6">
@@ -279,7 +281,7 @@ export default async function HomePage() {
                 <p className="text-gray-600 dark:text-gray-300 leading-relaxed">
                   {feature.description}
                 </p>
-              </div>
+              </Card>
             ))}
           </div>
         </div>
@@ -288,7 +290,7 @@ export default async function HomePage() {
       {/* Coach Section */}
       <section id="coaches" className="py-24 relative overflow-hidden">
         <div className="container mx-auto px-6 relative">
-          <div className="grid lg:grid-cols-2 gap-16 items-center">
+          <div className={`${getGridClasses(2, 'lg')} ${spacing.top.xl}`}>
             <div className="space-y-8 animate-slide-up">
               <div className="space-y-4">
                 <div className="inline-flex items-center px-4 py-2 rounded-full bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border border-gray-200/50 dark:border-gray-700/50 text-sm font-medium text-orange-600 dark:text-orange-400">
@@ -356,7 +358,7 @@ export default async function HomePage() {
 
             {/* Coach Dashboard Mockup */}
             <div className="relative animate-fade-in">
-              <div className="stats-card">
+              <Card variant="glass">
                 <div className="space-y-4">
                   <div className="flex items-center justify-between mb-6">
                     <h3 className="font-semibold text-gray-900 dark:text-white">Team Performance</h3>
@@ -389,7 +391,7 @@ export default async function HomePage() {
                     </div>
                   ))}
                 </div>
-              </div>
+              </Card>
             </div>
           </div>
         </div>

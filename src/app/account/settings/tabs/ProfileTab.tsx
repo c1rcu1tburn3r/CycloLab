@@ -1,13 +1,14 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import { User } from '@supabase/supabase-js';
 import { createBrowserClient } from '@supabase/ssr';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card as DesignCard } from '@/components/design-system';
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Loader2 } from 'lucide-react';
+import { Loader2, Upload, X, Check, Camera } from 'lucide-react';
 import { useCycloLabToast } from "@/hooks/use-cyclolab-toast";
 
 interface ProfileTabProps {
@@ -21,6 +22,7 @@ export default function ProfileTab({ user, onAvatarUpdate }: ProfileTabProps) {
   const [isRemovingAvatar, setIsRemovingAvatar] = useState(false);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(user.user_metadata?.avatar_url || null);
+  const [isDragOver, setIsDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [formData, setFormData] = useState({
@@ -34,6 +36,19 @@ export default function ProfileTab({ user, onAvatarUpdate }: ProfileTabProps) {
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   );
+
+  // Funzione per aggiornare la sidebar tramite evento personalizzato
+  const updateSidebar = useCallback((avatarUrl: string | null) => {
+    // Emette un evento personalizzato che la sidebar può ascoltare
+    window.dispatchEvent(new CustomEvent('avatarUpdated', { 
+      detail: { avatarUrl } 
+    }));
+    
+    // Callback tradizionale se presente
+    if (onAvatarUpdate) {
+      onAvatarUpdate(avatarUrl || '');
+    }
+  }, [onAvatarUpdate]);
 
   // Funzione per comprimere l'immagine
   const compressImage = (file: File, maxWidth: number = 400, quality: number = 0.8): Promise<File> => {
@@ -81,61 +96,80 @@ export default function ProfileTab({ user, onAvatarUpdate }: ProfileTabProps) {
     });
   };
 
+  const validateAndSetAvatar = (file: File) => {
+    // Validazione file più robusta
+    if (file.size > 10 * 1024 * 1024) { // 10MB massimo per il file originale
+      showError('Errore', 'L\'immagine deve essere inferiore a 10MB');
+      return;
+    }
+    
+    if (!file.type.startsWith('image/')) {
+      showError('Errore', 'Seleziona un file immagine valido (JPG, PNG, WEBP)');
+      return;
+    }
+
+    // Verifica che sia un'immagine valida
+    const img = new Image();
+    img.onload = () => {
+      // Verifica dimensioni minime
+      if (img.width < 50 || img.height < 50) {
+        showError('Errore', 'L\'immagine deve essere almeno 50x50 pixel');
+        return;
+      }
+      
+      setAvatarFile(file);
+      const previewUrl = URL.createObjectURL(file);
+      setAvatarPreview(previewUrl);
+      
+      // Mostra info sulla compressione che avverrà
+      const fileSizeMB = (file.size / (1024 * 1024)).toFixed(2);
+      console.log(`Immagine caricata: ${img.width}x${img.height}, ${fileSizeMB}MB. Verrà compressa durante l'upload.`);
+    };
+    
+    img.onerror = () => {
+      showError('Errore', 'File immagine non valido o corrotto');
+    };
+    
+    img.src = URL.createObjectURL(file);
+  };
+
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      
-      // Validazione file più robusta
-      if (file.size > 10 * 1024 * 1024) { // 10MB massimo per il file originale
-        showError('Errore', 'L\'immagine deve essere inferiore a 10MB');
-        return;
-      }
-      
-      if (!file.type.startsWith('image/')) {
-        showError('Errore', 'Seleziona un file immagine valido (JPG, PNG, WEBP)');
-        return;
-      }
+      validateAndSetAvatar(e.target.files[0]);
+    }
+  };
 
-      // Verifica che sia un'immagine valida
-      const img = new Image();
-      img.onload = () => {
-        // Verifica dimensioni minime
-        if (img.width < 50 || img.height < 50) {
-          showError('Errore', 'L\'immagine deve essere almeno 50x50 pixel');
-          return;
-        }
-        
-        setAvatarFile(file);
-        const previewUrl = URL.createObjectURL(file);
-        setAvatarPreview(previewUrl);
-        
-        // Mostra info sulla compressione che avverrà
-        const fileSizeMB = (file.size / (1024 * 1024)).toFixed(2);
-        console.log(`Immagine caricata: ${img.width}x${img.height}, ${fileSizeMB}MB. Verrà compressa durante l'upload.`);
-      };
-      
-      img.onerror = () => {
-        showError('Errore', 'File immagine non valido o corrotto');
-      };
-      
-      img.src = URL.createObjectURL(file);
+  // Gestione drag & drop
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+    
+    const files = e.dataTransfer.files;
+    if (files && files[0]) {
+      validateAndSetAvatar(files[0]);
     }
   };
 
   const handleRemoveAvatar = async () => {
-    if (!user.user_metadata?.avatar_url) {
+    if (!user.user_metadata?.avatar_url && !avatarPreview) {
       showError('Errore', 'Nessun avatar da rimuovere');
-      return;
-    }
-
-    if (!confirm('Sei sicuro di voler rimuovere il tuo avatar?')) {
       return;
     }
 
     setIsRemovingAvatar(true);
 
     try {
-      const currentAvatarUrl = user.user_metadata.avatar_url;
+      const currentAvatarUrl = user.user_metadata?.avatar_url;
 
       // Aggiorna prima i metadati utente per rimuovere l'avatar
       const { error: updateError } = await supabase.auth.updateUser({
@@ -150,37 +184,43 @@ export default function ProfileTab({ user, onAvatarUpdate }: ProfileTabProps) {
       }
 
       // Se l'update è riuscito, elimina il file dal storage
-      try {
-        const urlParts = currentAvatarUrl.split('/');
-        const bucketIndex = urlParts.findIndex((part: string) => part === 'avatars');
-        
-        if (bucketIndex !== -1 && bucketIndex < urlParts.length - 1) {
-          const filePath = urlParts.slice(bucketIndex + 1).join('/');
+      if (currentAvatarUrl) {
+        try {
+          const urlParts = currentAvatarUrl.split('/');
+          const bucketIndex = urlParts.findIndex((part: string) => part === 'avatars');
           
-          const { error: deleteError } = await supabase.storage
-            .from('avatars')
-            .remove([filePath]);
+          if (bucketIndex !== -1 && bucketIndex < urlParts.length - 1) {
+            const filePath = urlParts.slice(bucketIndex + 1).join('/');
             
-          if (deleteError) {
-            console.warn('Avatar rimosso dal profilo ma errore eliminazione file:', deleteError.message);
-            // Non blocchiamo per questo errore, l'avatar è stato comunque rimosso dal profilo
+            const { error: deleteError } = await supabase.storage
+              .from('avatars')
+              .remove([filePath]);
+              
+            if (deleteError) {
+              console.warn('Avatar rimosso dal profilo ma errore eliminazione file:', deleteError.message);
+              // Non blocchiamo per questo errore, l'avatar è stato comunque rimosso dal profilo
+            }
           }
+        } catch (deleteError) {
+          console.warn('Avatar rimosso dal profilo ma errore durante eliminazione file:', deleteError);
+          // Non blocchiamo per questo errore, l'avatar è stato comunque rimosso dal profilo
         }
-      } catch (deleteError) {
-        console.warn('Avatar rimosso dal profilo ma errore durante eliminazione file:', deleteError);
-        // Non blocchiamo per questo errore, l'avatar è stato comunque rimosso dal profilo
       }
 
       // Aggiorna lo stato locale
       setAvatarPreview(null);
       setAvatarFile(null);
       
-      // Aggiorna l'header se c'è la callback
-      if (onAvatarUpdate) {
-        onAvatarUpdate(''); // Passa stringa vuota per indicare rimozione
-      }
+      // Aggiorna la sidebar
+      updateSidebar(null);
 
       showSuccess('Avatar rimosso', 'Il tuo avatar è stato rimosso con successo');
+      
+      // Forza il refresh della pagina per sincronizzare tutti i componenti
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
+      
     } catch (error: any) {
       showError('Errore', error.message || 'Si è verificato un errore durante la rimozione');
     } finally {
@@ -287,13 +327,18 @@ export default function ProfileTab({ user, onAvatarUpdate }: ProfileTabProps) {
       // Aggiorna lo stato locale dell'avatar per riflettere il cambiamento immediatamente
       if (avatarUrl) {
         setAvatarPreview(avatarUrl);
-        if (onAvatarUpdate) {
-          onAvatarUpdate(avatarUrl);
-        }
+        // Aggiorna la sidebar
+        updateSidebar(avatarUrl);
       }
       
       // Reset del file selezionato dopo upload riuscito
       setAvatarFile(null);
+      
+      // Forza il refresh della pagina per sincronizzare tutti i componenti
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
+      
     } catch (error: any) {
       showError('Errore', error.message || 'Si è verificato un errore durante l\'aggiornamento');
     } finally {
@@ -303,42 +348,51 @@ export default function ProfileTab({ user, onAvatarUpdate }: ProfileTabProps) {
 
   return (
     <div className="space-y-6">
-      {/* Avatar Section */}
-      <Card className="stats-card">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
-              <svg className="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-              </svg>
+      {/* Avatar Section - Compatta ed elegante */}
+      <DesignCard variant="default">
+        <CardHeader className="pb-4">
+          <CardTitle className="flex items-center gap-3 text-lg">
+            <div className="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+              <Camera className="w-4 h-4 text-blue-600 dark:text-blue-400" />
             </div>
             Foto Profilo
           </CardTitle>
-          <CardDescription>
-            Carica una foto per personalizzare il tuo profilo
+          <CardDescription className="text-sm">
+            Personalizza il tuo profilo con una foto
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-col sm:flex-row items-center gap-6">
+          <div className="flex items-center gap-6">
+            {/* Avatar Preview - Più compatto */}
             <div className="relative">
-              <div className="w-32 h-32 rounded-2xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center overflow-hidden border-2 border-gray-200 dark:border-gray-700 shadow-lg">
+              <div className="w-20 h-20 rounded-xl bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-700 flex items-center justify-center overflow-hidden border-2 border-gray-200 dark:border-gray-600 shadow-sm">
                 {avatarPreview ? (
                   <img src={avatarPreview} alt="Avatar" className="w-full h-full object-cover" />
                 ) : (
-                  <div className="w-full h-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-3xl font-bold">
-                    {user.email?.charAt(0).toUpperCase() || 'U'}
+                  <div className="w-full h-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-xl font-semibold">
+                    {user.user_metadata?.full_name 
+                      ? user.user_metadata.full_name.charAt(0).toUpperCase()
+                      : user.email?.charAt(0).toUpperCase() || 'U'
+                    }
                   </div>
                 )}
               </div>
+              
+              {/* Indicatore di stato - Più discreto */}
               {avatarFile && (
-                <div className="absolute -bottom-2 -right-2 w-6 h-6 bg-emerald-500 rounded-full border-2 border-white dark:border-gray-800 flex items-center justify-center">
-                  <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
+                <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-emerald-500 rounded-full border-2 border-white dark:border-gray-800 flex items-center justify-center">
+                  <Check className="w-3 h-3 text-white" />
+                </div>
+              )}
+              
+              {isLoading && (
+                <div className="absolute inset-0 bg-black/40 rounded-xl flex items-center justify-center">
+                  <Loader2 className="w-5 h-5 text-white animate-spin" />
                 </div>
               )}
             </div>
             
+            {/* Upload Controls - Layout compatto */}
             <div className="flex-1 space-y-3">
               <input
                 ref={fileInputRef}
@@ -347,121 +401,144 @@ export default function ProfileTab({ user, onAvatarUpdate }: ProfileTabProps) {
                 onChange={handleAvatarChange}
                 className="hidden"
               />
-              <div className="space-y-2">
-                <Button 
-                  onClick={() => fileInputRef.current?.click()}
-                  variant="outline"
-                  className="w-full sm:w-auto"
-                >
-                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                  </svg>
-                  Carica Foto
-                </Button>
+              
+              {/* Area upload compatta */}
+              <div
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+                onClick={() => fileInputRef.current?.click()}
+                className={`
+                  relative border border-dashed rounded-lg p-4 text-center cursor-pointer transition-all duration-200
+                  ${isDragOver 
+                    ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' 
+                    : 'border-gray-300 dark:border-gray-600 hover:border-blue-400 dark:hover:border-blue-500 hover:bg-gray-50 dark:hover:bg-gray-800/30'
+                  }
+                `}
+              >
+                <div className="flex items-center justify-center gap-3">
+                  <Upload className={`w-5 h-5 ${
+                    isDragOver ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400'
+                  }`} />
+                  <div className="text-left">
+                    <p className="text-sm font-medium text-gray-900 dark:text-white">
+                      {isDragOver ? 'Rilascia qui' : 'Carica nuova foto'}
+                    </p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      Trascina o clicca per selezionare
+                    </p>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Controlli e info */}
+              <div className="flex items-center justify-between">
+                <div className="text-xs text-gray-500 dark:text-gray-400">
+                  JPG, PNG, WEBP • Max 10MB • Min 50x50px
+                </div>
                 
+                {/* Pulsante rimuovi discreto */}
                 {(avatarPreview || user.user_metadata?.avatar_url) && (
-                  <button 
+                  <button
                     onClick={handleRemoveAvatar}
                     disabled={isRemovingAvatar}
-                    className="text-xs text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 underline disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    className="inline-flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {isRemovingAvatar ? (
-                      <span className="flex items-center">
-                        <Loader2 className="w-2 h-2 mr-1 animate-spin" />
-                        Rimuovendo...
-                      </span>
+                      <>
+                        <Loader2 className="w-3 h-3 animate-spin" />
+                        <span>Rimuovendo...</span>
+                      </>
                     ) : (
-                      'Rimuovi'
+                      <>
+                        <X className="w-3 h-3" />
+                        <span>Rimuovi</span>
+                      </>
                     )}
                   </button>
                 )}
               </div>
-              
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                JPG, PNG o WEBP. Massimo 10MB. L'immagine verrà automaticamente ottimizzata.
-              </p>
             </div>
           </div>
         </CardContent>
-      </Card>
+      </DesignCard>
 
-      {/* Personal Information */}
-      <Card className="stats-card">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
-              <svg className="w-5 h-5 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      {/* Informazioni Personali - Più compatta */}
+      <DesignCard variant="default">
+        <CardHeader className="pb-4">
+          <CardTitle className="flex items-center gap-3 text-lg">
+            <div className="w-8 h-8 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
+              <svg className="w-4 h-4 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
               </svg>
             </div>
             Informazioni Personali
           </CardTitle>
-          <CardDescription>
+          <CardDescription className="text-sm">
             Gestisci i tuoi dati personali e di contatto
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <Label htmlFor="full_name">Nome Completo</Label>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="full_name" className="text-sm font-medium">Nome Completo</Label>
                 <Input
                   id="full_name"
                   name="full_name"
                   value={formData.full_name}
                   onChange={handleInputChange}
-                  placeholder="Mario Rossi"
-                  className="stats-card-bg-input"
+                  placeholder="Il tuo nome completo"
+                  className="h-9"
                 />
               </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="email" className="text-sm font-medium">Email</Label>
                 <Input
                   id="email"
                   name="email"
                   type="email"
                   value={formData.email}
                   disabled
-                  className="stats-card-bg-input bg-gray-50 dark:bg-gray-800"
+                  className="h-9 opacity-60 cursor-not-allowed"
                 />
                 <p className="text-xs text-gray-500 dark:text-gray-400">
-                  L'email non può essere modificata qui. Contatta il supporto se necessario.
+                  L'email non può essere modificata qui
                 </p>
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="phone">Telefono (Opzionale)</Label>
+            <div className="space-y-1.5">
+              <Label htmlFor="phone" className="text-sm font-medium">Telefono (Opzionale)</Label>
               <Input
                 id="phone"
                 name="phone"
-                type="tel"
                 value={formData.phone}
                 onChange={handleInputChange}
                 placeholder="+39 123 456 7890"
-                className="stats-card-bg-input"
+                className="h-9"
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="bio">Bio (Opzionale)</Label>
+            <div className="space-y-1.5">
+              <Label htmlFor="bio" className="text-sm font-medium">Bio (Opzionale)</Label>
               <textarea
                 id="bio"
                 name="bio"
                 value={formData.bio}
                 onChange={handleInputChange}
                 placeholder="Raccontaci qualcosa di te..."
-                className="w-full px-3 py-2 text-sm bg-white/80 dark:bg-gray-800/80 border border-gray-300 dark:border-gray-700/50 rounded-xl focus:outline-none focus:ring-1 focus:ring-blue-500/70 placeholder:text-gray-400 dark:placeholder:text-gray-500 transition-all stats-card-bg-input resize-none"
-                rows={3}
+                className="w-full px-3 py-2 text-sm bg-white/80 dark:bg-gray-800/80 border border-gray-300 dark:border-gray-700/50 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500/70 placeholder:text-gray-400 dark:placeholder:text-gray-500 transition-all resize-none"
+                rows={2}
               />
             </div>
 
-            <div className="flex justify-end">
-              <Button type="submit" disabled={isLoading} className="min-w-32">
+            <div className="flex justify-end pt-2">
+              <Button type="submit" disabled={isLoading} size="sm" className="min-w-24">
                 {isLoading ? (
                   <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    <Loader2 className="w-3 h-3 mr-2 animate-spin" />
                     Salvando...
                   </>
                 ) : (
@@ -471,85 +548,63 @@ export default function ProfileTab({ user, onAvatarUpdate }: ProfileTabProps) {
             </div>
           </form>
         </CardContent>
-      </Card>
+      </DesignCard>
 
-      {/* Account Information */}
-      <Card className="stats-card">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
-              <svg className="w-5 h-5 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      {/* Informazioni Account - Compatta */}
+      <DesignCard variant="default">
+        <CardHeader className="pb-4">
+          <CardTitle className="flex items-center gap-3 text-lg">
+            <div className="w-8 h-8 rounded-lg bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
+              <svg className="w-4 h-4 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>
             Informazioni Account
           </CardTitle>
-          <CardDescription>
-            Dettagli del tuo account e statistiche
+          <CardDescription className="text-sm">
+            Dettagli del tuo account
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-1">
-              <Label className="text-sm font-medium text-gray-500 dark:text-gray-400">ID Utente</Label>
-              <p className="text-sm font-mono text-gray-900 dark:text-white bg-gray-100 dark:bg-gray-800 p-2 rounded-lg break-all">
+              <Label className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">ID Utente</Label>
+              <p className="text-xs font-mono text-gray-900 dark:text-white bg-gray-100 dark:bg-gray-800 p-2 rounded-md break-all">
                 {user.id}
               </p>
             </div>
             
             <div className="space-y-1">
-              <Label className="text-sm font-medium text-gray-500 dark:text-gray-400">Account creato il</Label>
+              <Label className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Account creato</Label>
               <p className="text-sm text-gray-900 dark:text-white">
                 {user.created_at ? new Date(user.created_at).toLocaleDateString('it-IT', {
                   year: 'numeric',
-                  month: 'long',
-                  day: 'numeric',
-                  hour: '2-digit',
-                  minute: '2-digit'
+                  month: 'short',
+                  day: 'numeric'
                 }) : 'N/D'}
               </p>
             </div>
             
             <div className="space-y-1">
-              <Label className="text-sm font-medium text-gray-500 dark:text-gray-400">Ultimo accesso</Label>
+              <Label className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Ultimo accesso</Label>
               <p className="text-sm text-gray-900 dark:text-white">
                 {user.last_sign_in_at ? new Date(user.last_sign_in_at).toLocaleDateString('it-IT', {
                   year: 'numeric',
-                  month: 'long',
-                  day: 'numeric',
-                  hour: '2-digit',
-                  minute: '2-digit'
+                  month: 'short',
+                  day: 'numeric'
                 }) : 'N/D'}
               </p>
             </div>
             
             <div className="space-y-1">
-              <Label className="text-sm font-medium text-gray-500 dark:text-gray-400">Email verificata</Label>
-              <div className="flex items-center gap-2">
-                {user.email_confirmed_at ? (
-                  <>
-                    <div className="w-4 h-4 bg-emerald-500 rounded-full flex items-center justify-center">
-                      <svg className="w-2 h-2 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={4} d="M5 13l4 4L19 7" />
-                      </svg>
-                    </div>
-                    <span className="text-sm text-emerald-600 dark:text-emerald-400">Verificata</span>
-                  </>
-                ) : (
-                  <>
-                    <div className="w-4 h-4 bg-red-500 rounded-full flex items-center justify-center">
-                      <svg className="w-2 h-2 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={4} d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    </div>
-                    <span className="text-sm text-red-600 dark:text-red-400">Non verificata</span>
-                  </>
-                )}
-              </div>
+              <Label className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Provider</Label>
+              <p className="text-sm text-gray-900 dark:text-white capitalize">
+                {user.app_metadata?.provider || 'Email'}
+              </p>
             </div>
           </div>
         </CardContent>
-      </Card>
+      </DesignCard>
     </div>
   );
 } 

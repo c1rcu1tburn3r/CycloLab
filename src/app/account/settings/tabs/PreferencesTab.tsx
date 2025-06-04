@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2 } from 'lucide-react';
 import { useCycloLabToast } from "@/hooks/use-cyclolab-toast";
+import { Card as DesignCard } from '@/components/design-system';
 
 interface PreferencesTabProps {
   user: User;
@@ -92,7 +93,7 @@ export default function PreferencesTab({ user }: PreferencesTabProps) {
   return (
     <div className="space-y-6">
       {/* Notification Preferences */}
-      <Card className="stats-card">
+      <DesignCard variant="default">
         <CardHeader>
           <CardTitle className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
@@ -173,10 +174,10 @@ export default function PreferencesTab({ user }: PreferencesTabProps) {
             </div>
           </div>
         </CardContent>
-      </Card>
+      </DesignCard>
 
       {/* Interface Preferences */}
-      <Card className="stats-card">
+      <DesignCard variant="default">
         <CardHeader>
           <CardTitle className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
@@ -195,7 +196,7 @@ export default function PreferencesTab({ user }: PreferencesTabProps) {
             <div className="space-y-2">
               <Label htmlFor="theme">Tema</Label>
               <Select value={preferences.theme} onValueChange={(value) => handleSelectChange('theme', value)}>
-                <SelectTrigger className="stats-card-bg-input">
+                <SelectTrigger>
                   <SelectValue placeholder="Seleziona tema" />
                 </SelectTrigger>
                 <SelectContent>
@@ -209,7 +210,7 @@ export default function PreferencesTab({ user }: PreferencesTabProps) {
             <div className="space-y-2">
               <Label htmlFor="language">Lingua</Label>
               <Select value={preferences.language} onValueChange={(value) => handleSelectChange('language', value)}>
-                <SelectTrigger className="stats-card-bg-input">
+                <SelectTrigger>
                   <SelectValue placeholder="Seleziona lingua" />
                 </SelectTrigger>
                 <SelectContent>
@@ -224,7 +225,7 @@ export default function PreferencesTab({ user }: PreferencesTabProps) {
             <div className="space-y-2">
               <Label htmlFor="dateFormat">Formato Data</Label>
               <Select value={preferences.dateFormat} onValueChange={(value) => handleSelectChange('dateFormat', value)}>
-                <SelectTrigger className="stats-card-bg-input">
+                <SelectTrigger>
                   <SelectValue placeholder="Seleziona formato" />
                 </SelectTrigger>
                 <SelectContent>
@@ -239,7 +240,7 @@ export default function PreferencesTab({ user }: PreferencesTabProps) {
             <div className="space-y-2">
               <Label htmlFor="unitSystem">Sistema di Unità</Label>
               <Select value={preferences.unitSystem} onValueChange={(value) => handleSelectChange('unitSystem', value)}>
-                <SelectTrigger className="stats-card-bg-input">
+                <SelectTrigger>
                   <SelectValue placeholder="Seleziona sistema" />
                 </SelectTrigger>
                 <SelectContent>
@@ -250,10 +251,10 @@ export default function PreferencesTab({ user }: PreferencesTabProps) {
             </div>
           </div>
         </CardContent>
-      </Card>
+      </DesignCard>
 
       {/* Analytics Preferences */}
-      <Card className="stats-card">
+      <DesignCard variant="default">
         <CardHeader>
           <CardTitle className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
@@ -320,7 +321,7 @@ export default function PreferencesTab({ user }: PreferencesTabProps) {
             </div>
           </div>
         </CardContent>
-      </Card>
+      </DesignCard>
 
       {/* Save Button */}
       <div className="flex justify-end">

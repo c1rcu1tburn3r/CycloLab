@@ -7,9 +7,11 @@ import { it } from 'date-fns/locale';
 import type { Activity, RoutePoint } from '@/lib/types';
 import DeleteActivityButton from '@/components/DeleteActivityButton';
 import ActivityViewClient from '@/components/ActivityViewClient';
-import ClimbsSection from '@/components/ClimbsSection';
 import { getActivityClimbs, detectAndSaveClimbs } from '@/app/activities/climbActions';
 import { Suspense } from 'react';
+import ClimbsSection from '@/components/ClimbsSection';
+import { Card } from '@/components/design-system';
+import { getGridClasses } from '@/lib/design-system';
 
 interface ActivityDetailPageProps {
   params: {
@@ -220,13 +222,13 @@ export default async function ActivityDetailPage({ params }: ActivityDetailPageP
             { label: "Dislivello", value: activity.elevation_gain_meters ? `${activity.elevation_gain_meters} m` : null, icon: <svg className="w-5 h-5 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg> },
             { label: "Velocità Media", value: activity.avg_speed_kph ? `${activity.avg_speed_kph.toFixed(1)} km/h` : null, icon: <svg className="w-5 h-5 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12.675 2.196a.75.75 0 01.65 1.03L12.53 5.5H17a.75.75 0 010 1.5h-4.21l-2.077 7.27a.75.75 0 01-1.4-.4l2.72-9.52H7.5a.75.75 0 010-1.5h4.304l.8-2.8a.75.75 0 011.07-.404zM5.22 17.508l.552-1.933a.75.75 0 011.4.4l-.552 1.933a.75.75 0 01-1.4-.4zm2.516-1.44c.33.12.534.47.413.8l-.552 1.934a.75.75 0 01-1.4-.4l.552-1.934a.75.75 0 01.987-.4zM10.252 14.633l.552-1.933a.75.75 0 111.4.4l-.552 1.933a.75.75 0 11-1.4-.4z" /></svg> },
           ].map((stat, index) => stat.value ? (
-            <div key={index} className="stats-card group">
+            <Card key={index} className="group">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400">{stat.label}</h3>
                 {stat.icon}
               </div>
               <p className="text-3xl font-bold text-gray-900 dark:text-white">{stat.value}</p>
-            </div>
+            </Card>
           ) : null)}
         </div>
 
@@ -235,7 +237,7 @@ export default async function ActivityDetailPage({ params }: ActivityDetailPageP
           <div className="lg:col-span-2 space-y-6">
             {/* Descrizione Attività */}
             {activity.description && (
-              <div className="stats-card">
+              <Card>
                 <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white flex items-center">
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h7" />
@@ -243,18 +245,18 @@ export default async function ActivityDetailPage({ params }: ActivityDetailPageP
                   Descrizione
                 </h2>
                 <p className="text-gray-600 dark:text-gray-300 whitespace-pre-line">{activity.description}</p>
-              </div>
+              </Card>
             )}
             
             {/* Mappa e Grafico */}
-            <div className="stats-card p-0 overflow-hidden">
+            <Card className="p-0 overflow-hidden">
               <ActivityViewClient {...activityViewProps} />
-            </div>
+            </Card>
 
             {/* Sezione Salite Rilevate - Sempre visibile se ci sono dati GPS */}
             {parsedRoutePoints.length > 0 && (
               <Suspense fallback={
-                <div className="stats-card">
+                <Card>
                   <div className="animate-pulse">
                     <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-1/3 mb-4"></div>
                     <div className="space-y-3">
@@ -262,9 +264,9 @@ export default async function ActivityDetailPage({ params }: ActivityDetailPageP
                       <div className="h-20 bg-gray-200 dark:bg-gray-700 rounded"></div>
                     </div>
                   </div>
-                </div>
+                </Card>
               }>
-                <div className="stats-card">
+                <Card>
                   <div className="flex items-center gap-3 mb-6">
                     <div className="w-10 h-10 rounded-xl bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center">
                       <svg className="w-5 h-5 text-orange-600 dark:text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -313,7 +315,7 @@ export default async function ActivityDetailPage({ params }: ActivityDetailPageP
                       </div>
                     </div>
                   )}
-                </div>
+                </Card>
               </Suspense>
             )}
           </div>
@@ -322,7 +324,7 @@ export default async function ActivityDetailPage({ params }: ActivityDetailPageP
           <div className="space-y-6">
             {/* Metriche di Potenza */}
             {(activity.avg_power_watts || activity.normalized_power_watts || activity.max_power_watts) && (
-            <div className="stats-card">
+            <Card>
               <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white flex items-center">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 mr-2 text-blue-500">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
@@ -349,12 +351,12 @@ export default async function ActivityDetailPage({ params }: ActivityDetailPageP
                   </div>
                 )}
               </div>
-            </div>
+            </Card>
             )}
 
             {/* Metriche Cardiache */}
             {(activity.avg_heart_rate || activity.max_heart_rate) && (
-            <div className="stats-card">
+            <Card>
               <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white flex items-center">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 mr-2 text-red-500">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
@@ -375,12 +377,12 @@ export default async function ActivityDetailPage({ params }: ActivityDetailPageP
                   </div>
                 )}
               </div>
-            </div>
+            </Card>
             )}
 
             {/* Metriche Cadenza */}
             {activity.avg_cadence && (
-            <div className="stats-card">
+            <Card>
               <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white flex items-center">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 mr-2 text-emerald-500">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -391,12 +393,12 @@ export default async function ActivityDetailPage({ params }: ActivityDetailPageP
                 <p className="text-xs text-gray-500 dark:text-gray-400">Cadenza Media</p>
                 <p className="font-bold text-lg text-emerald-600 dark:text-emerald-400">{activity.avg_cadence.toFixed(0)} rpm</p>
               </div>
-            </div>
+            </Card>
             )}
 
             {/* File Originale */}
             {updatedFileUrl && (
-            <div className="stats-card">
+            <Card>
               <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white flex items-center">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 mr-2 text-purple-500">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
@@ -413,7 +415,7 @@ export default async function ActivityDetailPage({ params }: ActivityDetailPageP
                 </svg>
                 Scarica File FIT
               </a>
-            </div>
+            </Card>
             )}
           </div>
         </div>

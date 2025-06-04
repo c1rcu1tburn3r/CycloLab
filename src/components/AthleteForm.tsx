@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/select";
 import { Loader2 } from 'lucide-react'; // Per l'icona di caricamento nel bottone
 import { useCycloLabToast } from "@/hooks/use-cyclolab-toast";
+import { Card, MetricCard, getGridClasses, spacing } from '@/components/design-system';
 
 // Validazione range FTP realistici per tutti i livelli
 const FTP_VALIDATION_RANGES = {
@@ -536,7 +537,7 @@ export default function AthleteForm({ initialData, onFormSubmitSuccess, mode = '
     ? (Number(formData.initial_ftp) / Number(formData.weight_kg)).toFixed(2)
     : null;
 
-  const baseInputClassName = "w-full px-3 text-sm bg-white/80 dark:bg-gray-800/80 border border-gray-300 dark:border-gray-700/50 rounded-xl focus:outline-none focus:ring-1 focus:ring-blue-500/70 placeholder:text-gray-400 dark:placeholder:text-gray-500 transition-all stats-card-bg-input";
+  const baseInputClassName = `w-full px-3 text-sm bg-white/80 dark:bg-gray-800/80 border border-gray-300 dark:border-gray-700/50 rounded-2xl focus:outline-none focus:ring-1 focus:ring-blue-500/70 placeholder:text-gray-400 dark:placeholder:text-gray-500 transition-all ${spacing.all.sm}`;
   const commonInputClassName = `${baseInputClassName} py-2`; // Per tutti gli input normali
   const fileInputClassName = `${baseInputClassName} flex items-center`; // Per l'input file, senza py-2 generale, flex per allineare contenuto interno
   const labelClassName = "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1";
@@ -641,7 +642,7 @@ export default function AthleteForm({ initialData, onFormSubmitSuccess, mode = '
 
       {/* Sezione Dati Personali */}
       <div className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className={getGridClasses(2, 'md')}>
           <div className="space-y-1.5">
             <Label htmlFor="name" className={labelClassName}>Nome <span className="text-red-500">*</span></Label>
             <Input
@@ -670,7 +671,7 @@ export default function AthleteForm({ initialData, onFormSubmitSuccess, mode = '
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className={getGridClasses(2, 'md')}>
           <div className="space-y-1.5">
             <Label htmlFor="email" className={labelClassName}>Email <span className="text-red-500">*</span></Label>
             <Input
@@ -698,7 +699,7 @@ export default function AthleteForm({ initialData, onFormSubmitSuccess, mode = '
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className={getGridClasses(2, 'md')}>
           <div className="space-y-1.5">
             <Label htmlFor="sex" className={labelClassName}>Sesso <span className="text-red-500">*</span></Label>
             <Select value={formData.sex || ''} onValueChange={(value) => handleSelectChange('sex', value)}>
@@ -720,7 +721,7 @@ export default function AthleteForm({ initialData, onFormSubmitSuccess, mode = '
 
       {/* Sezione Misurazioni */}
       <div className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className={getGridClasses(2, 'md')}>
           <div className="space-y-1.5">
             <Label htmlFor="height_cm" className={labelClassName}>Altezza (cm) <span className="text-red-500">*</span></Label>
             <Input
@@ -753,7 +754,7 @@ export default function AthleteForm({ initialData, onFormSubmitSuccess, mode = '
         {/* Sezione FTP - solo in modalità registrazione */}
         {mode === 'registration' && (
           <div className="space-y-4">            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className={getGridClasses(2, 'md')}>
               <div className="space-y-1.5">
                 <Label htmlFor="initial_ftp" className={labelClassName}>FTP (W) - Opzionale</Label>
                 <Input
@@ -822,7 +823,7 @@ export default function AthleteForm({ initialData, onFormSubmitSuccess, mode = '
         <button
           type="submit"
           disabled={isLoading}
-          className="w-full text-white font-semibold px-6 py-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 bg-gradient-to-r from-emerald-500 to-blue-600 hover:from-emerald-600 hover:to-blue-700 disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:scale-100"
+          className="w-full text-white font-semibold px-6 py-3 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 bg-gradient-to-r from-emerald-500 to-blue-600 hover:from-emerald-600 hover:to-blue-700 disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:scale-100"
         >
           {isLoading ? (
             <span className="flex items-center justify-center">

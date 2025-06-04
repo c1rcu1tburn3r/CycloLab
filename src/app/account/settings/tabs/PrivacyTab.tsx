@@ -5,9 +5,12 @@ import { User } from '@supabase/supabase-js';
 import { createBrowserClient } from '@supabase/ssr';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card as DesignCard } from '@/components/design-system';
 import { Button } from "@/components/ui/button";
 import { Loader2 } from 'lucide-react';
 import { useCycloLabToast } from "@/hooks/use-cyclolab-toast";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 
 interface PrivacyTabProps {
   user: User;
@@ -187,7 +190,7 @@ export default function PrivacyTab({ user }: PrivacyTabProps) {
   return (
     <div className="space-y-6">
       {/* Data Export */}
-      <Card className="stats-card">
+      <DesignCard variant="default">
         <CardHeader>
           <CardTitle className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
@@ -256,10 +259,10 @@ export default function PrivacyTab({ user }: PrivacyTabProps) {
             </Button>
           </div>
         </CardContent>
-      </Card>
+      </DesignCard>
 
       {/* Privacy Settings */}
-      <Card className="stats-card">
+      <DesignCard variant="default">
         <CardHeader>
           <CardTitle className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
@@ -342,10 +345,10 @@ export default function PrivacyTab({ user }: PrivacyTabProps) {
             </div>
           </div>
         </CardContent>
-      </Card>
+      </DesignCard>
 
       {/* Data Retention */}
-      <Card className="stats-card">
+      <DesignCard variant="default">
         <CardHeader>
           <CardTitle className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
@@ -384,10 +387,10 @@ export default function PrivacyTab({ user }: PrivacyTabProps) {
             </div>
           </div>
         </CardContent>
-      </Card>
+      </DesignCard>
 
       {/* Account Deletion */}
-      <Card className="stats-card border-red-200 dark:border-red-800">
+      <DesignCard variant="default">
         <CardHeader>
           <CardTitle className="flex items-center gap-3 text-red-900 dark:text-red-100">
             <div className="w-10 h-10 rounded-xl bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
@@ -447,7 +450,7 @@ export default function PrivacyTab({ user }: PrivacyTabProps) {
             </div>
           </div>
         </CardContent>
-      </Card>
+      </DesignCard>
     </div>
   );
 } 

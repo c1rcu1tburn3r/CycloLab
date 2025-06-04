@@ -55,7 +55,7 @@ export default async function UploadActivityPage() {
       <div className="absolute inset-0 grid-dots pointer-events-none" />
       
       <div className="relative container mx-auto px-4 py-8 flex justify-center items-start">
-        <Card className="w-full max-w-2xl stats-card mt-8 mb-8">
+        <Card className="w-full max-w-2xl mt-8 mb-8">
           <CardHeader className="text-center">
             <CardTitle className="text-2xl sm:text-3xl font-bold">Carica una nuova attività</CardTitle>
             <CardDescription className="mt-2">

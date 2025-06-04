@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { getAthleteOverallPersonalBests, OverallPbRecord } from '@/app/athletes/[id]/pbActions';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
+import { spacing } from '@/lib/design-system';
 
 interface OverallPersonalBestsTableProps {
   athleteId: string;

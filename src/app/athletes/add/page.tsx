@@ -39,7 +39,7 @@ export default async function AddAthletePage() {
       <div className="absolute inset-0 grid-dots pointer-events-none" />
       
       <div className="relative container mx-auto px-4 py-8 flex justify-center items-start">
-        <Card className="w-full max-w-2xl stats-card mt-8 mb-8">
+        <Card className="w-full max-w-2xl mt-8 mb-8">
           <CardHeader>
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
               <div className="flex-1">

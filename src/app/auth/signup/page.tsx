@@ -8,6 +8,7 @@ import Link from 'next/link';
 import { createBrowserClient } from '@supabase/ssr';
 import { Button } from '@/components/ui/button';
 import { Eye, EyeOff, Check, X, AlertCircle, Shield, Clock } from 'lucide-react';
+import { Card } from '@/components/design-system';
 
 // Tipi per la validazione
 interface ValidationResult {
@@ -478,7 +479,7 @@ export default function SignupPage() {
         <div className="relative z-10 min-h-screen flex items-center justify-center p-6">
           <div className="w-full max-w-md">
             {/* Success Card */}
-            <div className="stats-card text-center animate-fade-in">
+            <Card variant="glass" className="text-center animate-fade-in">
               <div className="space-y-6">
                 <div className="w-20 h-20 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-2xl flex items-center justify-center mx-auto shadow-lg">
                   <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -502,7 +503,7 @@ export default function SignupPage() {
                   </Link>
                 </div>
               </div>
-            </div>
+            </Card>
           </div>
         </div>
       </div>
@@ -534,7 +535,7 @@ export default function SignupPage() {
           </div>
 
           {/* Signup Card */}
-          <div className="stats-card animate-fade-in">
+          <Card variant="glass" className="animate-fade-in">
             <div className="space-y-6">
               {error && (
                 <div className={`border rounded-xl text-sm animate-slide-up ${
@@ -874,7 +875,7 @@ export default function SignupPage() {
                 </Button>
               </Link>
             </div>
-          </div>
+          </Card>
           
           {/* Footer */}
           <div className="mt-8 text-center text-gray-500 dark:text-gray-400 text-sm animate-fade-in">

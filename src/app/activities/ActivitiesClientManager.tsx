@@ -18,6 +18,7 @@ import ActivityPreviewCard from '@/components/ActivityPreviewCard';
 import { useFilterPreferences } from '@/hooks/useFilterPreferences';
 import ExportControls from '@/components/ExportControls';
 import { useRouter } from 'next/navigation';
+import { MetricCard, getGridClasses } from '@/components/design-system';
 
 interface ActivitiesClientManagerProps {
   initialActivities: Activity[];
@@ -421,7 +422,7 @@ export default function ActivitiesClientManager({ initialActivities, coachAthlet
       </div>
 
       {/* Filtri */}
-      <div className="stats-card mb-6 p-4">
+      <Card className="mb-6 p-4">
         {/* Prima riga - Filtri principali */}
         <div className="flex flex-wrap items-end gap-3 mb-4">
           {/* Atleta */}
@@ -567,65 +568,40 @@ export default function ActivitiesClientManager({ initialActivities, coachAthlet
             </span>
           </div>
         )}
-      </div>
+      </Card>
 
       {/* Quick Stats Aggregate */}
       {filteredActivities.length > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <div className="bg-emerald-50/50 dark:bg-emerald-900/30 rounded-xl p-4 text-center stats-card">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400">Sessioni Filtrate</h3>
-              <div className="w-6 h-6 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg flex items-center justify-center">
-                <svg className="w-3 h-3 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                </svg>
-              </div>
-            </div>
-            <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{stats.totalActivities}</p>
-          </div>
+        <div className={`${getGridClasses(4, 'md')} mb-6`}>
+          <MetricCard
+            title="Sessioni Filtrate"
+            value={stats.totalActivities.toString()}
+            accent="emerald"
+          />
 
-          <div className="bg-blue-50/50 dark:bg-blue-900/30 rounded-xl p-4 text-center stats-card">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400">Cycling</h3>
-              <div className="w-6 h-6 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
-                <svg className="w-3 h-3 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                </svg>
-              </div>
-            </div>
-            <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{stats.totalCyclingActivities}</p>
-          </div>
+          <MetricCard
+            title="Cycling"
+            value={stats.totalCyclingActivities.toString()}
+            accent="blue"
+          />
 
-          <div className="bg-orange-50/50 dark:bg-orange-900/30 rounded-xl p-4 text-center stats-card">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400">Distanza Totale</h3>
-              <div className="w-6 h-6 bg-orange-100 dark:bg-orange-900/30 rounded-lg flex items-center justify-center">
-                <svg className="w-3 h-3 text-orange-600 dark:text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
-              </div>
-            </div>
-            <p className="text-2xl font-bold text-orange-600 dark:text-orange-400">{stats.totalDistanceKm} km</p>
-          </div>
+          <MetricCard
+            title="Distanza Totale"
+            value={`${stats.totalDistanceKm} km`}
+            accent="amber"
+          />
 
-          <div className="bg-purple-50/50 dark:bg-purple-900/30 rounded-xl p-4 text-center stats-card">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400">Tempo Totale</h3>
-              <div className="w-6 h-6 bg-purple-100 dark:bg-purple-900/30 rounded-lg flex items-center justify-center">
-                <svg className="w-3 h-3 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-            </div>
-            <p className="text-2xl font-bold text-purple-600 dark:text-purple-400">{formatDuration(stats.totalDurationSeconds)}</p>
-          </div>
+          <MetricCard
+            title="Tempo Totale"
+            value={formatDuration(stats.totalDurationSeconds)}
+            accent="purple"
+          />
         </div>
       )}
 
       {/* Comparison Controls */}
       {filteredActivities.length > 1 && (
-        <Card className="mb-6 stats-card p-4">
+        <Card className="mb-6 p-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <Button
@@ -708,11 +684,11 @@ export default function ActivitiesClientManager({ initialActivities, coachAthlet
 
       {/* Elenco Attività con Preview Cards */}
       {filteredActivities.length === 0 ? (
-         <div className="stats-card text-center py-16">
+         <Card className="text-center py-16">
            <svg className="w-20 h-20 text-gray-300 dark:text-gray-600 mx-auto mb-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
            <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">Nessuna attività trovata</h3>
            <p className="text-gray-600 dark:text-gray-300 mb-8 max-w-md mx-auto">Prova a modificare i filtri o carica nuove attività.</p>
-         </div>
+         </Card>
       ) : (
         <>
           {/* Grid delle attività - sempre 4 colonne su schermi grandi */}

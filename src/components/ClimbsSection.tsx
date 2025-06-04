@@ -36,6 +36,7 @@ import {
   formatClimbTime 
 } from '@/lib/climbDetection';
 import type { RoutePoint } from '@/lib/types';
+import { getGridClasses, spacing } from '@/lib/design-system';
 
 // Caricamento dinamico dei componenti di Leaflet per evitare errori SSR
 const MapContainer = dynamic(
@@ -210,7 +211,7 @@ function ClimbCard({
 
       <CardContent className="space-y-4">
         {/* Metriche principali */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className={getGridClasses(2, 'md')}>
           <div className="text-center">
             <div className="text-2xl font-bold text-blue-600">
               {distanceKm}
@@ -224,51 +225,39 @@ function ClimbCard({
             </div>
             <div className="text-sm text-gray-500">m D+</div>
           </div>
-          
-          <div className="text-center">
-            <div className="text-2xl font-bold text-orange-600">
-              {avgGradient}%
-            </div>
-            <div className="text-sm text-gray-500">pendenza</div>
-          </div>
-          
-          <div className="text-center">
-            <div className="text-2xl font-bold text-purple-600">
-              {formatClimbTime(climb.duration_seconds)}
-            </div>
-            <div className="text-sm text-gray-500">tempo</div>
-          </div>
         </div>
 
         {/* Metriche performance */}
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 pt-2 border-t">
-          <div className="flex items-center gap-2">
-            <TrendingUp className="h-4 w-4 text-blue-500" />
-            <div>
-              <div className="text-sm font-medium">{vamFormatted} m/h</div>
-              <div className="text-xs text-gray-500">VAM</div>
+        <div className={`space-y-2 ${spacing.top.sm}`}>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+            <div className="flex items-center gap-2">
+              <TrendingUp className="h-4 w-4 text-blue-500" />
+              <div>
+                <div className="text-sm font-medium">{vamFormatted} m/h</div>
+                <div className="text-xs text-gray-500">VAM</div>
+              </div>
             </div>
+            
+            {climb.avg_power_watts && (
+              <div className="flex items-center gap-2">
+                <Zap className="h-4 w-4 text-yellow-500" />
+                <div>
+                  <div className="text-sm font-medium">{Math.round(climb.avg_power_watts)} W</div>
+                  <div className="text-xs text-gray-500">Potenza media</div>
+                </div>
+              </div>
+            )}
+            
+            {climb.avg_heart_rate && (
+              <div className="flex items-center gap-2">
+                <Heart className="h-4 w-4 text-red-500" />
+                <div>
+                  <div className="text-sm font-medium">{climb.avg_heart_rate} bpm</div>
+                  <div className="text-xs text-gray-500">FC media</div>
+                </div>
+              </div>
+            )}
           </div>
-          
-          {climb.avg_power_watts && (
-            <div className="flex items-center gap-2">
-              <Zap className="h-4 w-4 text-yellow-500" />
-              <div>
-                <div className="text-sm font-medium">{Math.round(climb.avg_power_watts)} W</div>
-                <div className="text-xs text-gray-500">Potenza media</div>
-              </div>
-            </div>
-          )}
-          
-          {climb.avg_heart_rate && (
-            <div className="flex items-center gap-2">
-              <Heart className="h-4 w-4 text-red-500" />
-              <div>
-                <div className="text-sm font-medium">{climb.avg_heart_rate} bpm</div>
-                <div className="text-xs text-gray-500">FC media</div>
-              </div>
-            </div>
-          )}
         </div>
 
         {/* Punteggio difficoltà */}
@@ -286,39 +275,41 @@ function ClimbCard({
         </div>
 
         {/* Metriche aggiuntive */}
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
-          <div className="flex items-center gap-2">
-            <Zap className="h-4 w-4 text-yellow-500" />
-            <span className="text-gray-600">VAM:</span>
-            <span className="font-medium">{vamFormatted} m/h</span>
-          </div>
-          
-          {climb.avg_power_watts && (
+        <div className={`space-y-2 ${spacing.top.sm}`}>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
             <div className="flex items-center gap-2">
-              <Activity className="h-4 w-4 text-orange-500" />
-              <span className="text-gray-600">Potenza:</span>
-              <span className="font-medium">{Math.round(climb.avg_power_watts)} W</span>
+              <Zap className="h-4 w-4 text-yellow-500" />
+              <span className="text-gray-600">VAM:</span>
+              <span className="font-medium">{vamFormatted} m/h</span>
             </div>
-          )}
-          
-          {climb.avg_heart_rate && (
+            
+            {climb.avg_power_watts && (
+              <div className="flex items-center gap-2">
+                <Activity className="h-4 w-4 text-orange-500" />
+                <span className="text-gray-600">Potenza:</span>
+                <span className="font-medium">{Math.round(climb.avg_power_watts)} W</span>
+              </div>
+            )}
+            
+            {climb.avg_heart_rate && (
+              <div className="flex items-center gap-2">
+                <Heart className="h-4 w-4 text-red-500" />
+                <span className="text-gray-600">FC:</span>
+                <span className="font-medium">{Math.round(climb.avg_heart_rate)} bpm</span>
+              </div>
+            )}
+            
             <div className="flex items-center gap-2">
-              <Heart className="h-4 w-4 text-red-500" />
-              <span className="text-gray-600">FC:</span>
-              <span className="font-medium">{Math.round(climb.avg_heart_rate)} bpm</span>
+              <Trophy className="h-4 w-4 text-purple-500" />
+              <span className="text-gray-600">Difficoltà:</span>
+              <span className="font-medium">{climb.difficulty_rating}/10</span>
             </div>
-          )}
-          
-          <div className="flex items-center gap-2">
-            <Trophy className="h-4 w-4 text-purple-500" />
-            <span className="text-gray-600">Difficoltà:</span>
-            <span className="font-medium">{climb.difficulty_rating}/10</span>
-          </div>
-          
-          <div className="flex items-center gap-2">
-            <Target className="h-4 w-4 text-blue-500" />
-            <span className="text-gray-600">Score:</span>
-            <span className="font-medium">{Math.round(climb.climb_score)}</span>
+            
+            <div className="flex items-center gap-2">
+              <Target className="h-4 w-4 text-blue-500" />
+              <span className="text-gray-600">Score:</span>
+              <span className="font-medium">{Math.round(climb.climb_score)}</span>
+            </div>
           </div>
         </div>
         
@@ -553,7 +544,7 @@ export default function ClimbsSection({
   });
 
   return (
-    <div className="space-y-6">
+    <div className={`space-y-6 ${spacing.bottom.md}`}>
       {/* Header con statistiche */}
       <Card>
         <CardHeader>
@@ -563,7 +554,7 @@ export default function ClimbsSection({
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className={getGridClasses(4)}>
             <div className="text-center">
               <div className="text-2xl font-bold text-blue-600">
                 {climbs.length}

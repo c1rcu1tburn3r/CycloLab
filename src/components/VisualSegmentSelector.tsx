@@ -5,6 +5,8 @@ import dynamic from 'next/dynamic';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import type { Activity, RoutePoint } from '@/lib/types';
+import { getGridClasses, spacing } from '@/lib/design-system';
+import { Card as DesignCard } from '@/components/design-system';
 
 // Import dinamico della mappa per evitare errori SSR
 const SegmentMapView = dynamic(
@@ -404,7 +406,7 @@ export default function VisualSegmentSelector({ activities }: VisualSegmentSelec
       </div>
 
       {/* Mappa */}
-      <div className="border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden">
+      <div className="border border-gray-200 dark:border-gray-700 rounded-2xl overflow-hidden">
         <SegmentMapView 
           activities={routeData}
           onMapClick={handleMapClick}
@@ -415,369 +417,135 @@ export default function VisualSegmentSelector({ activities }: VisualSegmentSelec
       </div>
 
       {/* Risultati Comparazione */}
-      {selectedSegment && (
-        <Card className="stats-card">
+      {selectedSegment && selectedSegment.activity1 && selectedSegment.activity2 && (
+        <Card variant="default">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <svg className="w-5 h-5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-              </svg>
-              {selectedSegment.name}
-            </CardTitle>
+            <CardTitle>Confronto Segmenti Selezionati</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Attività 1 */}
-              <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
-                <h4 className="font-semibold text-gray-900 dark:text-white mb-3">
-                  {activities[0]?.title || 'Attività 1'}
-                </h4>
-                <div className="grid grid-cols-2 gap-3 text-sm">
-                  <div className="bg-gray-50/50 dark:bg-gray-800/40 p-2 rounded-lg">
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Distanza</p>
-                    <p className="font-semibold text-base">{(selectedSegment.activity1.performance.distance / 1000).toFixed(2)} km</p>
-                  </div>
-                  <div className="bg-gray-50/50 dark:bg-gray-800/40 p-2 rounded-lg">
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Tempo</p>
-                    <div className="flex items-center gap-2">
-                      <p className="font-semibold text-base">{formatDuration(selectedSegment.activity1.performance.duration)}</p>
-                      {selectedSegment.activity1.performance.duration !== selectedSegment.activity2.performance.duration && (
-                        <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${
-                          selectedSegment.activity1.performance.duration < selectedSegment.activity2.performance.duration 
-                            ? 'bg-green-100 text-green-700' 
-                            : 'bg-red-100 text-red-700'
-                        }`}>
-                          {selectedSegment.activity1.performance.duration < selectedSegment.activity2.performance.duration ? '-' : '+'}
-                          {formatDuration(Math.abs(selectedSegment.activity1.performance.duration - selectedSegment.activity2.performance.duration))}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  <div className="bg-gray-50/50 dark:bg-gray-800/40 p-2 rounded-lg">
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Vel. Media</p>
-                    <div className="flex items-center gap-2">
-                      <p className="font-semibold text-base">{selectedSegment.activity1.performance.avgSpeed.toFixed(1)} km/h</p>
-                      {selectedSegment.activity1.performance.avgSpeed !== selectedSegment.activity2.performance.avgSpeed && (
-                        <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${
-                          selectedSegment.activity1.performance.avgSpeed > selectedSegment.activity2.performance.avgSpeed 
-                            ? 'bg-green-100 text-green-700' 
-                            : 'bg-red-100 text-red-700'
-                        }`}>
-                          {selectedSegment.activity1.performance.avgSpeed > selectedSegment.activity2.performance.avgSpeed ? '+' : ''}
-                          {(selectedSegment.activity1.performance.avgSpeed - selectedSegment.activity2.performance.avgSpeed).toFixed(1)}km/h
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  {selectedSegment.activity1.performance.maxSpeed && (
-                    <div className="bg-gray-50/50 dark:bg-gray-800/40 p-2 rounded-lg">
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Vel. Max</p>
-                      <div className="flex items-center gap-2">
-                        <p className="font-semibold text-base">{selectedSegment.activity1.performance.maxSpeed.toFixed(1)} km/h</p>
-                        {selectedSegment.activity2.performance.maxSpeed && selectedSegment.activity1.performance.maxSpeed !== selectedSegment.activity2.performance.maxSpeed && (
-                          <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${
-                            selectedSegment.activity1.performance.maxSpeed > selectedSegment.activity2.performance.maxSpeed 
-                              ? 'bg-green-100 text-green-700' 
-                              : 'bg-red-100 text-red-700'
-                          }`}>
-                            {selectedSegment.activity1.performance.maxSpeed > selectedSegment.activity2.performance.maxSpeed ? '+' : ''}
-                            {(selectedSegment.activity1.performance.maxSpeed - selectedSegment.activity2.performance.maxSpeed).toFixed(1)}km/h
-                          </span>
+            <div className={getGridClasses(2, 'md')}>
+              <Card variant="glass">
+                <div className="p-4">
+                  <h4 className="font-medium text-gray-900 dark:text-white mb-2">
+                    Confronto Performance
+                  </h4>
+                  <div className={`space-y-2 ${spacing.top.sm}`}>
+                    {/* Attività 1 */}
+                    <div className={`bg-blue-50 dark:bg-blue-900/20 ${spacing.all.md} rounded-lg`}>
+                      <h4 className={`font-semibold text-gray-900 dark:text-white ${spacing.bottom.sm}`}>
+                        {activities[0]?.title || 'Attività 1'}
+                      </h4>
+                      <div className="grid grid-cols-2 gap-3 text-sm">
+                        <div className={`bg-gray-50/50 dark:bg-gray-800/40 ${spacing.all.sm} rounded-lg`}>
+                          <p className={`text-xs text-gray-500 dark:text-gray-400 ${spacing.bottom.xs}`}>Distanza</p>
+                          <p className="font-semibold text-base">{(selectedSegment.activity1.performance.distance / 1000).toFixed(2)} km</p>
+                        </div>
+                        <div className={`bg-gray-50/50 dark:bg-gray-800/40 ${spacing.all.sm} rounded-lg`}>
+                          <p className={`text-xs text-gray-500 dark:text-gray-400 ${spacing.bottom.xs}`}>Tempo</p>
+                          <div className="flex items-center gap-2">
+                            <p className="font-semibold text-base">{formatDuration(selectedSegment.activity1.performance.duration)}</p>
+                            {selectedSegment.activity1.performance.duration !== selectedSegment.activity2.performance.duration && (
+                              <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${
+                                selectedSegment.activity1.performance.duration < selectedSegment.activity2.performance.duration 
+                                  ? 'bg-green-100 text-green-700' 
+                                  : 'bg-red-100 text-red-700'
+                              }`}>
+                                {selectedSegment.activity1.performance.duration < selectedSegment.activity2.performance.duration ? '-' : '+'}
+                                {formatDuration(Math.abs(selectedSegment.activity1.performance.duration - selectedSegment.activity2.performance.duration))}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <div className={`bg-gray-50/50 dark:bg-gray-800/40 ${spacing.all.sm} rounded-lg`}>
+                          <p className={`text-xs text-gray-500 dark:text-gray-400 ${spacing.bottom.xs}`}>Vel. Media</p>
+                          <div className="flex items-center gap-2">
+                            <p className="font-semibold text-base">{selectedSegment.activity1.performance.avgSpeed.toFixed(1)} km/h</p>
+                            {selectedSegment.activity1.performance.avgSpeed !== selectedSegment.activity2.performance.avgSpeed && (
+                              <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${
+                                selectedSegment.activity1.performance.avgSpeed > selectedSegment.activity2.performance.avgSpeed 
+                                  ? 'bg-green-100 text-green-700' 
+                                  : 'bg-red-100 text-red-700'
+                              }`}>
+                                {selectedSegment.activity1.performance.avgSpeed > selectedSegment.activity2.performance.avgSpeed ? '+' : ''}
+                                {(selectedSegment.activity1.performance.avgSpeed - selectedSegment.activity2.performance.avgSpeed).toFixed(1)}km/h
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        {selectedSegment.activity1.performance.avgPower && (
+                          <div className={`bg-gray-50/50 dark:bg-gray-800/40 ${spacing.all.sm} rounded-lg`}>
+                            <p className={`text-xs text-gray-500 dark:text-gray-400 ${spacing.bottom.xs}`}>Pot. Media</p>
+                            <div className="flex items-center gap-2">
+                              <p className="font-semibold text-base">{Math.round(selectedSegment.activity1.performance.avgPower)} W</p>
+                              {selectedSegment.activity2.performance.avgPower && selectedSegment.activity1.performance.avgPower !== selectedSegment.activity2.performance.avgPower && (
+                                <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${
+                                  selectedSegment.activity1.performance.avgPower > selectedSegment.activity2.performance.avgPower 
+                                    ? 'bg-green-100 text-green-700' 
+                                    : 'bg-red-100 text-red-700'
+                                }`}>
+                                  {selectedSegment.activity1.performance.avgPower > selectedSegment.activity2.performance.avgPower ? '+' : ''}
+                                  {Math.round(selectedSegment.activity1.performance.avgPower - selectedSegment.activity2.performance.avgPower)}W
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                        {selectedSegment.activity1.performance.avgCadence && (
+                          <div className={`bg-gray-50/50 dark:bg-gray-800/40 ${spacing.all.sm} rounded-lg`}>
+                            <p className={`text-xs text-gray-500 dark:text-gray-400 ${spacing.bottom.xs}`}>Cadenza</p>
+                            <div className="flex items-center gap-2">
+                              <p className="font-semibold text-base">{Math.round(selectedSegment.activity1.performance.avgCadence)} rpm</p>
+                              {selectedSegment.activity2.performance.avgCadence && Math.abs(selectedSegment.activity1.performance.avgCadence - selectedSegment.activity2.performance.avgCadence) > 0.1 && (
+                                <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${
+                                  selectedSegment.activity1.performance.avgCadence > selectedSegment.activity2.performance.avgCadence 
+                                    ? 'bg-green-100 text-green-700' 
+                                    : 'bg-red-100 text-red-700'
+                                }`}>
+                                  {selectedSegment.activity1.performance.avgCadence > selectedSegment.activity2.performance.avgCadence ? '+' : ''}
+                                  {Math.round(selectedSegment.activity1.performance.avgCadence - selectedSegment.activity2.performance.avgCadence)}rpm
+                                </span>
+                              )}
+                            </div>
+                          </div>
                         )}
                       </div>
                     </div>
-                  )}
-                  {selectedSegment.activity1.performance.avgPower && (
-                    <div className="bg-gray-50/50 dark:bg-gray-800/40 p-2 rounded-lg">
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Pot. Media</p>
-                      <div className="flex items-center gap-2">
-                        <p className="font-semibold text-base">{Math.round(selectedSegment.activity1.performance.avgPower)} W</p>
-                        {selectedSegment.activity2.performance.avgPower && selectedSegment.activity1.performance.avgPower !== selectedSegment.activity2.performance.avgPower && (
-                          <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${
-                            selectedSegment.activity1.performance.avgPower > selectedSegment.activity2.performance.avgPower 
-                              ? 'bg-green-100 text-green-700' 
-                              : 'bg-red-100 text-red-700'
-                          }`}>
-                            {selectedSegment.activity1.performance.avgPower > selectedSegment.activity2.performance.avgPower ? '+' : ''}
-                            {Math.round(selectedSegment.activity1.performance.avgPower - selectedSegment.activity2.performance.avgPower)}W
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                  {selectedSegment.activity1.performance.maxPower && (
-                    <div className="bg-gray-50/50 dark:bg-gray-800/40 p-2 rounded-lg">
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Pot. Max</p>
-                      <div className="flex items-center gap-2">
-                        <p className="font-semibold text-base">{Math.round(selectedSegment.activity1.performance.maxPower)} W</p>
-                        {selectedSegment.activity2.performance.maxPower && selectedSegment.activity1.performance.maxPower !== selectedSegment.activity2.performance.maxPower && (
-                          <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${
-                            selectedSegment.activity1.performance.maxPower > selectedSegment.activity2.performance.maxPower 
-                              ? 'bg-green-100 text-green-700' 
-                              : 'bg-red-100 text-red-700'
-                          }`}>
-                            {selectedSegment.activity1.performance.maxPower > selectedSegment.activity2.performance.maxPower ? '+' : ''}
-                            {Math.round(selectedSegment.activity1.performance.maxPower - selectedSegment.activity2.performance.maxPower)}W
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                  {selectedSegment.activity1.performance.avgHeartRate && (
-                    <div className="bg-gray-50/50 dark:bg-gray-800/40 p-2 rounded-lg">
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">FC Media</p>
-                      <div className="flex items-center gap-2">
-                        <p className="font-semibold text-base">{Math.round(selectedSegment.activity1.performance.avgHeartRate)} bpm</p>
-                        {selectedSegment.activity2.performance.avgHeartRate && selectedSegment.activity1.performance.avgHeartRate !== selectedSegment.activity2.performance.avgHeartRate && (
-                          <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${
-                            selectedSegment.activity1.performance.avgHeartRate > selectedSegment.activity2.performance.avgHeartRate 
-                              ? 'bg-orange-100 text-orange-700' 
-                              : 'bg-blue-100 text-blue-700'
-                          }`}>
-                            {selectedSegment.activity1.performance.avgHeartRate > selectedSegment.activity2.performance.avgHeartRate ? '+' : ''}
-                            {Math.round(selectedSegment.activity1.performance.avgHeartRate - selectedSegment.activity2.performance.avgHeartRate)}bpm
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                  {selectedSegment.activity1.performance.maxHeartRate && (
-                    <div className="bg-gray-50/50 dark:bg-gray-800/40 p-2 rounded-lg">
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">FC Max</p>
-                      <div className="flex items-center gap-2">
-                        <p className="font-semibold text-base">{Math.round(selectedSegment.activity1.performance.maxHeartRate)} bpm</p>
-                        {selectedSegment.activity2.performance.maxHeartRate && selectedSegment.activity1.performance.maxHeartRate !== selectedSegment.activity2.performance.maxHeartRate && (
-                          <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${
-                            selectedSegment.activity1.performance.maxHeartRate > selectedSegment.activity2.performance.maxHeartRate 
-                              ? 'bg-orange-100 text-orange-700' 
-                              : 'bg-blue-100 text-blue-700'
-                          }`}>
-                            {selectedSegment.activity1.performance.maxHeartRate > selectedSegment.activity2.performance.maxHeartRate ? '+' : ''}
-                            {Math.round(selectedSegment.activity1.performance.maxHeartRate - selectedSegment.activity2.performance.maxHeartRate)}bpm
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                  {selectedSegment.activity1.performance.avgCadence && (
-                    <div className="bg-gray-50/50 dark:bg-gray-800/40 p-2 rounded-lg">
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Cadenza</p>
-                      <div className="flex items-center gap-2">
-                        <p className="font-semibold text-base">{Math.round(selectedSegment.activity1.performance.avgCadence)} rpm</p>
-                        {selectedSegment.activity2.performance.avgCadence && selectedSegment.activity1.performance.avgCadence !== selectedSegment.activity2.performance.avgCadence && (
-                          <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${
-                            selectedSegment.activity1.performance.avgCadence > selectedSegment.activity2.performance.avgCadence 
-                              ? 'bg-green-100 text-green-700' 
-                              : 'bg-red-100 text-red-700'
-                          }`}>
-                            {selectedSegment.activity1.performance.avgCadence > selectedSegment.activity2.performance.avgCadence ? '+' : ''}
-                            {Math.round(selectedSegment.activity1.performance.avgCadence - selectedSegment.activity2.performance.avgCadence)}rpm
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                  <div className="bg-gray-50/50 dark:bg-gray-800/40 p-2 rounded-lg">
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Efficienza</p>
-                    <div className="flex items-center gap-2">
-                      <p className="font-semibold text-base">
-                        {selectedSegment.activity1.performance.avgPower && selectedSegment.activity1.performance.avgHeartRate ? 
-                          (selectedSegment.activity1.performance.avgPower / selectedSegment.activity1.performance.avgHeartRate).toFixed(1) : 'N/D'}
-                      </p>
-                      {selectedSegment.activity1.performance.avgPower && selectedSegment.activity1.performance.avgHeartRate && 
-                       selectedSegment.activity2.performance.avgPower && selectedSegment.activity2.performance.avgHeartRate && (
-                        <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${
-                          (selectedSegment.activity1.performance.avgPower / selectedSegment.activity1.performance.avgHeartRate) > 
-                          (selectedSegment.activity2.performance.avgPower / selectedSegment.activity2.performance.avgHeartRate) 
-                            ? 'bg-green-100 text-green-700' 
-                            : 'bg-red-100 text-red-700'
-                        }`}>
-                          {(selectedSegment.activity1.performance.avgPower / selectedSegment.activity1.performance.avgHeartRate) > 
-                           (selectedSegment.activity2.performance.avgPower / selectedSegment.activity2.performance.avgHeartRate) ? '+' : ''}
-                          {((selectedSegment.activity1.performance.avgPower / selectedSegment.activity1.performance.avgHeartRate) - 
-                            (selectedSegment.activity2.performance.avgPower / selectedSegment.activity2.performance.avgHeartRate)).toFixed(1)}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
 
-              {/* Attività 2 */}
-              <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg">
-                <h4 className="font-semibold text-gray-900 dark:text-white mb-3">
-                  {activities[1]?.title || 'Attività 2'}
-                </h4>
-                <div className="grid grid-cols-2 gap-3 text-sm">
-                  <div className="bg-gray-50/50 dark:bg-gray-800/40 p-2 rounded-lg">
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Distanza</p>
-                    <p className="font-semibold text-base">{(selectedSegment.activity2.performance.distance / 1000).toFixed(2)} km</p>
-                  </div>
-                  <div className="bg-gray-50/50 dark:bg-gray-800/40 p-2 rounded-lg">
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Tempo</p>
-                    <div className="flex items-center gap-2">
-                      <p className="font-semibold text-base">{formatDuration(selectedSegment.activity2.performance.duration)}</p>
-                      {selectedSegment.activity1.performance.duration !== selectedSegment.activity2.performance.duration && (
-                        <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${
-                          selectedSegment.activity2.performance.duration < selectedSegment.activity1.performance.duration 
-                            ? 'bg-green-100 text-green-700' 
-                            : 'bg-red-100 text-red-700'
-                        }`}>
-                          {selectedSegment.activity2.performance.duration < selectedSegment.activity1.performance.duration ? '-' : '+'}
-                          {formatDuration(Math.abs(selectedSegment.activity2.performance.duration - selectedSegment.activity1.performance.duration))}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  <div className="bg-gray-50/50 dark:bg-gray-800/40 p-2 rounded-lg">
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Vel. Media</p>
-                    <div className="flex items-center gap-2">
-                      <p className="font-semibold text-base">{selectedSegment.activity2.performance.avgSpeed.toFixed(1)} km/h</p>
-                      {selectedSegment.activity1.performance.avgSpeed !== selectedSegment.activity2.performance.avgSpeed && (
-                        <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${
-                          selectedSegment.activity2.performance.avgSpeed > selectedSegment.activity1.performance.avgSpeed 
-                            ? 'bg-green-100 text-green-700' 
-                            : 'bg-red-100 text-red-700'
-                        }`}>
-                          {selectedSegment.activity2.performance.avgSpeed > selectedSegment.activity1.performance.avgSpeed ? '+' : ''}
-                          {(selectedSegment.activity2.performance.avgSpeed - selectedSegment.activity1.performance.avgSpeed).toFixed(1)}km/h
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  {selectedSegment.activity2.performance.maxSpeed && (
-                    <div className="bg-gray-50/50 dark:bg-gray-800/40 p-2 rounded-lg">
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Vel. Max</p>
-                      <div className="flex items-center gap-2">
-                        <p className="font-semibold text-base">{selectedSegment.activity2.performance.maxSpeed.toFixed(1)} km/h</p>
-                        {selectedSegment.activity1.performance.maxSpeed && selectedSegment.activity1.performance.maxSpeed !== selectedSegment.activity2.performance.maxSpeed && (
-                          <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${
-                            selectedSegment.activity2.performance.maxSpeed > selectedSegment.activity1.performance.maxSpeed 
-                              ? 'bg-green-100 text-green-700' 
-                              : 'bg-red-100 text-red-700'
-                          }`}>
-                            {selectedSegment.activity2.performance.maxSpeed > selectedSegment.activity1.performance.maxSpeed ? '+' : ''}
-                            {(selectedSegment.activity2.performance.maxSpeed - selectedSegment.activity1.performance.maxSpeed).toFixed(1)}km/h
-                          </span>
+                    {/* Attività 2 */}
+                    <div className={`bg-green-50 dark:bg-green-900/20 ${spacing.all.md} rounded-lg`}>
+                      <h4 className={`font-semibold text-gray-900 dark:text-white ${spacing.bottom.sm}`}>
+                        {activities[1]?.title || 'Attività 2'}
+                      </h4>
+                      <div className="grid grid-cols-2 gap-3 text-sm">
+                        <div className={`bg-gray-50/50 dark:bg-gray-800/40 ${spacing.all.sm} rounded-lg`}>
+                          <p className={`text-xs text-gray-500 dark:text-gray-400 ${spacing.bottom.xs}`}>Distanza</p>
+                          <p className="font-semibold text-base">{(selectedSegment.activity2.performance.distance / 1000).toFixed(2)} km</p>
+                        </div>
+                        <div className={`bg-gray-50/50 dark:bg-gray-800/40 ${spacing.all.sm} rounded-lg`}>
+                          <p className={`text-xs text-gray-500 dark:text-gray-400 ${spacing.bottom.xs}`}>Tempo</p>
+                          <p className="font-semibold text-base">{formatDuration(selectedSegment.activity2.performance.duration)}</p>
+                        </div>
+                        <div className={`bg-gray-50/50 dark:bg-gray-800/40 ${spacing.all.sm} rounded-lg`}>
+                          <p className={`text-xs text-gray-500 dark:text-gray-400 ${spacing.bottom.xs}`}>Vel. Media</p>
+                          <p className="font-semibold text-base">{selectedSegment.activity2.performance.avgSpeed.toFixed(1)} km/h</p>
+                        </div>
+                        {selectedSegment.activity2.performance.avgPower && (
+                          <div className={`bg-gray-50/50 dark:bg-gray-800/40 ${spacing.all.sm} rounded-lg`}>
+                            <p className={`text-xs text-gray-500 dark:text-gray-400 ${spacing.bottom.xs}`}>Pot. Media</p>
+                            <p className="font-semibold text-base">{Math.round(selectedSegment.activity2.performance.avgPower)} W</p>
+                          </div>
+                        )}
+                        {selectedSegment.activity2.performance.avgCadence && (
+                          <div className={`bg-gray-50/50 dark:bg-gray-800/40 ${spacing.all.sm} rounded-lg`}>
+                            <p className={`text-xs text-gray-500 dark:text-gray-400 ${spacing.bottom.xs}`}>Cadenza</p>
+                            <p className="font-semibold text-base">{Math.round(selectedSegment.activity2.performance.avgCadence)} rpm</p>
+                          </div>
                         )}
                       </div>
-                    </div>
-                  )}
-                  {selectedSegment.activity2.performance.avgPower && (
-                    <div className="bg-gray-50/50 dark:bg-gray-800/40 p-2 rounded-lg">
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Pot. Media</p>
-                      <div className="flex items-center gap-2">
-                        <p className="font-semibold text-base">{Math.round(selectedSegment.activity2.performance.avgPower)} W</p>
-                        {selectedSegment.activity1.performance.avgPower && selectedSegment.activity1.performance.avgPower !== selectedSegment.activity2.performance.avgPower && (
-                          <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${
-                            selectedSegment.activity2.performance.avgPower > selectedSegment.activity1.performance.avgPower 
-                              ? 'bg-green-100 text-green-700' 
-                              : 'bg-red-100 text-red-700'
-                          }`}>
-                            {selectedSegment.activity2.performance.avgPower > selectedSegment.activity1.performance.avgPower ? '+' : ''}
-                            {Math.round(selectedSegment.activity2.performance.avgPower - selectedSegment.activity1.performance.avgPower)}W
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                  {selectedSegment.activity2.performance.maxPower && (
-                    <div className="bg-gray-50/50 dark:bg-gray-800/40 p-2 rounded-lg">
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Pot. Max</p>
-                      <div className="flex items-center gap-2">
-                        <p className="font-semibold text-base">{Math.round(selectedSegment.activity2.performance.maxPower)} W</p>
-                        {selectedSegment.activity1.performance.maxPower && selectedSegment.activity1.performance.maxPower !== selectedSegment.activity2.performance.maxPower && (
-                          <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${
-                            selectedSegment.activity2.performance.maxPower > selectedSegment.activity1.performance.maxPower 
-                              ? 'bg-green-100 text-green-700' 
-                              : 'bg-red-100 text-red-700'
-                          }`}>
-                            {selectedSegment.activity2.performance.maxPower > selectedSegment.activity1.performance.maxPower ? '+' : ''}
-                            {Math.round(selectedSegment.activity2.performance.maxPower - selectedSegment.activity1.performance.maxPower)}W
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                  {selectedSegment.activity2.performance.avgHeartRate && (
-                    <div className="bg-gray-50/50 dark:bg-gray-800/40 p-2 rounded-lg">
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">FC Media</p>
-                      <div className="flex items-center gap-2">
-                        <p className="font-semibold text-base">{Math.round(selectedSegment.activity2.performance.avgHeartRate)} bpm</p>
-                        {selectedSegment.activity1.performance.avgHeartRate && selectedSegment.activity1.performance.avgHeartRate !== selectedSegment.activity2.performance.avgHeartRate && (
-                          <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${
-                            selectedSegment.activity2.performance.avgHeartRate > selectedSegment.activity1.performance.avgHeartRate 
-                              ? 'bg-orange-100 text-orange-700' 
-                              : 'bg-blue-100 text-blue-700'
-                          }`}>
-                            {selectedSegment.activity2.performance.avgHeartRate > selectedSegment.activity1.performance.avgHeartRate ? '+' : ''}
-                            {Math.round(selectedSegment.activity2.performance.avgHeartRate - selectedSegment.activity1.performance.avgHeartRate)}bpm
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                  {selectedSegment.activity2.performance.maxHeartRate && (
-                    <div className="bg-gray-50/50 dark:bg-gray-800/40 p-2 rounded-lg">
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">FC Max</p>
-                      <div className="flex items-center gap-2">
-                        <p className="font-semibold text-base">{Math.round(selectedSegment.activity2.performance.maxHeartRate)} bpm</p>
-                        {selectedSegment.activity1.performance.maxHeartRate && selectedSegment.activity1.performance.maxHeartRate !== selectedSegment.activity2.performance.maxHeartRate && (
-                          <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${
-                            selectedSegment.activity2.performance.maxHeartRate > selectedSegment.activity1.performance.maxHeartRate 
-                              ? 'bg-orange-100 text-orange-700' 
-                              : 'bg-blue-100 text-blue-700'
-                          }`}>
-                            {selectedSegment.activity2.performance.maxHeartRate > selectedSegment.activity1.performance.maxHeartRate ? '+' : ''}
-                            {Math.round(selectedSegment.activity2.performance.maxHeartRate - selectedSegment.activity1.performance.maxHeartRate)}bpm
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                  {selectedSegment.activity2.performance.avgCadence && (
-                    <div className="bg-gray-50/50 dark:bg-gray-800/40 p-2 rounded-lg">
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Cadenza</p>
-                      <div className="flex items-center gap-2">
-                        <p className="font-semibold text-base">{Math.round(selectedSegment.activity2.performance.avgCadence)} rpm</p>
-                        {selectedSegment.activity1.performance.avgCadence && selectedSegment.activity1.performance.avgCadence !== selectedSegment.activity2.performance.avgCadence && (
-                          <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${
-                            selectedSegment.activity2.performance.avgCadence > selectedSegment.activity1.performance.avgCadence 
-                              ? 'bg-green-100 text-green-700' 
-                              : 'bg-red-100 text-red-700'
-                          }`}>
-                            {selectedSegment.activity2.performance.avgCadence > selectedSegment.activity1.performance.avgCadence ? '+' : ''}
-                            {Math.round(selectedSegment.activity2.performance.avgCadence - selectedSegment.activity1.performance.avgCadence)}rpm
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                  <div className="bg-gray-50/50 dark:bg-gray-800/40 p-2 rounded-lg">
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Efficienza</p>
-                    <div className="flex items-center gap-2">
-                      <p className="font-semibold text-base">
-                        {selectedSegment.activity2.performance.avgPower && selectedSegment.activity2.performance.avgHeartRate ? 
-                          (selectedSegment.activity2.performance.avgPower / selectedSegment.activity2.performance.avgHeartRate).toFixed(1) : 'N/D'}
-                      </p>
-                      {selectedSegment.activity2.performance.avgPower && selectedSegment.activity2.performance.avgHeartRate && 
-                       selectedSegment.activity1.performance.avgPower && selectedSegment.activity1.performance.avgHeartRate && (
-                        <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${
-                          (selectedSegment.activity2.performance.avgPower / selectedSegment.activity2.performance.avgHeartRate) > 
-                          (selectedSegment.activity1.performance.avgPower / selectedSegment.activity1.performance.avgHeartRate) 
-                            ? 'bg-green-100 text-green-700' 
-                            : 'bg-red-100 text-red-700'
-                        }`}>
-                          {(selectedSegment.activity2.performance.avgPower / selectedSegment.activity2.performance.avgHeartRate) > 
-                           (selectedSegment.activity1.performance.avgPower / selectedSegment.activity1.performance.avgHeartRate) ? '+' : ''}
-                          {((selectedSegment.activity2.performance.avgPower / selectedSegment.activity2.performance.avgHeartRate) - 
-                            (selectedSegment.activity1.performance.avgPower / selectedSegment.activity1.performance.avgHeartRate)).toFixed(1)}
-                        </span>
-                      )}
                     </div>
                   </div>
                 </div>
-              </div>
+              </Card>
             </div>
           </CardContent>
         </Card>

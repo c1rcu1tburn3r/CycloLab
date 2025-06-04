@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { searchGlobal, GlobalSearchResult } from '@/app/actions/searchActions';
 import { useDebounce } from '@/hooks/useDebounce'; // Creeremo questo hook
+import { Card, CardContent } from '@/components/design-system';
+import { spacing } from '@/lib/design-system';
 
 export default function GlobalSearch() {
   const router = useRouter();
@@ -93,15 +95,26 @@ export default function GlobalSearch() {
       </div>
 
       {isDropdownVisible && (
-        <div className="absolute mt-2 w-full max-h-96 overflow-y-auto stats-card shadow-2xl z-50">
-          {results.length > 0 ? (
-            <ul>
-              {results.map((result) => (
-                <li key={`${result.type}-${result.id}`}>
-                  <button // Usiamo un button per l'accessibilità e gestione evento onClick
-                    onClick={() => handleResultClick(result.href)}
-                    className="w-full text-left px-4 py-3 hover:bg-gray-100/50 dark:hover:bg-gray-700/50 transition-colors rounded-lg flex items-center space-x-3"
-                  >
+        <Card 
+          variant="elevated" 
+          className="absolute mt-2 w-full max-h-96 overflow-y-auto shadow-2xl z-50"
+        >
+          {isLoading ? (
+            <CardContent className={spacing.all.md}>
+              <div className="flex items-center space-x-2">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                <span className="text-gray-600 dark:text-gray-400">Ricerca in corso...</span>
+              </div>
+            </CardContent>
+          ) : results.length > 0 ? (
+            <div className="divide-y divide-gray-200 dark:divide-gray-700">
+              {results.map((result, index) => (
+                <div
+                  key={index}
+                  className={`${spacing.all.md} hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors`}
+                  onClick={() => handleResultClick(result.href)}
+                >
+                  <div className="flex items-center space-x-3">
                     <div className="flex-shrink-0">
                         {result.type === 'athlete' ? (
                             <svg className="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" /></svg>
@@ -118,10 +131,10 @@ export default function GlobalSearch() {
                       )}
                     </div>
                     <svg className="w-4 h-4 text-gray-400 dark:text-gray-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
-                  </button>
-                </li>
+                  </div>
+                </div>
               ))}
-            </ul>
+            </div>
           ) : (
             debouncedQuery.length >= 2 && !isLoading && (
               <div className="p-4 text-center text-sm text-gray-500 dark:text-gray-400">
@@ -134,7 +147,7 @@ export default function GlobalSearch() {
                 Continua a digitare per cercare...
               </div>
           )}
-        </div>
+        </Card>
       )}
     </div>
   );

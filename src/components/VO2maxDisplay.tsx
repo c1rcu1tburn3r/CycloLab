@@ -5,11 +5,13 @@
 
 'use client';
 
+import React from 'react';
 import { useMemo } from 'react';
 import { calculateVO2max, evaluateVO2maxQuality, type VO2maxInput, type VO2maxResult } from '@/lib/vo2maxCalculations';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, MetricCard } from '@/components/design-system';
 import { Badge } from "@/components/ui/badge";
 import { Info, TrendingUp, AlertCircle } from 'lucide-react';
+import { spacing } from '@/lib/design-system';
 
 interface VO2maxDisplayProps {
   // Dati atleta
@@ -107,7 +109,7 @@ export default function VO2maxDisplay({
   }
 
   return (
-    <Card className={`${className} stats-card-bg border-blue-200 dark:border-blue-800`}>
+    <Card className={`${className} border-blue-200 dark:border-blue-800`}>
       <CardHeader className="pb-3">
         <CardTitle className="text-lg flex items-center gap-2">
           <TrendingUp className="w-5 h-5 text-blue-600" />

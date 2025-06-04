@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import ReactECharts from 'echarts-for-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/design-system';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -13,6 +13,7 @@ import type { Athlete } from '@/lib/types';
 import { getActivitiesForPmc, type PmcActivity } from '@/app/athletes/[id]/pmcActions';
 import { calculatePmcStats, DailyPmcStats } from '@/lib/fitnessCalculations';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { spacing } from '@/lib/design-system';
 
 interface TrainingLoadTabProps {
   athleteId: string;
@@ -582,9 +583,9 @@ export default function TrainingLoadTab({ athleteId, athlete }: TrainingLoadTabP
   return (
     <div className="space-y-6">
       {/* Header con metriche attuali */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card>
-          <CardContent className="p-4">
+      <div className={`grid grid-cols-1 md:grid-cols-3 gap-4`}>
+        <Card variant="default">
+          <div className={spacing.all.lg}>
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-lg bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
                 <svg className="w-4 h-4 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -598,11 +599,11 @@ export default function TrainingLoadTab({ athleteId, athlete }: TrainingLoadTabP
                 </p>
               </div>
             </div>
-          </CardContent>
+          </div>
         </Card>
 
-        <Card>
-          <CardContent className="p-4">
+        <Card variant="default">
+          <div className={spacing.all.lg}>
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-lg bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
                 <svg className="w-4 h-4 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -616,43 +617,41 @@ export default function TrainingLoadTab({ athleteId, athlete }: TrainingLoadTabP
                 </p>
               </div>
             </div>
-          </CardContent>
+          </div>
         </Card>
 
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-                currentTSB > 5 ? 'bg-blue-100 dark:bg-blue-900/30' :
-                currentTSB < -10 ? 'bg-orange-100 dark:bg-orange-900/30' :
-                'bg-purple-100 dark:bg-purple-900/30'
-              }`}>
-                <svg className={`w-4 h-4 ${
-                  currentTSB > 5 ? 'text-blue-600 dark:text-blue-400' :
-                  currentTSB < -10 ? 'text-orange-600 dark:text-orange-400' :
-                  'text-purple-600 dark:text-purple-400'
-                }`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                </svg>
-              </div>
-              <div>
-                <p className="text-sm text-gray-600 dark:text-gray-400">TSB (Forma)</p>
-                <p className="text-lg font-semibold text-gray-900 dark:text-white">
-                  {currentTSB > 0 ? '+' : ''}{currentTSB.toFixed(1)}
-                </p>
-                <Badge variant={currentTSB > 5 ? 'default' : currentTSB < -10 ? 'destructive' : 'secondary'} className="text-xs">
-                  {currentTSB > 5 ? 'In Forma' : currentTSB < -10 ? 'Affaticato' : 'Neutrale'}
-                </Badge>
-              </div>
+        <Card variant="default">
+          <div className={`flex items-center gap-3 ${spacing.all.lg}`}>
+            <div className={`w-8 h-8 rounded-lg ${
+              currentTSB > 5 ? 'bg-blue-100 dark:bg-blue-900/30' :
+              currentTSB < -10 ? 'bg-orange-100 dark:bg-orange-900/30' :
+              'bg-purple-100 dark:bg-purple-900/30'
+            }`}>
+              <svg className={`w-4 h-4 ${
+                currentTSB > 5 ? 'text-blue-600 dark:text-blue-400' :
+                currentTSB < -10 ? 'text-orange-600 dark:text-orange-400' :
+                'text-purple-600 dark:text-purple-400'
+              }`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+              </svg>
             </div>
-          </CardContent>
+            <div>
+              <p className="text-sm text-gray-600 dark:text-gray-400">TSB (Forma)</p>
+              <p className="text-lg font-semibold text-gray-900 dark:text-white">
+                {currentTSB > 0 ? '+' : ''}{currentTSB.toFixed(1)}
+              </p>
+              <Badge variant={currentTSB > 5 ? 'default' : currentTSB < -10 ? 'destructive' : 'secondary'} className="text-xs">
+                {currentTSB > 5 ? 'In Forma' : currentTSB < -10 ? 'Affaticato' : 'Neutrale'}
+              </Badge>
+            </div>
+          </div>
         </Card>
       </div>
 
       {/* Controlli periodo */}
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-lg font-semibold">Analisi Carico di Allenamento</h3>
+          <h3 className={`text-lg font-semibold text-gray-900 dark:text-white ${spacing.bottom.md}`}>Analisi Carico di Allenamento</h3>
           <p className="text-sm text-gray-600 dark:text-gray-400">
             Monitoraggio fitness, fatica e forma fisica
           </p>
@@ -705,21 +704,21 @@ export default function TrainingLoadTab({ athleteId, athlete }: TrainingLoadTabP
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
-                  <h4 className="font-semibold text-green-800 dark:text-green-300 mb-2">CTL (Chronic Training Load)</h4>
-                  <p className="text-green-700 dark:text-green-400">
+                <div className={`p-4 bg-green-50 dark:bg-green-900/20 rounded-lg ${spacing.all.md}`}>
+                  <h4 className={`font-semibold text-green-800 dark:text-green-300 mb-2 ${spacing.bottom.sm}`}>CTL (Chronic Training Load)</h4>
+                  <p className={`text-green-700 dark:text-green-400 ${spacing.bottom.sm}`}>
                     Rappresenta il livello di fitness a lungo termine. Aumenta gradualmente con l'allenamento costante.
                   </p>
                 </div>
-                <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-lg">
-                  <h4 className="font-semibold text-red-800 dark:text-red-300 mb-2">ATL (Acute Training Load)</h4>
-                  <p className="text-red-700 dark:text-red-400">
+                <div className={`p-4 bg-red-50 dark:bg-red-900/20 rounded-lg ${spacing.all.md}`}>
+                  <h4 className={`font-semibold text-red-800 dark:text-red-300 mb-2 ${spacing.bottom.sm}`}>ATL (Acute Training Load)</h4>
+                  <p className={`text-red-700 dark:text-red-400 ${spacing.bottom.sm}`}>
                     Rappresenta la fatica a breve termine. Reagisce velocemente all'allenamento recente.
                   </p>
                 </div>
-                <div className="p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
-                  <h4 className="font-semibold text-purple-800 dark:text-purple-300 mb-2">TSB (Training Stress Balance)</h4>
-                  <p className="text-purple-700 dark:text-purple-400">
+                <div className={`p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg ${spacing.all.md}`}>
+                  <h4 className={`font-semibold text-purple-800 dark:text-purple-300 mb-2 ${spacing.bottom.sm}`}>TSB (Training Stress Balance)</h4>
+                  <p className={`text-purple-700 dark:text-purple-400 ${spacing.bottom.sm}`}>
                     TSB = CTL - ATL. Indica la forma: positivo = fresco, negativo = affaticato.
                   </p>
                 </div>
@@ -831,15 +830,15 @@ export default function TrainingLoadTab({ athleteId, athlete }: TrainingLoadTabP
             </CardHeader>
             <CardContent>
               <div className="space-y-3 text-sm">
-                <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded border border-blue-200 dark:border-blue-800">
-                  <h4 className="font-semibold text-blue-800 dark:text-blue-300 mb-1">Zone Base (Z1-Z2)</h4>
-                  <p className="text-blue-700 dark:text-blue-400">
+                <div className={`p-3 bg-blue-50 dark:bg-blue-900/20 rounded border border-blue-200 dark:border-blue-800 ${spacing.all.md}`}>
+                  <h4 className={`font-semibold text-blue-800 dark:text-blue-300 mb-1 ${spacing.bottom.sm}`}>Zone Base (Z1-Z2)</h4>
+                  <p className={`text-blue-700 dark:text-blue-400 ${spacing.bottom.sm}`}>
                     Dovresti concentrarti maggiormente su allenamenti aerobici di base per migliorare l'efficienza.
                   </p>
                 </div>
-                <div className="p-3 bg-amber-50 dark:bg-amber-900/20 rounded border border-amber-200 dark:border-amber-800">
-                  <h4 className="font-semibold text-amber-800 dark:text-amber-300 mb-1">Zone Intensive (Z4-Z5)</h4>
-                  <p className="text-amber-700 dark:text-amber-400">
+                <div className={`p-3 bg-amber-50 dark:bg-amber-900/20 rounded border border-amber-200 dark:border-amber-800 ${spacing.all.md}`}>
+                  <h4 className={`font-semibold text-amber-800 dark:text-amber-300 mb-1 ${spacing.bottom.sm}`}>Zone Intensive (Z4-Z5)</h4>
+                  <p className={`text-amber-700 dark:text-amber-400 ${spacing.bottom.sm}`}>
                     Buon equilibrio nelle zone soglia. Mantieni questa distribuzione per continuare i progressi.
                   </p>
                 </div>

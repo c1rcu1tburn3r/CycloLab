@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { User } from '@supabase/supabase-js';
 import { createBrowserClient } from '@supabase/ssr';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card as DesignCard } from '@/components/design-system';
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -133,7 +134,7 @@ export default function SecurityTab({ user }: SecurityTabProps) {
   return (
     <div className="space-y-6">
       {/* Change Password */}
-      <Card className="stats-card">
+      <DesignCard variant="default">
         <CardHeader>
           <CardTitle className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
@@ -158,7 +159,7 @@ export default function SecurityTab({ user }: SecurityTabProps) {
                 value={passwordData.currentPassword}
                 onChange={handlePasswordChange}
                 placeholder="Inserisci la password corrente"
-                className="stats-card-bg-input"
+                className=""
                 required
               />
             </div>
@@ -172,7 +173,7 @@ export default function SecurityTab({ user }: SecurityTabProps) {
                 value={passwordData.newPassword}
                 onChange={handlePasswordChange}
                 placeholder="Inserisci la nuova password"
-                className="stats-card-bg-input"
+                className=""
                 required
               />
               {passwordData.newPassword && (
@@ -206,7 +207,7 @@ export default function SecurityTab({ user }: SecurityTabProps) {
                 value={passwordData.confirmPassword}
                 onChange={handlePasswordChange}
                 placeholder="Conferma la nuova password"
-                className="stats-card-bg-input"
+                className=""
                 required
               />
               {passwordData.confirmPassword && passwordData.newPassword !== passwordData.confirmPassword && (
@@ -262,10 +263,10 @@ export default function SecurityTab({ user }: SecurityTabProps) {
             </div>
           </form>
         </CardContent>
-      </Card>
+      </DesignCard>
 
       {/* Account Security */}
-      <Card className="stats-card">
+      <DesignCard variant="default">
         <CardHeader>
           <CardTitle className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
@@ -365,10 +366,10 @@ export default function SecurityTab({ user }: SecurityTabProps) {
             </div>
           </div>
         </CardContent>
-      </Card>
+      </DesignCard>
 
       {/* Security Tips */}
-      <Card className="stats-card border-blue-200 dark:border-blue-800">
+      <DesignCard variant="default">
         <CardHeader>
           <CardTitle className="flex items-center gap-3 text-blue-900 dark:text-blue-100">
             <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
@@ -430,7 +431,7 @@ export default function SecurityTab({ user }: SecurityTabProps) {
             </div>
           </div>
         </CardContent>
-      </Card>
+      </DesignCard>
     </div>
   );
 } 
