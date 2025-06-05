@@ -50,6 +50,7 @@ import {
   CheckCircle,
   Info
 } from 'lucide-react';
+import { spacing } from '@/lib/design-system';
 
 // Import dei componenti per ogni tab (rimuovo OverviewTab)
 import PowerAnalysisTab from './tabs/PowerAnalysisTab';
@@ -589,8 +590,8 @@ export default function PerformanceAnalyticsDashboard({
               </div>
               
               {/* Badge Stato */}
-              <div className="flex items-center gap-3">
-                <div className="flex items-center gap-2 px-3 py-1.5 bg-green-100 dark:bg-green-900/30 rounded-full">
+              <div className={`flex items-center gap-3 ${spacing.horizontal.sm}`}>
+                <div className={`flex items-center gap-2 ${spacing.horizontal.sm} py-1.5 bg-green-100 dark:bg-green-900/30 rounded-full`}>
                   <div className="w-2 h-2 bg-green-500 rounded-full"></div>
                   <span className="text-sm font-medium text-green-700 dark:text-green-300">
                     {stats.recentActivities} attività recenti
@@ -598,7 +599,7 @@ export default function PerformanceAnalyticsDashboard({
                 </div>
                 
                 {currentFTP && (
-                  <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-100 dark:bg-blue-900/30 rounded-full">
+                  <div className={`flex items-center gap-2 ${spacing.horizontal.sm} py-1.5 bg-blue-100 dark:bg-blue-900/30 rounded-full`}>
                     <span className="text-sm font-medium text-blue-700 dark:text-blue-300">
                       FTP: {currentFTP}W ({currentWPerKg})
                     </span>
@@ -611,7 +612,7 @@ export default function PerformanceAnalyticsDashboard({
           {/* NAVIGAZIONE VERSO LE TAB DI ANALISI APPROFONDITA */}
           <div className="space-y-6">
             <div className="text-center">
-              <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
+              <h2 className={`text-xl font-bold text-gray-900 dark:text-white ${spacing.bottom.sm}`}>
                 Analisi Approfondite
               </h2>
               <p className="text-gray-600 dark:text-gray-400">
@@ -627,7 +628,7 @@ export default function PerformanceAnalyticsDashboard({
                     key={tab.id}
                     value={tab.id}
                     disabled={tab.disabled}
-                    className="flex items-center gap-2 px-3 py-2 data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700 dark:data-[state=active]:bg-blue-900/30 dark:data-[state=active]:text-blue-400"
+                    className={`flex items-center gap-2 ${spacing.horizontal.sm} py-2 data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700 dark:data-[state=active]:bg-blue-900/30 dark:data-[state=active]:text-blue-400`}
                   >
                     {tab.icon}
                     <span className="hidden md:block">{tab.label}</span>

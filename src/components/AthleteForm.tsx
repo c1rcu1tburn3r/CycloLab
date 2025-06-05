@@ -22,6 +22,8 @@ import {
 import { Loader2 } from 'lucide-react'; // Per l'icona di caricamento nel bottone
 import { useCycloLabToast } from "@/hooks/use-cyclolab-toast";
 import { Card, MetricCard, getGridClasses, spacing } from '@/components/design-system';
+import { useConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { UserX } from 'lucide-react';
 
 // Validazione range FTP realistici per tutti i livelli
 const FTP_VALIDATION_RANGES = {
@@ -49,6 +51,7 @@ interface AthleteFormProps {
 export default function AthleteForm({ initialData, onFormSubmitSuccess, mode = 'simple' }: AthleteFormProps) {
   const router = useRouter();
   const { showAthleteAdded, showAthleteUpdated, showError, showSuccess } = useCycloLabToast();
+  const { showConfirm, ConfirmDialog } = useConfirmDialog();
   // Inizializza il client Supabase per il browser
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -462,74 +465,80 @@ export default function AthleteForm({ initialData, onFormSubmitSuccess, mode = '
       return;
     }
 
-    if (!confirm('Sei sicuro di voler rimuovere l\'avatar di questo atleta?')) {
-      return;
-    }
+    showConfirm({
+      title: 'Rimuovi Avatar',
+      description: 'Sei sicuro di voler rimuovere l\'avatar di questo atleta? L\'immagine verrà eliminata permanentemente.',
+      confirmText: 'Rimuovi Avatar',
+      cancelText: 'Annulla',
+      variant: 'warning',
+      icon: <UserX className="w-6 h-6" />,
+      onConfirm: async () => {
+        setIsRemovingAvatar(true);
 
-    setIsRemovingAvatar(true);
-
-    try {
-      const currentAvatarUrl = initialData?.avatar_url;
-      
-      if (!currentAvatarUrl) {
-        // Se non c'è avatar nel DB, solo reset locale
-        setAvatarPreview(null);
-        setAvatarFile(null);
-        showSuccess('Avatar rimosso', 'Avatar rimosso con successo');
-        setIsRemovingAvatar(false);
-        return;
-      }
-
-      // Se c'è un atleta esistente, aggiorna il database
-      if (initialData?.id) {
-        const { data: { user: submitUser } } = await supabase.auth.getUser();
-        if (!submitUser) {
-          throw new Error('Sessione utente non valida');
-        }
-
-        const { error: updateError } = await supabase
-          .from('athletes')
-          .update({ avatar_url: null })
-          .eq('id', initialData.id)
-          .eq('user_id', submitUser.id);
-
-        if (updateError) {
-          throw new Error(`Errore rimozione avatar: ${updateError.message}`);
-        }
-
-        // Se l'update è riuscito, elimina il file dal storage
         try {
-          const urlParts = currentAvatarUrl.split('/');
-          const bucketIndex = urlParts.findIndex((part: string) => part === 'avatars');
+          const currentAvatarUrl = initialData?.avatar_url;
           
-          if (bucketIndex !== -1 && bucketIndex < urlParts.length - 1) {
-            const filePath = urlParts.slice(bucketIndex + 1).join('/');
-            
-            const { error: deleteError } = await supabase.storage
-              .from('avatars')
-              .remove([filePath]);
+          if (!currentAvatarUrl) {
+            // Se non c'è avatar nel DB, solo reset locale
+            setAvatarPreview(null);
+            setAvatarFile(null);
+            showSuccess('Avatar rimosso', 'Avatar rimosso con successo');
+            setIsRemovingAvatar(false);
+            return;
+          }
+
+          // Se c'è un atleta esistente, aggiorna il database
+          if (initialData?.id) {
+            const { data: { user: submitUser } } = await supabase.auth.getUser();
+            if (!submitUser) {
+              throw new Error('Sessione utente non valida');
+            }
+
+            const { error: updateError } = await supabase
+              .from('athletes')
+              .update({ avatar_url: null })
+              .eq('id', initialData.id)
+              .eq('user_id', submitUser.id);
+
+            if (updateError) {
+              throw new Error(`Errore rimozione avatar: ${updateError.message}`);
+            }
+
+            // Se l'update è riuscito, elimina il file dal storage
+            try {
+              const urlParts = currentAvatarUrl.split('/');
+              const bucketIndex = urlParts.findIndex((part: string) => part === 'avatars');
               
-            if (deleteError) {
-              console.warn('Avatar rimosso dal database ma errore eliminazione file:', deleteError.message);
+              if (bucketIndex !== -1 && bucketIndex < urlParts.length - 1) {
+                const filePath = urlParts.slice(bucketIndex + 1).join('/');
+                
+                const { error: deleteError } = await supabase.storage
+                  .from('avatars')
+                  .remove([filePath]);
+                  
+                if (deleteError) {
+                  console.warn('Avatar rimosso dal database ma errore eliminazione file:', deleteError.message);
+                  // Non blocchiamo per questo errore, l'avatar è stato comunque rimosso
+                }
+              }
+            } catch (deleteError) {
+              console.warn('Avatar rimosso dal database ma errore durante eliminazione file:', deleteError);
               // Non blocchiamo per questo errore, l'avatar è stato comunque rimosso
             }
           }
-        } catch (deleteError) {
-          console.warn('Avatar rimosso dal database ma errore durante eliminazione file:', deleteError);
-          // Non blocchiamo per questo errore, l'avatar è stato comunque rimosso
+
+          // Aggiorna lo stato locale
+          setAvatarPreview(null);
+          setAvatarFile(null);
+
+          showSuccess('Avatar rimosso', 'Avatar dell\'atleta rimosso con successo');
+        } catch (error: any) {
+          showError('Errore', error.message || 'Si è verificato un errore durante la rimozione');
+        } finally {
+          setIsRemovingAvatar(false);
         }
       }
-
-      // Aggiorna lo stato locale
-      setAvatarPreview(null);
-      setAvatarFile(null);
-
-      showSuccess('Avatar rimosso', 'Avatar dell\'atleta rimosso con successo');
-    } catch (error: any) {
-      showError('Errore', error.message || 'Si è verificato un errore durante la rimozione');
-    } finally {
-      setIsRemovingAvatar(false);
-    }
+    });
   };
 
   // Calcolo W/kg per preview (solo in modalità registrazione)
@@ -589,250 +598,253 @@ export default function AthleteForm({ initialData, onFormSubmitSuccess, mode = '
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      {error && <p className="mb-4 p-3 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 border border-red-300 dark:border-red-700 rounded-lg text-sm">{error.split('\n').map((line, idx) => <span key={idx}>{line}<br/></span>)}</p>}
-      {successMessage && <p className="mb-4 p-3 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 border border-green-300 dark:border-green-700 rounded-lg text-sm">{successMessage}</p>}
+    <>
+      <ConfirmDialog />
+      <form onSubmit={handleSubmit} className="space-y-6">
+        {error && <p className={`${spacing.bottom.md} ${spacing.all.sm} bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 border border-red-300 dark:border-red-700 rounded-xl text-sm`}>{error.split('\n').map((line, idx) => <span key={idx}>{line}<br/></span>)}</p>}
+        {successMessage && <p className={`${spacing.bottom.md} ${spacing.all.sm} bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 border border-green-300 dark:border-green-700 rounded-xl text-sm`}>{successMessage}</p>}
 
-      {/* Avatar section - solo se non in modalità registrazione */}
-      {mode !== 'registration' && (
-        <div className="flex flex-col items-center space-y-3 border-b border-gray-200 dark:border-gray-700/50 pb-6 mb-6">
-          <Label htmlFor="avatar" className={`${labelClassName} self-start`}>Avatar (Opzionale)</Label>
-          <div className="w-32 h-32 rounded-full bg-gray-100 dark:bg-gray-800/40 flex items-center justify-center overflow-hidden border-2 border-gray-300 dark:border-gray-700/50 shadow-sm">
-            {avatarPreview ? (
-              <img src={avatarPreview} alt="Anteprima avatar" className="w-full h-full object-cover" />
-            ) : (
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-16 h-16 text-gray-400 dark:text-gray-500">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A1.5 1.5 0 0 1 18 21.75H6a1.5 1.5 0 0 1-1.499-1.632Z" />
-              </svg>
-            )}
-          </div>
-          <Input
-            id="avatar"
-            name="avatar"
-            type="file"
-            accept="image/*"
-            onChange={handleAvatarChange}
-            className={`${fileInputClassName} text-sm file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-blue-50 dark:file:bg-blue-900/30 file:text-blue-600 dark:file:text-blue-400 hover:file:bg-blue-100 dark:hover:file:bg-blue-800/40`}
-          />
-          
-          {/* Pulsante rimuovi avatar */}
-          {(avatarPreview || initialData?.avatar_url) && (
-            <button
-              type="button"
-              onClick={handleRemoveAvatar}
-              disabled={isRemovingAvatar}
-              className="text-xs text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 underline disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              {isRemovingAvatar ? (
-                <span className="flex items-center">
-                  <Loader2 className="w-2 h-2 mr-1 animate-spin" />
-                  Rimuovendo...
-                </span>
+        {/* Avatar section - solo se non in modalità registrazione */}
+        {mode !== 'registration' && (
+          <div className="flex flex-col items-center space-y-3 border-b border-gray-200 dark:border-gray-700/50 pb-6 mb-6">
+            <Label htmlFor="avatar" className={`${labelClassName} self-start`}>Avatar (Opzionale)</Label>
+            <div className="w-32 h-32 rounded-full bg-gray-100 dark:bg-gray-800/40 flex items-center justify-center overflow-hidden border-2 border-gray-300 dark:border-gray-700/50 shadow-sm">
+              {avatarPreview ? (
+                <img src={avatarPreview} alt="Anteprima avatar" className="w-full h-full object-cover" />
               ) : (
-                'Rimuovi avatar'
-              )}
-            </button>
-          )}
-          
-          <p className="text-xs text-gray-500 dark:text-gray-400 self-start">
-            JPG, PNG o WEBP. Massimo 10MB. L'immagine verrà automaticamente ottimizzata.
-          </p>
-        </div>
-      )}
-
-      {/* Sezione Dati Personali */}
-      <div className="space-y-6">
-        <div className={getGridClasses(2, 'md')}>
-          <div className="space-y-1.5">
-            <Label htmlFor="name" className={labelClassName}>Nome <span className="text-red-500">*</span></Label>
-            <Input
-              id="name"
-              name="name"
-              type="text"
-              value={formData.name}
-              onChange={handleInputChange}
-              placeholder="Mario"
-              required
-              className={commonInputClassName}
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="surname" className={labelClassName}>Cognome <span className="text-red-500">*</span></Label>
-            <Input
-              id="surname"
-              name="surname"
-              type="text"
-              value={formData.surname}
-              onChange={handleInputChange}
-              placeholder="Rossi"
-              required
-              className={commonInputClassName}
-            />
-          </div>
-        </div>
-
-        <div className={getGridClasses(2, 'md')}>
-          <div className="space-y-1.5">
-            <Label htmlFor="email" className={labelClassName}>Email <span className="text-red-500">*</span></Label>
-            <Input
-              id="email"
-              name="email"
-              type="email"
-              value={formData.email || ''}
-              onChange={handleInputChange}
-              placeholder="mario.rossi@esempio.com"
-              required
-              className={commonInputClassName}
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="birth_date" className={labelClassName}>Data di Nascita <span className="text-red-500">*</span></Label>
-            <Input
-              id="birth_date"
-              name="birth_date"
-              type="date"
-              value={formData.birth_date || ''}
-              onChange={handleInputChange}
-              required
-              className={commonInputClassName}
-            />
-          </div>
-        </div>
-
-        <div className={getGridClasses(2, 'md')}>
-          <div className="space-y-1.5">
-            <Label htmlFor="sex" className={labelClassName}>Sesso <span className="text-red-500">*</span></Label>
-            <Select value={formData.sex || ''} onValueChange={(value) => handleSelectChange('sex', value)}>
-              <SelectTrigger className={commonInputClassName}>
-                <SelectValue placeholder="Seleziona..." />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="M">Maschio</SelectItem>
-                <SelectItem value="F">Femmina</SelectItem>
-              </SelectContent>
-            </Select>
-            <p className="text-xs text-gray-500">
-              Necessario per calcoli VO2max scientificamente accurati
-            </p>
-          </div>
-          <div></div>
-        </div>
-      </div>
-
-      {/* Sezione Misurazioni */}
-      <div className="space-y-6">
-        <div className={getGridClasses(2, 'md')}>
-          <div className="space-y-1.5">
-            <Label htmlFor="height_cm" className={labelClassName}>Altezza (cm) <span className="text-red-500">*</span></Label>
-            <Input
-              id="height_cm"
-              name="height_cm"
-              type="number"
-              value={formData.height_cm || ''}
-              onChange={handleInputChange}
-              placeholder="175"
-              required
-              className={commonInputClassName}
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="weight_kg" className={labelClassName}>Peso (kg) <span className="text-red-500">*</span></Label>
-            <Input
-              id="weight_kg"
-              name="weight_kg"
-              type="number"
-              value={formData.weight_kg || ''}
-              onChange={handleInputChange}
-              placeholder="70.5"
-              step="0.1"
-              required
-              className={commonInputClassName}
-            />
-          </div>
-        </div>
-
-        {/* Sezione FTP - solo in modalità registrazione */}
-        {mode === 'registration' && (
-          <div className="space-y-4">            
-            <div className={getGridClasses(2, 'md')}>
-              <div className="space-y-1.5">
-                <Label htmlFor="initial_ftp" className={labelClassName}>FTP (W) - Opzionale</Label>
-                <Input
-                  id="initial_ftp"
-                  name="initial_ftp"
-                  type="number"
-                  min={FTP_VALIDATION_RANGES.absolute.min}
-                  max={FTP_VALIDATION_RANGES.absolute.max}
-                  value={formData.initial_ftp || ''}
-                  onChange={handleInputChange}
-                  placeholder="250"
-                  className={commonInputClassName}
-                />
-                <p className="text-xs text-gray-500">
-                  Verrà rilevato automaticamente dalle attività se non specificato
-                </p>
-              </div>
-
-              {formData.initial_ftp && (
-                <div className="space-y-1.5">
-                  <Label htmlFor="ftp-source" className={labelClassName}>Origine FTP <span className="text-red-500">*</span></Label>
-                  <Select value={formData.ftp_source} onValueChange={(value) => handleSelectChange('ftp_source', value)}>
-                    <SelectTrigger className={commonInputClassName}>
-                      <SelectValue placeholder="Seleziona..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="test">Test specifico</SelectItem>
-                      <SelectItem value="estimate">Stima precedente</SelectItem>
-                      <SelectItem value="none">Non specificato</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-16 h-16 text-gray-400 dark:text-gray-500">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A1.5 1.5 0 0 1 18 21.75H6a1.5 1.5 0 0 1-1.499-1.632Z" />
+                </svg>
               )}
             </div>
-
-            {calculatedWPerKg && (
-              <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-700">
-                <p className="text-sm font-medium text-blue-800 dark:text-blue-300">
-                  W/kg: <span className="text-lg font-bold">{calculatedWPerKg}</span>
-                  <span className="ml-3 px-2 py-1 text-xs rounded-full bg-blue-100 dark:bg-blue-800 text-blue-700 dark:text-blue-300">
-                    {Number(calculatedWPerKg) >= 4.0 ? 'Competitivo' : 
-                     Number(calculatedWPerKg) >= 3.0 ? 'Buono' : 
-                     'In sviluppo'}
+            <Input
+              id="avatar"
+              name="avatar"
+              type="file"
+              accept="image/*"
+              onChange={handleAvatarChange}
+              className={`${fileInputClassName} text-sm file:mr-3 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-blue-50 dark:file:bg-blue-900/30 file:text-blue-600 dark:file:text-blue-400 hover:file:bg-blue-100 dark:hover:file:bg-blue-800/40`}
+            />
+            
+            {/* Pulsante rimuovi avatar */}
+            {(avatarPreview || initialData?.avatar_url) && (
+              <button
+                type="button"
+                onClick={handleRemoveAvatar}
+                disabled={isRemovingAvatar}
+                className="text-xs text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 underline disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {isRemovingAvatar ? (
+                  <span className="flex items-center">
+                    <Loader2 className="w-2 h-2 mr-1 animate-spin" />
+                    Rimuovendo...
                   </span>
-                </p>
-              </div>
+                ) : (
+                  'Rimuovi avatar'
+                )}
+              </button>
             )}
+            
+            <p className="text-xs text-gray-500 dark:text-gray-400 self-start">
+              JPG, PNG o WEBP. Massimo 10MB. L'immagine verrà automaticamente ottimizzata.
+            </p>
+          </div>
+        )}
 
-            {/* Note opzionali */}
+        {/* Sezione Dati Personali */}
+        <div className="space-y-6">
+          <div className={getGridClasses(2, 'md')}>
             <div className="space-y-1.5">
-              <Label htmlFor="notes" className={labelClassName}>Note (opzionale)</Label>
+              <Label htmlFor="name" className={labelClassName}>Nome <span className="text-red-500">*</span></Label>
               <Input
-                id="notes"
-                name="notes"
-                value={formData.notes || ''}
+                id="name"
+                name="name"
+                type="text"
+                value={formData.name}
                 onChange={handleInputChange}
-                placeholder="Obiettivi, note mediche, preferenze..."
+                placeholder="Mario"
+                required
+                className={commonInputClassName}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="surname" className={labelClassName}>Cognome <span className="text-red-500">*</span></Label>
+              <Input
+                id="surname"
+                name="surname"
+                type="text"
+                value={formData.surname}
+                onChange={handleInputChange}
+                placeholder="Rossi"
+                required
                 className={commonInputClassName}
               />
             </div>
           </div>
-        )}
-      </div>
 
-      <div className="mt-8">
-        <button
-          type="submit"
-          disabled={isLoading}
-          className="w-full text-white font-semibold px-6 py-3 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 bg-gradient-to-r from-emerald-500 to-blue-600 hover:from-emerald-600 hover:to-blue-700 disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:scale-100"
-        >
-          {isLoading ? (
-            <span className="flex items-center justify-center">
-              <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-              {mode === 'registration' ? 'Registrazione in corso...' : 'Salvataggio...'}
-            </span>
-          ) : (initialData?.id ? 'Aggiorna Atleta' : mode === 'registration' ? 'Completa Registrazione' : 'Aggiungi Atleta')}
-        </button>
-      </div>
-    </form>
+          <div className={getGridClasses(2, 'md')}>
+            <div className="space-y-1.5">
+              <Label htmlFor="email" className={labelClassName}>Email <span className="text-red-500">*</span></Label>
+              <Input
+                id="email"
+                name="email"
+                type="email"
+                value={formData.email || ''}
+                onChange={handleInputChange}
+                placeholder="mario.rossi@esempio.com"
+                required
+                className={commonInputClassName}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="birth_date" className={labelClassName}>Data di Nascita <span className="text-red-500">*</span></Label>
+              <Input
+                id="birth_date"
+                name="birth_date"
+                type="date"
+                value={formData.birth_date || ''}
+                onChange={handleInputChange}
+                required
+                className={commonInputClassName}
+              />
+            </div>
+          </div>
+
+          <div className={getGridClasses(2, 'md')}>
+            <div className="space-y-1.5">
+              <Label htmlFor="sex" className={labelClassName}>Sesso <span className="text-red-500">*</span></Label>
+              <Select value={formData.sex || ''} onValueChange={(value) => handleSelectChange('sex', value)}>
+                <SelectTrigger className={commonInputClassName}>
+                  <SelectValue placeholder="Seleziona..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="M">Maschio</SelectItem>
+                  <SelectItem value="F">Femmina</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-gray-500">
+                Necessario per calcoli VO2max scientificamente accurati
+              </p>
+            </div>
+            <div></div>
+          </div>
+        </div>
+
+        {/* Sezione Misurazioni */}
+        <div className="space-y-6">
+          <div className={getGridClasses(2, 'md')}>
+            <div className="space-y-1.5">
+              <Label htmlFor="height_cm" className={labelClassName}>Altezza (cm) <span className="text-red-500">*</span></Label>
+              <Input
+                id="height_cm"
+                name="height_cm"
+                type="number"
+                value={formData.height_cm || ''}
+                onChange={handleInputChange}
+                placeholder="175"
+                required
+                className={commonInputClassName}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="weight_kg" className={labelClassName}>Peso (kg) <span className="text-red-500">*</span></Label>
+              <Input
+                id="weight_kg"
+                name="weight_kg"
+                type="number"
+                value={formData.weight_kg || ''}
+                onChange={handleInputChange}
+                placeholder="70.5"
+                step="0.1"
+                required
+                className={commonInputClassName}
+              />
+            </div>
+          </div>
+
+          {/* Sezione FTP - solo in modalità registrazione */}
+          {mode === 'registration' && (
+            <div className="space-y-4">            
+              <div className={getGridClasses(2, 'md')}>
+                <div className="space-y-1.5">
+                  <Label htmlFor="initial_ftp" className={labelClassName}>FTP (W) - Opzionale</Label>
+                  <Input
+                    id="initial_ftp"
+                    name="initial_ftp"
+                    type="number"
+                    min={FTP_VALIDATION_RANGES.absolute.min}
+                    max={FTP_VALIDATION_RANGES.absolute.max}
+                    value={formData.initial_ftp || ''}
+                    onChange={handleInputChange}
+                    placeholder="250"
+                    className={commonInputClassName}
+                  />
+                  <p className="text-xs text-gray-500">
+                    Verrà rilevato automaticamente dalle attività se non specificato
+                  </p>
+                </div>
+
+                {formData.initial_ftp && (
+                  <div className="space-y-1.5">
+                    <Label htmlFor="ftp-source" className={labelClassName}>Origine FTP <span className="text-red-500">*</span></Label>
+                    <Select value={formData.ftp_source} onValueChange={(value) => handleSelectChange('ftp_source', value)}>
+                      <SelectTrigger className={commonInputClassName}>
+                        <SelectValue placeholder="Seleziona..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="test">Test specifico</SelectItem>
+                        <SelectItem value="estimate">Stima precedente</SelectItem>
+                        <SelectItem value="none">Non specificato</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+              </div>
+
+              {calculatedWPerKg && (
+                <div className={`${spacing.all.sm} bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-200 dark:border-blue-700`}>
+                  <p className="text-sm font-medium text-blue-800 dark:text-blue-300">
+                    W/kg: <span className="text-lg font-bold">{calculatedWPerKg}</span>
+                    <span className="ml-3 px-2 py-1 text-xs rounded-full bg-blue-100 dark:bg-blue-800 text-blue-700 dark:text-blue-300">
+                      {Number(calculatedWPerKg) >= 4.0 ? 'Competitivo' : 
+                       Number(calculatedWPerKg) >= 3.0 ? 'Buono' : 
+                       'In sviluppo'}
+                    </span>
+                  </p>
+                </div>
+              )}
+
+              {/* Note opzionali */}
+              <div className="space-y-1.5">
+                <Label htmlFor="notes" className={labelClassName}>Note (opzionale)</Label>
+                <Input
+                  id="notes"
+                  name="notes"
+                  value={formData.notes || ''}
+                  onChange={handleInputChange}
+                  placeholder="Obiettivi, note mediche, preferenze..."
+                  className={commonInputClassName}
+                />
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="mt-8">
+          <button
+            type="submit"
+            disabled={isLoading}
+            className="w-full text-white font-semibold px-6 py-3 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 bg-gradient-to-r from-emerald-500 to-blue-600 hover:from-emerald-600 hover:to-blue-700 disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:scale-100"
+          >
+            {isLoading ? (
+              <span className="flex items-center justify-center">
+                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                {mode === 'registration' ? 'Registrazione in corso...' : 'Salvataggio...'}
+              </span>
+            ) : (initialData?.id ? 'Aggiorna Atleta' : mode === 'registration' ? 'Completa Registrazione' : 'Aggiungi Atleta')}
+          </button>
+        </div>
+      </form>
+    </>
   );
 }

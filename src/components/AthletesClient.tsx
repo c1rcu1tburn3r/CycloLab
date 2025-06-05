@@ -114,7 +114,7 @@ export default function AthletesClient({ userId, initialAthletes = [] }: Athlete
               
               {/* Titolo */}
               <div>
-                <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+                <h1 className={`text-3xl font-bold text-gray-900 dark:text-white ${spacing.bottom.sm}`}>
                   Atleti
                 </h1>
                 <p className="text-gray-600 dark:text-gray-300 flex items-center gap-2">

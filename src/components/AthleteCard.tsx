@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { Athlete } from '@/lib/types';
+import { spacing } from '@/lib/design-system';
 
 interface AthleteCardProps {
   athlete: Athlete;
@@ -55,7 +56,7 @@ export default function AthleteCard({ athlete, index }: AthleteCardProps) {
               <div className="absolute inset-0 w-12 h-12 border-4 border-transparent border-t-purple-500 rounded-full animate-spin" style={{ animationDirection: 'reverse', animationDelay: '0.3s' }}></div>
             </div>
             <div className="text-center">
-              <p className="text-sm font-semibold text-gray-900 dark:text-white mb-2">Caricamento...</p>
+              <p className={`text-sm font-semibold text-gray-900 dark:text-white ${spacing.bottom.sm}`}>Caricamento...</p>
               <p className="text-xs text-gray-500 dark:text-gray-400">Preparazione dati atleta</p>
             </div>
             <div className="flex space-x-1">

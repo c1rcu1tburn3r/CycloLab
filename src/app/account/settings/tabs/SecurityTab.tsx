@@ -10,6 +10,8 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from 'lucide-react';
 import { useCycloLabToast } from "@/hooks/use-cyclolab-toast";
+import { useConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { LogOut } from 'lucide-react';
 
 interface SecurityTabProps {
   user: User;
@@ -19,6 +21,7 @@ export default function SecurityTab({ user }: SecurityTabProps) {
   const { showSuccess, showError } = useCycloLabToast();
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [isSigningOutEverywhere, setIsSigningOutEverywhere] = useState(false);
+  const { showConfirm, ConfirmDialog } = useConfirmDialog();
   
   const [passwordData, setPasswordData] = useState({
     currentPassword: '',
@@ -92,28 +95,34 @@ export default function SecurityTab({ user }: SecurityTabProps) {
   };
 
   const handleSignOutEverywhere = async () => {
-    if (!confirm('Sei sicuro di voler disconnettere tutti i dispositivi? Dovrai effettuare nuovamente il login ovunque.')) {
-      return;
-    }
+    showConfirm({
+      title: 'Disconnetti Tutti i Dispositivi',
+      description: 'Verrai disconnesso da tutti i dispositivi dove hai effettuato l\'accesso. Dovrai effettuare nuovamente il login ovunque.',
+      confirmText: 'Disconnetti Ovunque',
+      cancelText: 'Annulla',
+      variant: 'warning',
+      icon: <LogOut className="w-6 h-6" />,
+      onConfirm: async () => {
+        setIsSigningOutEverywhere(true);
 
-    setIsSigningOutEverywhere(true);
+        try {
+          const { error } = await supabase.auth.signOut({ scope: 'global' });
 
-    try {
-      const { error } = await supabase.auth.signOut({ scope: 'global' });
+          if (error) {
+            throw new Error(`Errore disconnessione: ${error.message}`);
+          }
 
-      if (error) {
-        throw new Error(`Errore disconnessione: ${error.message}`);
+          showSuccess('Disconnessione completata', 'Sei stato disconnesso da tutti i dispositivi');
+          
+          // Redirect to login
+          window.location.href = '/auth/login';
+        } catch (error: any) {
+          showError('Errore', error.message || 'Si è verificato un errore durante la disconnessione');
+        } finally {
+          setIsSigningOutEverywhere(false);
+        }
       }
-
-      showSuccess('Disconnessione completata', 'Sei stato disconnesso da tutti i dispositivi');
-      
-      // Redirect to login
-      window.location.href = '/auth/login';
-    } catch (error: any) {
-      showError('Errore', error.message || 'Si è verificato un errore durante la disconnessione');
-    } finally {
-      setIsSigningOutEverywhere(false);
-    }
+    });
   };
 
   const getPasswordStrength = (password: string) => {
@@ -133,6 +142,8 @@ export default function SecurityTab({ user }: SecurityTabProps) {
 
   return (
     <div className="space-y-6">
+      <ConfirmDialog />
+      
       {/* Change Password */}
       <DesignCard variant="default">
         <CardHeader>

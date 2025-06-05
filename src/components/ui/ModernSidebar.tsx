@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { createBrowserClient } from '@supabase/ssr';
 import { ThemeToggle } from './ThemeToggle';
+import { spacing, themeUtils } from '@/lib/design-system';
 
 interface SidebarProps {
   user?: any;
@@ -137,8 +138,8 @@ export function ModernSidebar({ user }: SidebarProps) {
           {/* Header */}
           <div className="flex items-center justify-between p-4 border-b border-gray-200/50 dark:border-gray-700/50">
             {!collapsed && (
-              <div className="flex items-center space-x-3">
-                <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
+              <div className={`flex items-center space-x-3 ${spacing.bottom.md} overflow-hidden`}>
+                <div className={`w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center`}>
                   <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                   </svg>
@@ -149,7 +150,7 @@ export function ModernSidebar({ user }: SidebarProps) {
             
             <button
               onClick={() => setCollapsed(!collapsed)}
-              className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+              className={`${spacing.all.sm} rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 ${themeUtils.transition('colors')}`}
             >
               <svg className="w-4 h-4 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
@@ -167,7 +168,7 @@ export function ModernSidebar({ user }: SidebarProps) {
                   key={item.name}
                   href={item.href}
                   onClick={() => handleNavigation(item.href)}
-                  className={`group flex items-center ${collapsed ? 'justify-center px-3 py-3' : 'px-3 py-3'} rounded-xl transition-all duration-200 relative ${
+                  className={`group flex items-center ${collapsed ? 'justify-center px-3 py-3' : 'px-3 py-3'} rounded-xl ${themeUtils.transition('all')} duration-200 relative ${
                     isActive
                       ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 shadow-sm'
                       : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800/50 hover:text-gray-900 dark:hover:text-white'
@@ -194,7 +195,7 @@ export function ModernSidebar({ user }: SidebarProps) {
           <div className="p-4 border-t border-gray-200/50 dark:border-gray-700/50">
             {/* User Info */}
             {!collapsed && user && (
-              <div className="flex items-center space-x-3 mb-4 overflow-hidden">
+              <div className={`flex items-center space-x-3 ${spacing.bottom.md} overflow-hidden`}>
                 <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-blue-500 rounded-xl flex items-center justify-center text-white text-sm font-semibold flex-shrink-0 overflow-hidden">
                   {currentAvatarUrl ? (
                     <img 
@@ -224,8 +225,8 @@ export function ModernSidebar({ user }: SidebarProps) {
 
             {/* Avatar compresso per la modalità collapsed */}
             {collapsed && user && (
-              <div className="flex justify-center mb-4">
-                <div className="w-8 h-8 bg-gradient-to-br from-emerald-500 to-blue-500 rounded-lg flex items-center justify-center text-white text-xs font-semibold overflow-hidden">
+              <div className={`flex justify-center ${spacing.bottom.md}`}>
+                <div className="w-8 h-8 bg-gradient-to-br from-emerald-500 to-blue-500 rounded-xl flex items-center justify-center text-white text-xs font-semibold overflow-hidden">
                   {currentAvatarUrl ? (
                     <img 
                       src={currentAvatarUrl} 
@@ -249,7 +250,7 @@ export function ModernSidebar({ user }: SidebarProps) {
                 <Link
                   href="/account/settings"
                   onClick={() => handleNavigation('/account/settings')}
-                  className={`group flex items-center justify-center p-2 rounded-lg transition-all duration-200 ${
+                  className={`group flex items-center justify-center ${spacing.all.sm} rounded-xl ${themeUtils.transition('all')} duration-200 ${
                     pathname === '/account/settings' || pathname.startsWith('/account/settings/')
                       ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
                       : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
@@ -274,7 +275,7 @@ export function ModernSidebar({ user }: SidebarProps) {
               {/* Right side: Logout Button */}
               <button
                 onClick={handleLogout}
-                className={`group flex items-center justify-center p-2 rounded-lg bg-gray-100 dark:bg-gray-800 text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600 dark:hover:text-red-300 transition-all duration-200 ${
+                className={`group flex items-center justify-center ${spacing.all.sm} rounded-xl bg-gray-100 dark:bg-gray-800 text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600 dark:hover:text-red-300 ${themeUtils.transition('all')} duration-200 ${
                   collapsed ? 'mt-2' : ''
                 }`}
                 title="Esci"

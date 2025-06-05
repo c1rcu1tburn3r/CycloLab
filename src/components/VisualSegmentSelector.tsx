@@ -14,9 +14,9 @@ const SegmentMapView = dynamic(
   { 
     ssr: false,
     loading: () => (
-      <div className="w-full h-96 bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center">
+      <div className="w-full h-96 bg-gray-100 dark:bg-gray-800 rounded-xl flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-2"></div>
+          <div className={`animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto ${spacing.bottom.sm}`}></div>
           <p className="text-sm text-gray-600 dark:text-gray-400">Caricamento mappa...</p>
         </div>
       </div>
@@ -426,21 +426,21 @@ export default function VisualSegmentSelector({ activities }: VisualSegmentSelec
             <div className={getGridClasses(2, 'md')}>
               <Card variant="glass">
                 <div className="p-4">
-                  <h4 className="font-medium text-gray-900 dark:text-white mb-2">
+                  <h4 className={`font-medium text-gray-900 dark:text-white ${spacing.bottom.sm}`}>
                     Confronto Performance
                   </h4>
                   <div className={`space-y-2 ${spacing.top.sm}`}>
                     {/* Attività 1 */}
-                    <div className={`bg-blue-50 dark:bg-blue-900/20 ${spacing.all.md} rounded-lg`}>
+                    <div className={`bg-blue-50 dark:bg-blue-900/20 ${spacing.all.md} rounded-xl`}>
                       <h4 className={`font-semibold text-gray-900 dark:text-white ${spacing.bottom.sm}`}>
                         {activities[0]?.title || 'Attività 1'}
                       </h4>
                       <div className="grid grid-cols-2 gap-3 text-sm">
-                        <div className={`bg-gray-50/50 dark:bg-gray-800/40 ${spacing.all.sm} rounded-lg`}>
+                        <div className={`bg-gray-50/50 dark:bg-gray-800/40 ${spacing.all.sm} rounded-xl`}>
                           <p className={`text-xs text-gray-500 dark:text-gray-400 ${spacing.bottom.xs}`}>Distanza</p>
                           <p className="font-semibold text-base">{(selectedSegment.activity1.performance.distance / 1000).toFixed(2)} km</p>
                         </div>
-                        <div className={`bg-gray-50/50 dark:bg-gray-800/40 ${spacing.all.sm} rounded-lg`}>
+                        <div className={`bg-gray-50/50 dark:bg-gray-800/40 ${spacing.all.sm} rounded-xl`}>
                           <p className={`text-xs text-gray-500 dark:text-gray-400 ${spacing.bottom.xs}`}>Tempo</p>
                           <div className="flex items-center gap-2">
                             <p className="font-semibold text-base">{formatDuration(selectedSegment.activity1.performance.duration)}</p>
@@ -456,7 +456,7 @@ export default function VisualSegmentSelector({ activities }: VisualSegmentSelec
                             )}
                           </div>
                         </div>
-                        <div className={`bg-gray-50/50 dark:bg-gray-800/40 ${spacing.all.sm} rounded-lg`}>
+                        <div className={`bg-gray-50/50 dark:bg-gray-800/40 ${spacing.all.sm} rounded-xl`}>
                           <p className={`text-xs text-gray-500 dark:text-gray-400 ${spacing.bottom.xs}`}>Vel. Media</p>
                           <div className="flex items-center gap-2">
                             <p className="font-semibold text-base">{selectedSegment.activity1.performance.avgSpeed.toFixed(1)} km/h</p>
@@ -473,7 +473,7 @@ export default function VisualSegmentSelector({ activities }: VisualSegmentSelec
                           </div>
                         </div>
                         {selectedSegment.activity1.performance.avgPower && (
-                          <div className={`bg-gray-50/50 dark:bg-gray-800/40 ${spacing.all.sm} rounded-lg`}>
+                          <div className={`bg-gray-50/50 dark:bg-gray-800/40 ${spacing.all.sm} rounded-xl`}>
                             <p className={`text-xs text-gray-500 dark:text-gray-400 ${spacing.bottom.xs}`}>Pot. Media</p>
                             <div className="flex items-center gap-2">
                               <p className="font-semibold text-base">{Math.round(selectedSegment.activity1.performance.avgPower)} W</p>
@@ -491,7 +491,7 @@ export default function VisualSegmentSelector({ activities }: VisualSegmentSelec
                           </div>
                         )}
                         {selectedSegment.activity1.performance.avgCadence && (
-                          <div className={`bg-gray-50/50 dark:bg-gray-800/40 ${spacing.all.sm} rounded-lg`}>
+                          <div className={`bg-gray-50/50 dark:bg-gray-800/40 ${spacing.all.sm} rounded-xl`}>
                             <p className={`text-xs text-gray-500 dark:text-gray-400 ${spacing.bottom.xs}`}>Cadenza</p>
                             <div className="flex items-center gap-2">
                               <p className="font-semibold text-base">{Math.round(selectedSegment.activity1.performance.avgCadence)} rpm</p>
@@ -512,31 +512,31 @@ export default function VisualSegmentSelector({ activities }: VisualSegmentSelec
                     </div>
 
                     {/* Attività 2 */}
-                    <div className={`bg-green-50 dark:bg-green-900/20 ${spacing.all.md} rounded-lg`}>
+                    <div className={`bg-green-50 dark:bg-green-900/20 ${spacing.all.md} rounded-xl`}>
                       <h4 className={`font-semibold text-gray-900 dark:text-white ${spacing.bottom.sm}`}>
                         {activities[1]?.title || 'Attività 2'}
                       </h4>
                       <div className="grid grid-cols-2 gap-3 text-sm">
-                        <div className={`bg-gray-50/50 dark:bg-gray-800/40 ${spacing.all.sm} rounded-lg`}>
+                        <div className={`bg-gray-50/50 dark:bg-gray-800/40 ${spacing.all.sm} rounded-xl`}>
                           <p className={`text-xs text-gray-500 dark:text-gray-400 ${spacing.bottom.xs}`}>Distanza</p>
                           <p className="font-semibold text-base">{(selectedSegment.activity2.performance.distance / 1000).toFixed(2)} km</p>
                         </div>
-                        <div className={`bg-gray-50/50 dark:bg-gray-800/40 ${spacing.all.sm} rounded-lg`}>
+                        <div className={`bg-gray-50/50 dark:bg-gray-800/40 ${spacing.all.sm} rounded-xl`}>
                           <p className={`text-xs text-gray-500 dark:text-gray-400 ${spacing.bottom.xs}`}>Tempo</p>
                           <p className="font-semibold text-base">{formatDuration(selectedSegment.activity2.performance.duration)}</p>
                         </div>
-                        <div className={`bg-gray-50/50 dark:bg-gray-800/40 ${spacing.all.sm} rounded-lg`}>
+                        <div className={`bg-gray-50/50 dark:bg-gray-800/40 ${spacing.all.sm} rounded-xl`}>
                           <p className={`text-xs text-gray-500 dark:text-gray-400 ${spacing.bottom.xs}`}>Vel. Media</p>
                           <p className="font-semibold text-base">{selectedSegment.activity2.performance.avgSpeed.toFixed(1)} km/h</p>
                         </div>
                         {selectedSegment.activity2.performance.avgPower && (
-                          <div className={`bg-gray-50/50 dark:bg-gray-800/40 ${spacing.all.sm} rounded-lg`}>
+                          <div className={`bg-gray-50/50 dark:bg-gray-800/40 ${spacing.all.sm} rounded-xl`}>
                             <p className={`text-xs text-gray-500 dark:text-gray-400 ${spacing.bottom.xs}`}>Pot. Media</p>
                             <p className="font-semibold text-base">{Math.round(selectedSegment.activity2.performance.avgPower)} W</p>
                           </div>
                         )}
                         {selectedSegment.activity2.performance.avgCadence && (
-                          <div className={`bg-gray-50/50 dark:bg-gray-800/40 ${spacing.all.sm} rounded-lg`}>
+                          <div className={`bg-gray-50/50 dark:bg-gray-800/40 ${spacing.all.sm} rounded-xl`}>
                             <p className={`text-xs text-gray-500 dark:text-gray-400 ${spacing.bottom.xs}`}>Cadenza</p>
                             <p className="font-semibold text-base">{Math.round(selectedSegment.activity2.performance.avgCadence)} rpm</p>
                           </div>

@@ -15,7 +15,7 @@ const AthleteCardSkeleton: React.FC = () => {
         <div className={`grid grid-cols-2 gap-4 ${spacing.bottom.lg}`}>
           {[1, 2, 3, 4].map((i) => (
             <Card key={i} variant="glass" className={spacing.all.sm}>
-              <div className="h-4 bg-gray-300 dark:bg-gray-700 rounded mb-2"></div>
+              <div className={`h-4 bg-gray-300 dark:bg-gray-700 rounded ${spacing.bottom.sm}`}></div>
               <div className="h-6 bg-gray-300 dark:bg-gray-700 rounded"></div>
             </Card>
           ))}

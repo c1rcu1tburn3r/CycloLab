@@ -10,7 +10,7 @@ const LoadingSkeleton: React.FC<LoadingSkeletonProps> = ({ type = 'dashboard' })
   if (type === 'full') {
     return (
       <div className={`animate-pulse ${spacing.bottom.xl} ${spacing.horizontal.xl}`}>
-        <div className={`h-8 bg-gray-300 dark:bg-gray-700 rounded-lg ${spacing.bottom.lg}`} />
+        <div className={`h-8 bg-gray-300 dark:bg-gray-700 rounded-xl ${spacing.bottom.lg}`} />
         
         <div className={getGridClasses(3, 'lg')}>
           <Card className="animate-pulse">

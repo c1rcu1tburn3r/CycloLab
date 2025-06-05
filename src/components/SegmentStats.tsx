@@ -56,7 +56,7 @@ const SegmentStats: React.FC<SegmentStatsProps> = ({ metrics, isLoading, error, 
     return (
       <Card className={spacing.top.lg}>
         <CardContent className="text-center py-8">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-4"></div>
+          <div className={`animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto ${spacing.bottom.md}`}></div>
           <p className="text-gray-600 dark:text-gray-400">Caricamento statistiche...</p>
         </CardContent>
       </Card>
@@ -85,7 +85,7 @@ const SegmentStats: React.FC<SegmentStatsProps> = ({ metrics, isLoading, error, 
       
       <CardContent>
         {warning && (
-          <div className={`${spacing.bottom.lg} p-3.5 bg-amber-50 dark:bg-amber-900/20 border border-amber-300 dark:border-amber-600 rounded-lg`}>
+          <div className={`${spacing.bottom.lg} p-3.5 bg-amber-50 dark:bg-amber-900/20 border border-amber-300 dark:border-amber-600 rounded-xl`}>
             <p className="text-amber-800 dark:text-amber-200 text-sm font-medium">{warning}</p>
           </div>
         )}
@@ -94,7 +94,7 @@ const SegmentStats: React.FC<SegmentStatsProps> = ({ metrics, isLoading, error, 
           
           {/* Generali */}
           <div className="md:col-span-1 space-y-1">
-            <h4 className="text-md font-semibold text-blue-700 mb-3 flex items-center">
+            <h4 className={`text-md font-semibold text-blue-700 ${spacing.bottom.sm} flex items-center`}>
               {sectionIcons['Generali']}
               Generali
             </h4>
@@ -106,7 +106,7 @@ const SegmentStats: React.FC<SegmentStatsProps> = ({ metrics, isLoading, error, 
 
           {/* Pendenza */}
           <div className="md:col-span-1 space-y-1">
-            <h4 className="text-md font-semibold text-purple-700 mb-3 flex items-center">
+            <h4 className={`text-md font-semibold text-purple-700 ${spacing.bottom.sm} flex items-center`}>
               {sectionIcons['Pendenza']}
               Pendenza
             </h4>
@@ -117,7 +117,7 @@ const SegmentStats: React.FC<SegmentStatsProps> = ({ metrics, isLoading, error, 
 
           {/* Velocità */}
           <div className="md:col-span-1 space-y-1">
-            <h4 className="text-md font-semibold text-green-700 mb-3 flex items-center">
+            <h4 className={`text-md font-semibold text-green-700 ${spacing.bottom.sm} flex items-center`}>
               {sectionIcons['Velocità']}
               Velocità
             </h4>
@@ -127,7 +127,7 @@ const SegmentStats: React.FC<SegmentStatsProps> = ({ metrics, isLoading, error, 
           
           {/* Potenza */}
           <div className="md:col-span-1 space-y-1">
-            <h4 className="text-md font-semibold text-orange-600 mb-3 flex items-center">
+            <h4 className={`text-md font-semibold text-orange-600 ${spacing.bottom.sm} flex items-center`}>
               {sectionIcons['Potenza']}
               Potenza
             </h4>
@@ -140,7 +140,7 @@ const SegmentStats: React.FC<SegmentStatsProps> = ({ metrics, isLoading, error, 
 
           {/* Freq. Cardiaca */}
           <div className="md:col-span-1 space-y-1">
-            <h4 className="text-md font-semibold text-red-600 mb-3 flex items-center">
+            <h4 className={`text-md font-semibold text-red-600 ${spacing.bottom.sm} flex items-center`}>
               {sectionIcons['Freq. Cardiaca']}
               Freq. Cardiaca
             </h4>
@@ -150,7 +150,7 @@ const SegmentStats: React.FC<SegmentStatsProps> = ({ metrics, isLoading, error, 
 
           {/* Cadenza */}
           <div className="md:col-span-1 space-y-1">
-            <h4 className="text-md font-semibold text-teal-600 mb-3 flex items-center">
+            <h4 className={`text-md font-semibold text-teal-600 ${spacing.bottom.sm} flex items-center`}>
               {sectionIcons['Cadenza']}
               Cadenza
             </h4>
@@ -160,7 +160,7 @@ const SegmentStats: React.FC<SegmentStatsProps> = ({ metrics, isLoading, error, 
 
           {/* Intensità */}
           <div className="md:col-span-1 space-y-1">
-            <h4 className="text-md font-semibold text-indigo-600 mb-3 flex items-center">
+            <h4 className={`text-md font-semibold text-indigo-600 ${spacing.bottom.sm} flex items-center`}>
               {sectionIcons['Intensità']}
               Intensità
             </h4>

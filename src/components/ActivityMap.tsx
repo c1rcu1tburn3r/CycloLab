@@ -3,6 +3,8 @@
 import { useEffect, useState, useMemo, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import { Activity, RoutePoint } from '@/lib/types';
+import { spacing } from '@/lib/design-system';
+import { useCycloLabToast } from '@/hooks/use-cyclolab-toast';
 // import L from 'leaflet'; // Rimosso import globale di L
 // import NextDynamic from 'next/dynamic'; // Rimosso import non utilizzato
 
@@ -127,6 +129,8 @@ const ActivityMap: React.FC<ActivityMapProps> = ({ activity, routePoints, highli
   const startSelectionMarkerRef = useRef<L.Marker | null>(null);
   const endSelectionMarkerRef = useRef<L.Marker | null>(null);
 
+  const { showInfo } = useCycloLabToast();
+
   // Cleanup function per rimuovere event listeners e layer
   const cleanup = () => {
     // Rimuovi tutti gli event listeners registrati
@@ -235,15 +239,15 @@ const ActivityMap: React.FC<ActivityMapProps> = ({ activity, routePoints, highli
   const renderFallback = () => {
     if (mapError) {
       return (
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md h-[350px] flex flex-col items-center justify-center">
-          <svg className="w-12 h-12 text-red-500 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className={`${spacing.all.lg} rounded-xl shadow-md h-[350px] flex flex-col items-center justify-center`}>
+          <svg className={`w-12 h-12 text-red-500 ${spacing.bottom.md}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.268 15.5c-.77.833.192 2.5 1.732 2.5z" />
           </svg>
-          <p className="text-red-600 dark:text-red-400 text-center mb-2">Errore nel caricamento della mappa</p>
+          <p className={`text-red-600 dark:text-red-400 text-center ${spacing.bottom.sm}`}>Errore nel caricamento della mappa</p>
           <p className="text-gray-500 dark:text-gray-400 text-sm text-center">{mapError}</p>
           <button 
             onClick={() => window.location.reload()} 
-            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            className={`${spacing.top.md} ${spacing.horizontal.md} py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors`}
           >
             Ricarica pagina
           </button>
@@ -253,22 +257,22 @@ const ActivityMap: React.FC<ActivityMapProps> = ({ activity, routePoints, highli
 
     if (isSlowConnection) {
       return (
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md h-[350px] flex flex-col items-center justify-center">
-          <svg className="w-12 h-12 text-yellow-500 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className={`${spacing.all.lg} rounded-xl shadow-md h-[350px] flex flex-col items-center justify-center`}>
+          <svg className={`w-12 h-12 text-yellow-500 ${spacing.bottom.md}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
-          <p className="text-yellow-600 dark:text-yellow-400 text-center mb-2">Connessione lenta rilevata</p>
+          <p className={`text-yellow-600 dark:text-yellow-400 text-center ${spacing.bottom.sm}`}>Connessione lenta rilevata</p>
           <p className="text-gray-500 dark:text-gray-400 text-sm text-center">La mappa potrebbe richiedere più tempo per caricare</p>
           <div className="mt-4 flex space-x-2">
             <button 
               onClick={() => setIsSlowConnection(false)} 
-              className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+              className={`${spacing.horizontal.md} py-2 bg-gray-600 text-white rounded-xl hover:bg-gray-700 transition-colors`}
             >
               Continua ad attendere
             </button>
             <button 
               onClick={() => window.location.reload()} 
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              className={`${spacing.horizontal.md} py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors`}
             >
               Ricarica
             </button>
@@ -278,9 +282,9 @@ const ActivityMap: React.FC<ActivityMapProps> = ({ activity, routePoints, highli
     }
 
     return (
-      <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md h-[350px] flex items-center justify-center">
+      <div className={`${spacing.all.lg} rounded-xl shadow-md h-[350px] flex items-center justify-center`}>
         <div className="flex flex-col items-center">
-          <svg className="animate-spin h-8 w-8 text-blue-600 mb-4" fill="none" viewBox="0 0 24 24">
+          <svg className={`animate-spin h-8 w-8 text-blue-600 ${spacing.bottom.md}`} fill="none" viewBox="0 0 24 24">
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
           </svg>
@@ -523,36 +527,41 @@ const ActivityMap: React.FC<ActivityMapProps> = ({ activity, routePoints, highli
   if (!hasStartCoordinates && !hasRoutePoints) {
     // console.log('[ActivityMap] Rendering no GPS data state.'); // Rimosso Log
     return (
-      <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
-        <h2 className="text-xl font-semibold mb-4 text-slate-800 dark:text-slate-200">Percorso</h2>
-        <div className="h-[350px] rounded-lg flex items-center justify-center bg-slate-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600">
-          <div className="text-center p-6">
-            <div className="w-16 h-16 mx-auto mb-4 bg-slate-100 dark:bg-gray-600 rounded-full flex items-center justify-center">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-8 h-8 text-slate-400 dark:text-gray-300">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 6.75V15m6-6v8.25m.503 3.498 4.875-2.437c.381-.19.622-.58.622-1.006V4.82c0-.836-.88-1.38-1.628-1.006l-3.869 1.934c-.317.159-.69.159-1.006 0L9.503 3.252a1.125 1.125 0 0 0-1.006 0L3.622 5.689C3.24 5.88 3 6.27 3 6.695V19.18c0 .836.88 1.38 1.628 1.006l3.869-1.934c-.317-.159.69-.159 1.006 0l4.994 2.497c.317.158.69.158 1.006 0Z" />
-              </svg>
-            </div>
-            <h3 className="text-lg font-medium text-slate-700 dark:text-slate-200 mb-2">Coordinate GPS non disponibili</h3>
-            <p className="text-slate-600 dark:text-slate-300 max-w-xs mx-auto">
-              Le coordinate GPS non sono presenti nel file FIT di questa attività. 
-              Prova a caricare un file con dati GPS validi per visualizzare il percorso sulla mappa.
-            </p>
+      <div className={`${spacing.all.lg} rounded-xl shadow-md`}>
+        <h2 className={`text-xl font-semibold ${spacing.bottom.md} text-slate-800 dark:text-slate-200`}>Percorso</h2>
+        <div className="h-[350px] rounded-xl flex items-center justify-center bg-slate-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600">
+          <div className={`w-16 h-16 mx-auto ${spacing.bottom.md} bg-slate-100 dark:bg-gray-600 rounded-full flex items-center justify-center`}>
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-8 h-8 text-slate-400 dark:text-gray-300">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 6.75V15m6-6v8.25m.503 3.498 4.875-2.437c.381-.19.622-.58.622-1.006V4.82c0-.836-.88-1.38-1.628-1.006l-3.869 1.934c-.317.159-.69.159-1.006 0L9.503 3.252a1.125 1.125 0 0 0-1.006 0L3.622 5.689C3.24 5.88 3 6.27 3 6.695V19.18c0 .836.88 1.38 1.628 1.006l3.869-1.934c-.317-.159.69-.159 1.006 0l4.994 2.497c.317.158.69.158 1.006 0Z" />
+            </svg>
           </div>
+          <h3 className={`text-lg font-medium text-slate-700 dark:text-slate-200 ${spacing.bottom.sm}`}>Coordinate GPS non disponibili</h3>
+          <p className="text-slate-600 dark:text-slate-300 max-w-xs mx-auto">
+            Le coordinate GPS non sono presenti nel file FIT di questa attività. 
+            Prova a caricare un file con dati GPS validi per visualizzare il percorso sulla mappa.
+          </p>
         </div>
       </div>
     );
   }
 
+  const handleDownloadGPX = () => {
+    showInfo(
+      'Funzione in sviluppo', 
+      'Il download GPX sarà disponibile nelle prossime versioni. Per ora puoi scaricare i dati dalle impostazioni dell\'atleta.'
+    );
+  };
+
   return (
-    <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
-      <h2 className="text-xl font-semibold mb-4 text-slate-800 dark:text-slate-200 flex items-center">
+    <div className={`${spacing.all.lg} rounded-xl shadow-md`}>
+      <h2 className={`text-xl font-semibold ${spacing.bottom.md} text-slate-800 dark:text-slate-200 flex items-center`}>
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 mr-2 text-blue-600">
           <path strokeLinecap="round" strokeLinejoin="round" d="M9 6.75V15m6-6v8.25m.503 3.498 4.875-2.437c.381-.19.622-.58.622-1.006V4.82c0-.836-.88-1.38-1.628-1.006l-3.869 1.934c-.317.159-.69.159-1.006 0L9.503 3.252a1.125 1.125 0 0 0-1.006 0L3.622 5.689C3.24 5.88 3 6.27 3 6.695V19.18c0 .836.88 1.38 1.628 1.006l3.869-1.934c-.317-.159.69-.159 1.006 0l4.994 2.497c.317.158.69.158 1.006 0Z" />
         </svg>
         Percorso
       </h2>
       {/* Contenitore per mappa e controlli sovrapposti */}
-      <div className="h-[400px] rounded-lg overflow-hidden border border-gray-200 dark:border-gray-600 relative">
+      <div className="h-[400px] rounded-xl overflow-hidden border border-gray-200 dark:border-gray-600 relative">
         {/* Istruzione migliorata su come selezionare un tratto - mostrata solo se non c'è una selezione attiva */}
         {(selectionStartIdx === null && routePoints && routePoints.length > 0) && (
           <div className="absolute top-0 left-1/2 transform -translate-x-1/2 z-[1000] bg-white dark:bg-gray-800 bg-opacity-80 dark:bg-opacity-80 px-3 py-1.5 rounded-b-md shadow-md text-sm font-medium text-slate-700 dark:text-slate-200 border border-t-0 border-slate-200 dark:border-gray-600">
@@ -564,7 +573,7 @@ const ActivityMap: React.FC<ActivityMapProps> = ({ activity, routePoints, highli
         {(selectionStartIdx !== null || selectionEndIdx !== null) && (
           <button 
             onClick={resetSelection}
-            className="absolute bottom-3 left-3 z-[1000] px-2.5 py-1 bg-red-600/80 text-white text-xs rounded hover:bg-red-700/80 shadow-sm flex items-center gap-1"
+            className={`absolute bottom-3 left-3 z-[1000] px-2.5 py-1 bg-red-600/80 text-white text-xs rounded hover:bg-red-700/80 shadow-sm flex items-center gap-1`}
             title="Azzera selezione"
           >
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-3 h-3">
@@ -771,11 +780,7 @@ const ActivityMap: React.FC<ActivityMapProps> = ({ activity, routePoints, highli
         {hasRoutePoints && (
           <a 
             href="#" 
-            onClick={(e) => {
-              e.preventDefault();
-              // Qui potremmo aggiungere una funzione per scaricare il percorso come GPX
-              alert('Funzione di download GPX non ancora implementata');
-            }}
+            onClick={handleDownloadGPX}
             className="text-xs text-blue-600 hover:text-blue-800 hover:underline"
           >
             Esporta GPX

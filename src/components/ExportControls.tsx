@@ -13,6 +13,7 @@ import {
   exportSingleActivity 
 } from '@/lib/exportUtils';
 import { spacing } from '@/lib/design-system';
+import { useCycloLabToast } from '@/hooks/use-cyclolab-toast';
 
 interface ExportControlsProps {
   activities: Activity[];
@@ -33,10 +34,11 @@ export default function ExportControls({
 }: ExportControlsProps) {
   const [selectedFormat, setSelectedFormat] = useState<ExportFormat>('csv');
   const [isExporting, setIsExporting] = useState(false);
+  const { showSuccess, showError, showWarning } = useCycloLabToast();
 
   const handleExport = async () => {
     if (activities.length === 0) {
-      alert('Nessuna attività da esportare');
+      showWarning('Nessuna attività', 'Nessuna attività da esportare');
       return;
     }
 
@@ -57,7 +59,7 @@ export default function ExportControls({
           if (athlete) {
             exportAthleteProfile(athlete, activities, profileEntries, personalBests);
           } else {
-            alert('Dati atleta non disponibili per questo tipo di export');
+            showError('Dati non disponibili', 'Dati atleta non disponibili per questo tipo di export');
             return;
           }
           break;
@@ -65,23 +67,23 @@ export default function ExportControls({
           if (activities.length === 1) {
             exportSingleActivity(activities[0]);
           } else {
-            alert('Seleziona una singola attività per questo tipo di export');
+            showWarning('Selezione non valida', 'Seleziona una singola attività per questo tipo di export');
             return;
           }
           break;
         default:
-          alert('Formato di export non supportato');
+          showError('Formato non supportato', 'Formato di export non supportato');
           return;
       }
       
-      // Feedback positivo
+      // Feedback positivo con delay per permettere il download
       setTimeout(() => {
-        alert('Export completato con successo!');
+        showSuccess('Export completato', 'I tuoi dati sono stati esportati con successo!');
       }, 100);
       
     } catch (error) {
       console.error('Errore durante l\'export:', error);
-      alert('Errore durante l\'export. Riprova.');
+      showError('Errore export', 'Si è verificato un errore durante l\'export. Riprova.');
     } finally {
       setIsExporting(false);
     }
@@ -162,7 +164,7 @@ export default function ExportControls({
         </div>
 
         {/* Descrizione formato selezionato */}
-        <div className={`${spacing.all.sm} bg-blue-50/50 dark:bg-blue-900/20 rounded-lg border border-blue-200/50 dark:border-blue-700/50`}>
+        <div className={`${spacing.all.sm} bg-blue-50/50 dark:bg-blue-900/20 rounded-xl border border-blue-200/50 dark:border-blue-700/50`}>
           <p className="text-sm text-blue-700 dark:text-blue-300">
             {getExportDescription(selectedFormat)}
           </p>
@@ -170,12 +172,12 @@ export default function ExportControls({
 
         {/* Informazioni aggiuntive */}
         <div className="grid grid-cols-2 gap-4 text-sm">
-          <div className={`bg-gray-50/50 dark:bg-gray-800/50 rounded-lg ${spacing.all.sm}`}>
+          <div className={`bg-gray-50/50 dark:bg-gray-800/50 rounded-xl ${spacing.all.sm}`}>
             <div className="font-medium text-gray-900 dark:text-white">Attività</div>
             <div className="text-gray-600 dark:text-gray-400">{activities.length} selezionate</div>
           </div>
           {athlete && (
-            <div className={`bg-gray-50/50 dark:bg-gray-800/50 rounded-lg ${spacing.all.sm}`}>
+            <div className={`bg-gray-50/50 dark:bg-gray-800/50 rounded-xl ${spacing.all.sm}`}>
               <div className="font-medium text-gray-900 dark:text-white">Atleta</div>
               <div className="text-gray-600 dark:text-gray-400">{athlete.name} {athlete.surname}</div>
             </div>

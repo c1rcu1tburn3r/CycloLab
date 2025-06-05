@@ -1,43 +1,107 @@
 'use client';
 
-import { deleteActivity } from '@/app/activities/actions';
-import { useState, useTransition } from 'react';
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { Button } from '@/components/ui/button';
+import { useConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { useCycloLabToast } from '@/hooks/use-cyclolab-toast';
+import { Trash2 } from 'lucide-react';
 
 interface DeleteActivityButtonProps {
   activityId: string;
-  activityTitle: string;
-  fitFilePath: string | null; // Es: "user_id/athlete_id/file_name.fit" o null se non c'è file
+  activityTitle?: string;
+  onSuccess?: () => void;
+  variant?: 'default' | 'outline' | 'destructive' | 'ghost';
+  size?: 'default' | 'sm' | 'lg';
+  className?: string;
 }
 
-export default function DeleteActivityButton({ activityId, activityTitle, fitFilePath }: DeleteActivityButtonProps) {
-  const [isPending, startTransition] = useTransition();
-  const [error, setError] = useState<string | null>(null);
+async function deleteActivity(activityId: string) {
+  const response = await fetch(`/api/activities/${activityId}`, {
+    method: 'DELETE',
+  });
 
-  const handleDelete = async () => {
-    if (!confirm(`Sei sicuro di voler eliminare l'attività "${activityTitle}"? Questa azione è irreversibile e rimuoverà anche il file FIT associato, se presente.`)) {
-      return;
-    }
-    
-    setError(null);
-    startTransition(async () => {
-      const result = await deleteActivity(activityId, fitFilePath);
-      if (result?.error) {
-        setError(result.error);
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.message || 'Errore durante l\'eliminazione');
+  }
+
+  return response.json();
+}
+
+export default function DeleteActivityButton({ 
+  activityId, 
+  activityTitle = 'questa attività',
+  onSuccess,
+  variant = 'destructive',
+  size = 'default',
+  className = ''
+}: DeleteActivityButtonProps) {
+  const [isDeleting, setIsDeleting] = useState(false);
+  const { showSuccess, showError } = useCycloLabToast();
+  const { showConfirm, ConfirmDialog } = useConfirmDialog();
+  const router = useRouter();
+
+  const handleDeleteClick = () => {
+    showConfirm({
+      title: 'Elimina Attività',
+      description: `Sei sicuro di voler eliminare "${activityTitle}"? Questa azione non può essere annullata e tutti i dati associati verranno persi permanentemente.`,
+      confirmText: 'Elimina Attività',
+      cancelText: 'Annulla',
+      variant: 'destructive',
+      icon: <Trash2 className="w-6 h-6" />,
+      onConfirm: async () => {
+        setIsDeleting(true);
+
+        try {
+          await deleteActivity(activityId);
+          
+          showSuccess(
+            'Attività eliminata', 
+            `L'attività "${activityTitle}" è stata eliminata con successo`
+          );
+
+          if (onSuccess) {
+            onSuccess();
+          } else {
+            // Se non c'è callback, torna alla lista attività
+            router.push('/activities');
+          }
+        } catch (error: any) {
+          console.error('Errore eliminazione attività:', error);
+          showError(
+            'Errore eliminazione',
+            error.message || 'Si è verificato un errore durante l\'eliminazione dell\'attività'
+          );
+        } finally {
+          setIsDeleting(false);
+        }
       }
-      // Il reindirizzamento e la revalidazione avvengono nella server action in caso di successo
     });
   };
 
   return (
-    <div className="flex flex-col items-start">
-      <button
-        onClick={handleDelete}
-        disabled={isPending}
-        className="bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded-lg shadow-md text-sm disabled:opacity-75 disabled:cursor-not-allowed"
+    <>
+      <ConfirmDialog />
+      <Button
+        variant={variant}
+        size={size}
+        onClick={handleDeleteClick}
+        disabled={isDeleting}
+        className={className}
       >
-        {isPending ? 'Eliminazione...' : 'Elimina Attività'}
-      </button>
-      {error && <p className="text-red-500 text-sm mt-2">Errore: {error}</p>}
-    </div>
+        {isDeleting ? (
+          <>
+            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+            Eliminando...
+          </>
+        ) : (
+          <>
+            <Trash2 className="w-4 h-4 mr-2" />
+            Elimina
+          </>
+        )}
+      </Button>
+    </>
   );
 } 

@@ -22,8 +22,8 @@ const PowerZonesDisplay: React.FC<PowerZonesDisplayProps> = ({ currentFtp }) => 
   if (currentFtp === null || currentFtp <= 0) {
     return (
       <div className="text-center py-8">
-        <Zap className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
-        <p className="text-gray-500 dark:text-gray-400 mb-2">FTP non disponibile</p>
+        <Zap className={`w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto ${spacing.bottom.md}`} />
+        <p className={`text-gray-500 dark:text-gray-400 ${spacing.bottom.sm}`}>FTP non disponibile</p>
         <p className="text-sm text-gray-400 dark:text-gray-500">
           Aggiungi un valore FTP per visualizzare le zone di potenza
         </p>

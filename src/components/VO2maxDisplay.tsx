@@ -95,7 +95,7 @@ export default function VO2maxDisplay({
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+          <p className={`text-sm text-gray-600 dark:text-gray-400 ${spacing.bottom.sm}`}>
             {vo2maxResult.reasoning}
           </p>
           {vo2maxResult.adaptiveMessage && (

@@ -23,7 +23,7 @@ const AthleteSummaryCard: React.FC<AthleteSummaryCardProps> = ({ athlete, totalA
     return (
       <Card variant="elevated" className={spacing.bottom.lg}>
         <CardContent className="text-center py-8">
-          <UserCircle2 className="w-16 h-16 mx-auto text-gray-400 mb-4" />
+          <UserCircle2 className={`w-16 h-16 mx-auto text-gray-400 ${spacing.bottom.md}`} />
           <p className="text-gray-500 dark:text-gray-400">Nessun atleta selezionato</p>
         </CardContent>
       </Card>

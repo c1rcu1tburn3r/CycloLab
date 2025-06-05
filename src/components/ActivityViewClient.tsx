@@ -13,7 +13,7 @@ const ActivityElevationChart = NextDynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md h-[300px] flex items-center justify-center">
+      <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md h-[300px] flex items-center justify-center">
         <p className="text-gray-600 dark:text-gray-400">Caricamento grafico altimetrico...</p>
       </div>
     )
@@ -185,7 +185,7 @@ const ActivityViewClient: React.FC<ActivityViewClientProps> = ({
     <div className="relative">
       {/* Mappa del percorso */}
       <Suspense fallback={
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md h-64 flex items-center justify-center">
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md h-64 flex items-center justify-center">
           <p className="text-gray-600 dark:text-gray-400">Caricamento mappa...</p>
         </div>
       }>
@@ -212,7 +212,7 @@ const ActivityViewClient: React.FC<ActivityViewClientProps> = ({
           originalStartIndex={selectedSegment ? selectedSegment.startIndex : 0}
         />
       ) : (
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md h-[300px] flex items-center justify-center">
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md h-[300px] flex items-center justify-center">
           <p className="text-gray-600 dark:text-gray-400">
             {selectedSegment ? "Nessun dato nel segmento selezionato per il grafico." : "Caricamento o dati non disponibili per il grafico."}
           </p>

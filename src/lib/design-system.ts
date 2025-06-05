@@ -106,6 +106,7 @@ export const componentVariants = {
       elevated: 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-lg',
       glass: 'bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl border border-gray-200/50 dark:border-gray-700/50',
       metric: 'bg-white/95 dark:bg-gray-800/95 backdrop-blur-sm border border-gray-200/30 dark:border-gray-700/30',
+      neon: 'bg-gradient-to-br from-purple-900/20 to-blue-900/20 backdrop-blur-xl border border-purple-500/50 shadow-[0_0_20px_rgba(147,51,234,0.3)] hover:shadow-[0_0_30px_rgba(147,51,234,0.5)] transition-all duration-300',
     },
     padding: {
       sm: 'p-4',

@@ -263,6 +263,7 @@ export default async function HomePage() {
               }
             ].map((feature, index) => (
               <Card
+                key={index}
                 variant="glass"
                 className="group animate-slide-up"
                 style={{ animationDelay: `${index * 100}ms` }}

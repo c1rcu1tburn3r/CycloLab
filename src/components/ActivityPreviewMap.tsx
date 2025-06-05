@@ -4,6 +4,7 @@ import React, { useEffect, useState, useMemo, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import type { Activity, RoutePoint } from '@/lib/types';
 import L from 'leaflet';
+import { spacing } from '@/lib/design-system';
 
 // =====================================================
 // CONSTANTS
@@ -162,7 +163,7 @@ const ActivityPreviewMap: React.FC<ActivityPreviewMapProps> = ({
         style={{ height }}
       >
         <div className="text-center p-4">
-          <svg className="w-8 h-8 mx-auto mb-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className={`w-8 h-8 mx-auto ${spacing.bottom.sm} text-gray-400`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 6.75V15m6-6v8.25m.503 3.498 4.875-2.437c.381-.19.622-.58.622-1.006V4.82c0-.836-.88-1.38-1.628-1.006l-3.869 1.934c-.317.159-.69.159-1.006 0L9.503 3.252a1.125 1.125 0 0 0-1.006 0L3.622 5.689C3.24 5.88 3 6.27 3 6.695V19.18c0 .836.88 1.38 1.628 1.006l3.869-1.934c-.317-.159.69-.159 1.006 0l4.994 2.497c.317.158.69.158 1.006 0Z" />
           </svg>
           <p className="text-xs text-gray-500 dark:text-gray-400">GPS non disponibile</p>

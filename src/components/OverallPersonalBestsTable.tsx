@@ -60,7 +60,7 @@ const OverallPersonalBestsTable: React.FC<OverallPersonalBestsTableProps> = ({ a
   if (isLoading) {
     return (
       <div className="text-center py-8">
-        <div className="animate-spin w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full mx-auto mb-4"></div>
+        <div className={`animate-spin w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full mx-auto ${spacing.bottom.md}`}></div>
         <p className="text-gray-600 dark:text-gray-400">Caricamento record personali...</p>
       </div>
     );
@@ -69,10 +69,10 @@ const OverallPersonalBestsTable: React.FC<OverallPersonalBestsTableProps> = ({ a
   if (error) {
     return (
       <div className="text-center py-8">
-        <svg className="w-12 h-12 text-red-300 dark:text-red-600 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg className={`w-12 h-12 text-red-300 dark:text-red-600 mx-auto ${spacing.bottom.md}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
-        <p className="text-red-600 dark:text-red-400 mb-2">Errore nel caricamento</p>
+        <p className={`text-red-600 dark:text-red-400 ${spacing.bottom.sm}`}>Errore nel caricamento</p>
         <p className="text-sm text-gray-400 dark:text-gray-500">{error}</p>
       </div>
     );
@@ -81,10 +81,10 @@ const OverallPersonalBestsTable: React.FC<OverallPersonalBestsTableProps> = ({ a
   if (pbData.length === 0) {
     return (
       <div className="text-center py-8">
-        <svg className="w-16 h-16 text-gray-300 dark:text-gray-600 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg className={`w-16 h-16 text-gray-300 dark:text-gray-600 mx-auto ${spacing.bottom.md}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
         </svg>
-        <p className="text-gray-500 dark:text-gray-400 mb-2">Nessun record trovato</p>
+        <p className={`text-gray-500 dark:text-gray-400 ${spacing.bottom.sm}`}>Nessun record trovato</p>
         <p className="text-sm text-gray-400 dark:text-gray-500">
           Non sono ancora stati registrati personal best per questo atleta
         </p>

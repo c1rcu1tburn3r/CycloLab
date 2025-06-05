@@ -7,6 +7,7 @@ import { it } from 'date-fns/locale';
 import { Activity, RoutePoint } from '@/lib/types';
 import ActivityPreviewMap from './ActivityPreviewMap';
 import { Card, CardContent } from "@/components/ui/card";
+import { spacing } from '@/lib/design-system';
 
 interface ActivityPreviewCardProps {
   activity: Activity;
@@ -339,7 +340,7 @@ const CardContentWrapper: React.FC<{
         </div>
 
         {/* Titolo/Località */}
-        <div className="flex items-center justify-between mb-2">
+        <div className={`flex items-center justify-between ${spacing.bottom.sm}`}>
           <h3 className="text-lg font-bold text-gray-900 dark:text-white line-clamp-1 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors flex-1">
             {displayTitle}
           </h3>
@@ -347,7 +348,7 @@ const CardContentWrapper: React.FC<{
           {/* Pulsante selezione in modalità comparazione */}
           {isComparisonMode && (
             <div className="ml-2 flex-shrink-0">
-              <div className="bg-blue-600 text-white text-xs px-3 py-1.5 rounded-full font-medium shadow-lg">
+              <div className={`bg-blue-600 text-white text-xs ${spacing.horizontal.sm} py-1.5 rounded-full font-medium shadow-lg`}>
                 {isSelected ? 'Selezionata' : 'Seleziona'}
               </div>
             </div>
@@ -356,7 +357,7 @@ const CardContentWrapper: React.FC<{
 
         {/* Nome atleta se necessario */}
         {athleteName && (
-          <p className="text-sm text-blue-600 dark:text-blue-400 mb-3 font-medium">
+          <p className={`text-sm text-blue-600 dark:text-blue-400 ${spacing.bottom.sm} font-medium`}>
             {athleteName}
           </p>
         )}
@@ -365,7 +366,7 @@ const CardContentWrapper: React.FC<{
         <div className="grid grid-cols-4 gap-2">
           {/* Distanza */}
           <div className="flex flex-col items-center gap-1">
-            <div className="w-6 h-6 bg-blue-50 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
+            <div className="w-6 h-6 bg-blue-50 dark:bg-blue-900/30 rounded-xl flex items-center justify-center">
               <svg className="w-3 h-3 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -381,7 +382,7 @@ const CardContentWrapper: React.FC<{
 
           {/* Tempo */}
           <div className="flex flex-col items-center gap-1">
-            <div className="w-6 h-6 bg-emerald-50 dark:bg-emerald-900/30 rounded-lg flex items-center justify-center">
+            <div className="w-6 h-6 bg-emerald-50 dark:bg-emerald-900/30 rounded-xl flex items-center justify-center">
               <svg className="w-3 h-3 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
@@ -396,7 +397,7 @@ const CardContentWrapper: React.FC<{
 
           {/* Dislivello */}
           <div className="flex flex-col items-center gap-1">
-            <div className="w-6 h-6 bg-orange-50 dark:bg-orange-900/30 rounded-lg flex items-center justify-center">
+            <div className="w-6 h-6 bg-orange-50 dark:bg-orange-900/30 rounded-xl flex items-center justify-center">
               <svg className="w-3 h-3 text-orange-600 dark:text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
               </svg>
@@ -411,7 +412,7 @@ const CardContentWrapper: React.FC<{
 
           {/* TSS */}
           <div className="flex flex-col items-center gap-1">
-            <div className="w-6 h-6 bg-purple-50 dark:bg-purple-900/30 rounded-lg flex items-center justify-center">
+            <div className="w-6 h-6 bg-purple-50 dark:bg-purple-900/30 rounded-xl flex items-center justify-center">
               <svg className="w-3 h-3 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
               </svg>

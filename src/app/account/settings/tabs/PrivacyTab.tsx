@@ -11,6 +11,8 @@ import { Loader2 } from 'lucide-react';
 import { useCycloLabToast } from "@/hooks/use-cyclolab-toast";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { useConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { Trash2 } from 'lucide-react';
 
 interface PrivacyTabProps {
   user: User;
@@ -21,6 +23,7 @@ export default function PrivacyTab({ user }: PrivacyTabProps) {
   const router = useRouter();
   const [isExporting, setIsExporting] = useState(false);
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
+  const { showConfirm, ConfirmDialog } = useConfirmDialog();
   
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -92,103 +95,98 @@ export default function PrivacyTab({ user }: PrivacyTabProps) {
   };
 
   const handleDeleteAccount = async () => {
-    const confirmText = 'ELIMINA IL MIO ACCOUNT';
-    const userInput = prompt(
-      `⚠️ ATTENZIONE: Questa azione è IRREVERSIBILE!\n\n` +
-      `Tutti i tuoi dati verranno eliminati permanentemente:\n` +
-      `• Account utente\n` +
-      `• Tutti gli atleti associati\n` +
-      `• Tutte le attività e misurazioni\n` +
-      `• Cronologia e statistiche\n\n` +
-      `Se sei assolutamente sicuro, scrivi esattamente:\n"${confirmText}"`
-    );
+    showConfirm({
+      title: '⚠️ Eliminazione Account Permanente',
+      description: 'Tutti i tuoi dati verranno eliminati permanentemente: Account utente, Tutti gli atleti associati, Tutte le attività e misurazioni, Cronologia e statistiche. Questa azione NON può essere annullata.',
+      confirmText: 'Elimina Account',
+      cancelText: 'Annulla',
+      variant: 'destructive',
+      requireTextConfirmation: 'ELIMINA IL MIO ACCOUNT',
+      icon: <Trash2 className="w-6 h-6" />,
+      onConfirm: async () => {
+        setIsDeletingAccount(true);
 
-    if (userInput !== confirmText) {
-      if (userInput !== null) {
-        showError('Eliminazione annullata', 'Il testo inserito non è corretto');
+        try {
+          // Prima elimina tutti i dati collegati (gli atleti e le loro attività)
+          const { data: athletes } = await supabase
+            .from('athletes')
+            .select('id')
+            .eq('user_id', user.id);
+
+          if (athletes && athletes.length > 0) {
+            const athleteIds = athletes.map(a => a.id);
+            
+            // Elimina le performance climb
+            await supabase
+              .from('climb_performances')
+              .delete()
+              .in('athlete_id', athleteIds);
+
+            // Elimina le attività degli atleti
+            await supabase
+              .from('activities')
+              .delete()
+              .in('athlete_id', athleteIds);
+
+            // Elimina le voci del profilo degli atleti
+            await supabase
+              .from('athlete_profile_entries')
+              .delete()
+              .in('athlete_id', athleteIds);
+
+            // Elimina gli atleti
+            await supabase
+              .from('athletes')
+              .delete()
+              .eq('user_id', user.id);
+          }
+
+          // Elimina le detected climbs dell'utente
+          await supabase
+            .from('detected_climbs')
+            .delete()
+            .eq('user_id', user.id);
+
+          // Elimina le associazioni coach-atleta
+          await supabase
+            .from('coach_athletes')
+            .delete()
+            .eq('coach_user_id', user.id);
+
+          // Elimina l'account usando la nostra API route che ha i permessi service_role
+          const response = await fetch('/api/auth/delete-user', {
+            method: 'DELETE',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ userId: user.id }),
+          });
+
+          if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Errore eliminazione account');
+          }
+
+          showSuccess('Account eliminato', 'Il tuo account è stato eliminato con successo');
+          
+          // L'utente è stato eliminato dal database Auth, il logout avverrà automaticamente
+          // ma facciamo anche logout esplicito per sicurezza
+          await supabase.auth.signOut();
+          router.push('/');
+          
+        } catch (error: any) {
+          showError('Errore', error.message || 'Si è verificato un errore durante l\'eliminazione dell\'account');
+        } finally {
+          setIsDeletingAccount(false);
+        }
       }
-      return;
-    }
-
-    setIsDeletingAccount(true);
-
-    try {
-      // Prima elimina tutti i dati collegati (gli atleti e le loro attività)
-      const { data: athletes } = await supabase
-        .from('athletes')
-        .select('id')
-        .eq('user_id', user.id);
-
-      if (athletes && athletes.length > 0) {
-        const athleteIds = athletes.map(a => a.id);
-        
-        // Elimina le performance climb
-        await supabase
-          .from('climb_performances')
-          .delete()
-          .in('athlete_id', athleteIds);
-
-        // Elimina le attività degli atleti
-        await supabase
-          .from('activities')
-          .delete()
-          .in('athlete_id', athleteIds);
-
-        // Elimina le voci del profilo degli atleti
-        await supabase
-          .from('athlete_profile_entries')
-          .delete()
-          .in('athlete_id', athleteIds);
-
-        // Elimina gli atleti
-        await supabase
-          .from('athletes')
-          .delete()
-          .eq('user_id', user.id);
-      }
-
-      // Elimina le detected climbs dell'utente
-      await supabase
-        .from('detected_climbs')
-        .delete()
-        .eq('user_id', user.id);
-
-      // Elimina le associazioni coach-atleta
-      await supabase
-        .from('coach_athletes')
-        .delete()
-        .eq('coach_user_id', user.id);
-
-      // Elimina l'account usando la nostra API route che ha i permessi service_role
-      const response = await fetch('/api/auth/delete-user', {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ userId: user.id }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Errore eliminazione account');
-      }
-
-      showSuccess('Account eliminato', 'Il tuo account è stato eliminato con successo');
-      
-      // L'utente è stato eliminato dal database Auth, il logout avverrà automaticamente
-      // ma facciamo anche logout esplicito per sicurezza
-      await supabase.auth.signOut();
-      router.push('/');
-      
-    } catch (error: any) {
-      showError('Errore', error.message || 'Si è verificato un errore durante l\'eliminazione dell\'account');
-    } finally {
-      setIsDeletingAccount(false);
-    }
+    });
   };
 
   return (
     <div className="space-y-6">
+      <ConfirmDialog />
+      
       {/* Data Export */}
       <DesignCard variant="default">
         <CardHeader>

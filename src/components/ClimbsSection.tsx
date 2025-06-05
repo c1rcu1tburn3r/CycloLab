@@ -6,7 +6,7 @@
 // Componente per visualizzare salite rilevate automaticamente
 // =====================================================
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -332,63 +332,54 @@ interface ClimbSegmentMapProps {
 }
 
 function ClimbSegmentMap({ climb, routePoints }: ClimbSegmentMapProps) {
-  const [isMounted, setIsMounted] = useState(false);
   const [showMap, setShowMap] = useState(false);
   const [leaflet, setLeaflet] = useState<typeof import('leaflet') | null>(null);
 
-  React.useEffect(() => {
-    setIsMounted(true);
-    
-    // Carica Leaflet per le icone personalizzate
-    import('leaflet').then(L => {
-      setLeaflet(L);
-    }).catch(error => {
-      console.error('Errore caricamento Leaflet:', error);
-    });
-  }, []);
+  // Carica leaflet solo quando necessario
+  useEffect(() => {
+    if (showMap && !leaflet) {
+      import('leaflet').then(L => {
+        setLeaflet(L);
+      });
+    }
+  }, [showMap, leaflet]);
 
-  if (!isMounted || !routePoints || routePoints.length === 0) {
+  // Trova i punti GPS corrispondenti alla salita usando start_point_index e end_point_index
+  if (!routePoints || routePoints.length === 0) {
     return null;
   }
 
-  // Estrai i punti del segmento basandosi sugli indici
   const segmentPoints = routePoints.slice(climb.start_point_index, climb.end_point_index + 1);
-  
-  if (segmentPoints.length === 0) {
+  if (segmentPoints.length < 2) {
     return null;
   }
 
-  // Calcola centro e bounds della mappa
+  // Calcola centro e zoom per la mappa
   const lats = segmentPoints.map(p => p.lat);
   const lngs = segmentPoints.map(p => p.lng);
-  const minLat = Math.min(...lats);
-  const maxLat = Math.max(...lats);
-  const minLng = Math.min(...lngs);
-  const maxLng = Math.max(...lngs);
-  
   const center = {
-    lat: (minLat + maxLat) / 2,
-    lng: (minLng + maxLng) / 2
+    lat: (Math.min(...lats) + Math.max(...lats)) / 2,
+    lng: (Math.min(...lngs) + Math.max(...lngs)) / 2
   };
 
-  const latDiff = maxLat - minLat;
-  const lngDiff = maxLng - minLng;
+  const latDiff = Math.max(...lats) - Math.min(...lats);
+  const lngDiff = Math.max(...lngs) - Math.min(...lngs);
   const maxDiff = Math.max(latDiff, lngDiff);
   
-  let zoom = 13;
-  if (maxDiff < 0.01) zoom = 15;
-  else if (maxDiff < 0.02) zoom = 14;
-  else if (maxDiff < 0.05) zoom = 13;
-  else if (maxDiff < 0.1) zoom = 12;
-  else zoom = 11;
+  let zoom = 15;
+  if (maxDiff > 0.02) zoom = 13;
+  else if (maxDiff > 0.01) zoom = 14;
+  else if (maxDiff > 0.005) zoom = 15;
+  else zoom = 16;
 
-  const polylinePositions = segmentPoints.map(point => [point.lat, point.lng] as [number, number]);
+  // Coordinate per la polyline
+  const polylinePositions: [number, number][] = segmentPoints.map(p => [p.lat, p.lng]);
 
   // Icone personalizzate per i marker
   const startMarkerIcon = leaflet ? new leaflet.DivIcon({
     html: `<div style="
-      background: #10B981;
-      border: 3px solid white;
+      background: #10b981;
+      border: 2px solid white;
       border-radius: 50%;
       width: 24px;
       height: 24px;
@@ -407,8 +398,8 @@ function ClimbSegmentMap({ climb, routePoints }: ClimbSegmentMapProps) {
 
   const endMarkerIcon = leaflet ? new leaflet.DivIcon({
     html: `<div style="
-      background: #EF4444;
-      border: 3px solid white;
+      background: #ef4444;
+      border: 2px solid white;
       border-radius: 50%;
       width: 24px;
       height: 24px;
@@ -426,19 +417,19 @@ function ClimbSegmentMap({ climb, routePoints }: ClimbSegmentMapProps) {
   }) : undefined;
 
   return (
-    <div className="mt-4">
+    <div className={spacing.top.md}>
       <Button
         variant="outline"
         size="sm"
         onClick={() => setShowMap(!showMap)}
-        className="mb-3"
+        className={spacing.bottom.sm}
       >
         <Map className="h-4 w-4 mr-2" />
         {showMap ? 'Nascondi Mappa' : 'Mostra Segmento'}
       </Button>
       
       {showMap && (
-        <div className="h-64 w-full rounded-lg overflow-hidden border">
+        <div className="h-64 w-full rounded-xl overflow-hidden border">
           <MapContainer
             center={[center.lat, center.lng]}
             zoom={zoom}
@@ -522,8 +513,8 @@ export default function ClimbsSection({
     return (
       <Card className="text-center py-8">
         <CardContent>
-          <Mountain className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-lg font-semibold text-gray-600 mb-2">
+          <Star className={`h-12 w-12 text-gray-400 mx-auto ${spacing.bottom.md}`} />
+          <h3 className={`text-lg font-semibold text-gray-600 ${spacing.bottom.sm}`}>
             Nessuna Salita Rilevata
           </h3>
           <p className="text-gray-500">
@@ -588,7 +579,7 @@ export default function ClimbsSection({
               >
                 {formatCategory(bestCategory.category as any)}
               </Badge>
-              <div className="text-sm text-gray-500 mt-1">Migliore categoria</div>
+              <div className={`text-sm text-gray-500 ${spacing.top.xs}`}>Migliore categoria</div>
             </div>
           </div>
         </CardContent>
@@ -601,7 +592,7 @@ export default function ClimbsSection({
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value as any)}
-            className="px-3 py-1 border rounded-md text-sm"
+            className={`${spacing.horizontal.sm} py-1 border rounded-md text-sm`}
           >
             <option value="score">Punteggio</option>
             <option value="elevation">Dislivello</option>

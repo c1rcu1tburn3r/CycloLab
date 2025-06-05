@@ -28,6 +28,8 @@ import Link from 'next/link';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { useDebouncedCallback } from 'use-debounce';
+import { useConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { useCycloLabToast } from '@/hooks/use-cyclolab-toast';
 
 export default function ManageAthletesClientPage() {
   // Stato per gestire l'idratazione e evitare mismatch
@@ -46,6 +48,9 @@ export default function ManageAthletesClientPage() {
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error', message: string } | null>(null);
 
   const [isPendingGlobal, startTransitionGlobal] = useTransition();
+
+  const { showSuccess, showError } = useCycloLabToast();
+  const { showConfirm, ConfirmDialog } = useConfirmDialog();
 
   // Effect per gestire l'idratazione
   useEffect(() => {
@@ -125,22 +130,32 @@ export default function ManageAthletesClientPage() {
   };
 
   const handleRemoveAthlete = async (athleteId: string, athleteName: string) => {
-    if (!window.confirm(`Sei sicuro di voler rimuovere ${athleteName} dalla tua lista atleti?`)) {
-      return;
-    }
-    
-    setIsRemoving(athleteId);
-    setFeedback(null);
-    startTransitionGlobal(async () => {
-      const result = await dissociateAthleteFromCoach(athleteId);
-      if (result.success) {
-        setFeedback({type: 'success', message: 'Atleta rimosso con successo.'});
-        await fetchManagedAthletes();
-      } else {
-        setFeedback({type: 'error', message: result.error || "Impossibile rimuovere l'atleta."});
+    showConfirm({
+      title: 'Rimuovi Atleta',
+      description: `Sei sicuro di voler rimuovere ${athleteName} dalla tua lista atleti? L'atleta non verrà eliminato ma non potrai più visualizzare i suoi dati.`,
+      confirmText: 'Rimuovi Atleta',
+      cancelText: 'Annulla',
+      variant: 'warning',
+      icon: <UserMinus className="w-6 h-6" />,
+      onConfirm: async () => {
+        try {
+          const response = await fetch(`/api/coach/athletes/${athleteId}`, {
+            method: 'DELETE'
+          });
+
+          if (!response.ok) {
+            throw new Error('Errore durante la rimozione dell\'atleta');
+          }
+
+          showSuccess('Atleta rimosso', `${athleteName} è stato rimosso dalla tua lista atleti`);
+          
+          // Rimuovi dall'array locale
+          setManagedAthletes(prev => prev.filter(ca => ca.id !== athleteId));
+        } catch (error) {
+          console.error('Errore rimozione atleta:', error);
+          showError('Errore', 'Si è verificato un errore durante la rimozione dell\'atleta');
+        }
       }
-      setIsRemoving(null);
-      setTimeout(() => setFeedback(null), 5000);
     });
   };
 
@@ -458,6 +473,7 @@ export default function ManageAthletesClientPage() {
           </Card>
         </div>
       </div>
+      <ConfirmDialog />
     </div>
   );
 } 

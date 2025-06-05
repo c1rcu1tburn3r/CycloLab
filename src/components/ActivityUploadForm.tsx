@@ -6,6 +6,8 @@ import { createBrowserClient } from '@supabase/ssr';
 import type { Athlete } from '@/lib/types';
 import { processAndCreateActivity } from '@/app/activities/actions';
 import { useCycloLabToast } from "@/hooks/use-cyclolab-toast";
+import { Button } from '@/components/ui/button';
+import { spacing } from '@/lib/design-system';
 
 interface ActivityUploadFormProps {
   userId: string;
@@ -713,13 +715,13 @@ export default function ActivityUploadForm({ userId, athletes }: ActivityUploadF
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       {error && (
-        <div className="mb-4 p-3 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 border border-red-300 dark:border-red-700 rounded-lg">
+        <div className={`${spacing.bottom.md} ${spacing.all.sm} bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 border border-red-300 dark:border-red-700 rounded-xl`}>
           {error}
         </div>
       )}
       
       {successMessage && (
-        <div className="mb-4 p-3 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 border border-green-300 dark:border-green-700 rounded-lg">
+        <div className={`${spacing.bottom.md} ${spacing.all.sm} bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 border border-green-300 dark:border-green-700 rounded-xl`}>
           {successMessage}
         </div>
       )}
@@ -740,7 +742,7 @@ export default function ActivityUploadForm({ userId, athletes }: ActivityUploadF
         
         {/* Stato validazione */}
         {isValidating && (
-          <div className="mt-2 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+          <div className={`mt-2 ${spacing.all.sm} bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl`}>
             <div className="flex items-center">
               <svg className="animate-spin h-4 w-4 text-blue-600 mr-2" fill="none" viewBox="0 0 24 24">
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
@@ -753,12 +755,12 @@ export default function ActivityUploadForm({ userId, athletes }: ActivityUploadF
 
         {/* Dettagli validazione */}
         {validationDetails && (
-          <div className={`mt-2 p-3 border rounded-lg ${
+          <div className={`mt-2 ${spacing.all.sm} border rounded-xl ${
             validationDetails.isValid 
               ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800' 
               : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'
           }`}>
-            <div className="flex items-center mb-2">
+            <div className={`flex items-center ${spacing.bottom.sm}`}>
               {validationDetails.isValid ? (
                 <svg className="h-4 w-4 text-green-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
@@ -788,8 +790,8 @@ export default function ActivityUploadForm({ userId, athletes }: ActivityUploadF
 
         {/* Progress bar upload */}
         {isUploading && uploadProgress > 0 && (
-          <div className="mt-2 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-            <div className="flex items-center justify-between mb-2">
+          <div className={`mt-2 ${spacing.all.sm} bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl`}>
+            <div className={`flex items-center justify-between ${spacing.bottom.sm}`}>
               <span className="text-sm text-blue-700 dark:text-blue-300">
                 {retryCount > 0 ? `Tentativo ${retryCount + 1}/${maxRetries}` : 'Caricamento file...'}
               </span>
@@ -853,7 +855,7 @@ export default function ActivityUploadForm({ userId, athletes }: ActivityUploadF
           
           {/* NUOVO: Warning per data modificata manualmente */}
           {dateModified && fitFileDate && (
-            <div className="mt-2 p-3 bg-amber-50/50 dark:bg-amber-900/10 border-l-4 border-amber-400 rounded-r-lg">
+            <div className={`mt-2 ${spacing.all.sm} bg-amber-50/50 dark:bg-amber-900/10 border-l-4 border-amber-400 rounded-r-xl`}>
               <div className="flex items-center justify-between">
                 <div className="flex items-center">
                   <svg className="h-4 w-4 text-amber-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
@@ -888,7 +890,7 @@ export default function ActivityUploadForm({ userId, athletes }: ActivityUploadF
           
           {/* NUOVO: Warning FTP retroattivo */}
           {isCheckingFTP && (
-            <div className="mt-2 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+            <div className={`mt-2 ${spacing.all.sm} bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl`}>
               <div className="flex items-center">
                 <svg className="animate-spin h-4 w-4 text-blue-600 mr-2" fill="none" viewBox="0 0 24 24">
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
@@ -900,8 +902,8 @@ export default function ActivityUploadForm({ userId, athletes }: ActivityUploadF
           )}
           
           {athleteDataWarning?.show && (
-            <div className="mt-3 p-4 bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 border border-amber-200 dark:border-amber-800 rounded-xl shadow-sm">
-              <div className="flex items-start justify-between mb-3">
+            <div className="mt-3 p-4 bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 border border-amber-200 dark:border-amber-800 rounded-2xl shadow-sm">
+              <div className={`flex items-start justify-between ${spacing.bottom.sm}`}>
                 <div className="flex items-center">
                   <div className="w-8 h-8 bg-amber-100 dark:bg-amber-800 rounded-full flex items-center justify-center mr-3">
                     <svg className="w-4 h-4 text-amber-600 dark:text-amber-400" fill="currentColor" viewBox="0 0 20 20">
@@ -955,8 +957,8 @@ export default function ActivityUploadForm({ userId, athletes }: ActivityUploadF
 
               {/* Dati disponibili da altre date */}
               {(athleteDataWarning.closestFTP || athleteDataWarning.closestWeight) && (
-                <div className="bg-white/60 dark:bg-gray-800/60 p-3 rounded-lg border border-amber-200/50 dark:border-amber-700/50 mb-4">
-                  <div className="text-xs font-medium text-amber-800 dark:text-amber-200 mb-2">
+                <div className="bg-white/60 dark:bg-gray-800/60 p-3 rounded-xl border border-amber-200/50 dark:border-amber-700/50 mb-4">
+                  <div className={`text-xs font-medium text-amber-800 dark:text-amber-200 ${spacing.bottom.sm}`}>
                     📊 Dati disponibili da altre date:
                   </div>
                   <div className="space-y-2">
@@ -974,7 +976,7 @@ export default function ActivityUploadForm({ userId, athletes }: ActivityUploadF
                         <button
                           type="button"
                           onClick={() => applyClosestFTP(athleteDataWarning.closestFTP!.value, athleteDataWarning.closestFTP!.date)}
-                          className="px-3 py-1 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md transition-colors"
+                          className="px-3 py-1 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
                         >
                           Applica
                         </button>
@@ -994,7 +996,7 @@ export default function ActivityUploadForm({ userId, athletes }: ActivityUploadF
                         <button
                           type="button"
                           onClick={() => applyClosestWeight(athleteDataWarning.closestWeight!.value, athleteDataWarning.closestWeight!.date)}
-                          className="px-3 py-1 text-xs font-medium text-white bg-green-600 hover:bg-green-700 rounded-md transition-colors"
+                          className="px-3 py-1 text-xs font-medium text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors"
                         >
                           Applica
                         </button>
@@ -1018,7 +1020,7 @@ export default function ActivityUploadForm({ userId, athletes }: ActivityUploadF
                     Inserisci Manualmente
                   </button>
                 ) : (
-                  <div className="w-full bg-white/70 dark:bg-gray-800/70 p-3 rounded-lg border border-amber-200 dark:border-amber-700">
+                  <div className="w-full bg-white/70 dark:bg-gray-800/70 p-3 rounded-xl border border-amber-200 dark:border-amber-700">
                     <div className="text-xs font-medium text-amber-800 dark:text-amber-200 mb-3">
                       ✏️ Inserisci dati per {athleteDataWarning.activityDate}:
                     </div>

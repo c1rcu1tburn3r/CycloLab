@@ -1,38 +1,53 @@
 // src/components/LogoutButtonClient.tsx
 'use client';
 
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-// Importa createBrowserClient da @supabase/ssr
-import { createBrowserClient } from '@supabase/ssr';
+import { Button } from '@/components/design-system';
 
-export default function LogoutButtonClient() {
+interface LogoutButtonClientProps {
+  children: React.ReactNode;
+}
+
+export default function LogoutButtonClient({ children }: LogoutButtonClientProps) {
   const router = useRouter();
-
-  // Inizializza il client Supabase per il browser usando createBrowserClient
-  // Assicurati che le tue variabili d'ambiente siano accessibili qui
-  // (NEXT_PUBLIC_SUPABASE_URL e NEXT_PUBLIC_SUPABASE_ANON_KEY)
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleLogout = async () => {
-    const { error } = await supabase.auth.signOut();
-    if (error) {
-      console.error('Error logging out:', error.message);
-      // Potresti voler gestire l'errore in modo più visibile per l'utente
-    } else {
-      router.push('/auth/login'); // Reindirizza alla pagina di login
-      router.refresh(); // Assicura che lo stato del server sia aggiornato e il layout ricarichi lo stato utente
+    setIsLoading(true);
+    try {
+      const response = await fetch('/api/auth/logout', {
+        method: 'POST',
+        credentials: 'include',
+      });
+      
+      if (response.ok) {
+        // Rimuovi eventuali dati locali
+        localStorage.clear();
+        sessionStorage.clear();
+        
+        // Redirect alla home
+        router.push('/');
+        router.refresh();
+      } else {
+        console.error('Errore durante il logout');
+      }
+    } catch (error) {
+      console.error('Errore durante il logout:', error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
   return (
-    <button
+    <Button
+      variant="danger"
+      size="sm"
       onClick={handleLogout}
-      className="bg-red-500 hover:bg-red-600 text-white text-sm font-medium py-2 px-3 rounded-md transition-colors"
+      disabled={isLoading}
+      className="text-sm font-medium"
     >
-      Logout
-    </button>
+      {isLoading ? 'Disconnessione...' : children}
+    </Button>
   );
 }

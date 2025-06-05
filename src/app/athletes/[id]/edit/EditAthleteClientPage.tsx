@@ -39,6 +39,9 @@ import { analyzeHRFromActivities, type HRZoneEstimationResult } from '@/lib/hrZo
 
 // Importa il dashboard analytics
 import PerformanceAnalyticsDashboard from '@/components/analytics/PerformanceAnalyticsDashboard';
+import { useConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { useCycloLabToast } from '@/hooks/use-cyclolab-toast';
+import { Trash2 } from 'lucide-react';
 
 interface EditAthleteClientPageProps {
   initialAthlete: Athlete;
@@ -69,6 +72,10 @@ export default function EditAthleteClientPage({
 
   // Stato per il form nuova misurazione
   const [showNewEntryForm, setShowNewEntryForm] = useState(false);
+  const [deletingEntryId, setDeletingEntryId] = useState<string | null>(null);
+
+  const { showSuccess, showError } = useCycloLabToast();
+  const { showConfirm, ConfirmDialog } = useConfirmDialog();
 
   // EFFETTO PER IDRATAZIONE SICURA
   useEffect(() => {
@@ -301,40 +308,36 @@ export default function EditAthleteClientPage({
 
   // Aggiungo la funzione per gestire l'eliminazione della voce profilo
   const handleDeleteProfileEntry = async (entryId: string, effectiveDate: string) => {
-    if (!confirm(`Sei sicuro di voler eliminare la voce del ${format(new Date(effectiveDate), 'dd/MM/yyyy')}?`)) {
-      return; // Utente ha annullato
-    }
+    showConfirm({
+      title: 'Elimina Voce Profilo',
+      description: `Sei sicuro di voler eliminare la voce del ${format(new Date(effectiveDate), 'dd/MM/yyyy')}? Questa azione non può essere annullata.`,
+      confirmText: 'Elimina Voce',
+      cancelText: 'Annulla',
+      variant: 'destructive',
+      icon: <Trash2 className="w-6 h-6" />,
+      onConfirm: async () => {
+        setDeletingEntryId(entryId);
 
-    setFeedbackMessage(null); // Resetta messaggi precedenti
-    startTransitionGlobal(async () => {
-      const result = await deleteAthleteProfileEntry(athleteId, entryId);
-      
-      if (result.success) {
-        // Aggiorniamo i dati locali senza fare un'altra richiesta
-        setProfileEntriesData(prev => prev.filter(entry => entry.id !== entryId));
-        
-        // Aggiorniamo comunque i dati completi per assicurarci che tutto sia sincronizzato
-        const refreshedAthlete = await getAthleteDataForClient(athleteId);
-        const refreshedEntries = await getAthleteProfileEntriesDataForClient(athleteId);
+        try {
+          const response = await fetch(`/api/athletes/${athleteId}/profile-entries/${entryId}`, {
+            method: 'DELETE',
+          });
 
-        if (refreshedAthlete) {
-          setAthleteData(refreshedAthlete);
+          if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Errore durante l\'eliminazione');
+          }
+
+          showSuccess('Voce eliminata', 'La voce del profilo è stata eliminata con successo');
+          
+          // Rimuovi dall'array locale
+          setProfileEntriesData(prev => prev.filter(entry => entry.id !== entryId));
+        } catch (error: any) {
+          console.error('Errore eliminazione voce:', error);
+          showError('Errore', error.message || 'Si è verificato un errore durante l\'eliminazione');
+        } finally {
+          setDeletingEntryId(null);
         }
-        setProfileEntriesData(refreshedEntries);
-        setFeedbackMessage({ 
-          type: 'success', 
-          text: 'Voce eliminata con successo' 
-        });
-
-        // Nascondi il messaggio dopo 3 secondi
-        setTimeout(() => {
-          setFeedbackMessage(null);
-        }, 3000);
-      } else {
-        setFeedbackMessage({ 
-          type: 'error', 
-          text: result.error || 'Errore durante l\'eliminazione' 
-        });
       }
     });
   };
@@ -1951,6 +1954,7 @@ export default function EditAthleteClientPage({
           </Tabs>
         </div>
       </div>
+      <ConfirmDialog />
     </div>
   );
 } 

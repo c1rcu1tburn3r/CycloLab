@@ -210,12 +210,12 @@ const AthletePerformanceChart: React.FC<AthletePerformanceChartProps> = ({ profi
   };
 
   return (
-    <div className={`mt-6 bg-white dark:bg-gray-800 p-4 md:p-6 rounded-lg shadow border border-slate-200 dark:border-gray-600 ${spacing.all.md}`}>
+    <div className={`${spacing.top.lg} bg-white dark:bg-gray-800 p-4 md:p-6 rounded-xl shadow border border-slate-200 dark:border-gray-600 ${spacing.all.md}`}>
       <div className={`text-center ${spacing.all.lg} ${spacing.all.lg}`}>
         <h3 className={`text-lg font-medium text-gray-900 dark:text-white ${spacing.bottom.md}`}>Andamento Peso, FTP & W/kg</h3>
       </div>
       
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mb-4 p-2 bg-slate-50 dark:bg-gray-700 rounded-md border border-slate-200 dark:border-gray-600">
+      <div className={`flex flex-wrap items-center gap-x-4 gap-y-2 ${spacing.bottom.md} p-2 bg-slate-50 dark:bg-gray-700 rounded-xl border border-slate-200 dark:border-gray-600`}>
         <div className="flex items-center space-x-2">
           <Checkbox
             id="toggle-peso"

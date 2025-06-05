@@ -206,8 +206,6 @@ export default async function ActivityDetailPage({ params }: ActivityDetailPageP
                   </Link>
                   <DeleteActivityButton 
                     activityId={activity.id} 
-                    activityTitle={activity.title} 
-                    fitFilePath={fitFilePathForDelete} 
                   />
                 </div>
               </div>
