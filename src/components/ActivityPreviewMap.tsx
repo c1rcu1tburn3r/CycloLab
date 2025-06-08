@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useMemo, useRef } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import type { Activity, RoutePoint } from '@/lib/types';
 import L from 'leaflet';
@@ -49,19 +49,9 @@ const ActivityPreviewMap: React.FC<ActivityPreviewMapProps> = ({
   const [mapError, setMapError] = useState<string | null>(null);
   const [tileLoadError, setTileLoadError] = useState<boolean>(false);
   
-  // Refs per cleanup
-  const mapRef = useRef<L.Map | null>(null);
-
-  // Cleanup function
+  // Cleanup function - non più necessaria con i componenti dinamici
   const cleanup = () => {
-    if (mapRef.current) {
-      try {
-        mapRef.current.remove();
-      } catch (error) {
-        console.warn('Errore durante la rimozione della mappa preview:', error);
-      }
-      mapRef.current = null;
-    }
+    // I componenti dinamici di Leaflet gestiscono automaticamente il cleanup
   };
 
   useEffect(() => {
@@ -177,7 +167,7 @@ const ActivityPreviewMap: React.FC<ActivityPreviewMapProps> = ({
       className="rounded-xl overflow-hidden border border-gray-200/50 dark:border-gray-700/50"
       style={{ height }}
     >
-      <MapContainer 
+              <MapContainer 
         center={[mapCenter.lat, mapCenter.lng]} 
         zoom={zoomLevel} 
         style={{ height: '100%', width: '100%' }}
@@ -188,7 +178,6 @@ const ActivityPreviewMap: React.FC<ActivityPreviewMapProps> = ({
         touchZoom={false}
         keyboard={false}
         attributionControl={false}
-        ref={mapRef}
       >
         <TileLayer
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"

@@ -8,6 +8,7 @@ import type { ActivityInsert, RoutePoint } from '@/lib/types';
 import FitParser from 'fit-file-parser';
 import type { SupabaseClient } from '@supabase/supabase-js'; // Aggiunto per tipizzare il client
 import { calculatePowerBests, PowerBests } from '../../lib/fitnessCalculations'; 
+import { estimateFTPFromAllActivities, shouldSuggestFTPUpdateFromHistorical } from '@/lib/ftpEstimation';
 
 // Tipo per i dati del form che ci aspettiamo dal client
 interface ActivityFormData {
@@ -777,6 +778,12 @@ export async function processAndCreateActivity(
       finalMessage += ` ${ftpWarningMessage}`;
     }
 
+    // Controlla se dopo il caricamento di una nuova attività è necessario suggerire un aggiornamento FTP
+    const ftpSuggestion = await checkForHistoricalFTPSuggestion(supabase, formData.athlete_id, newActivity);
+    if (ftpSuggestion) {
+      finalMessage += `\n${ftpSuggestion}`;
+    }
+
     return { 
       success: true, 
       activityId: newActivity.id, 
@@ -947,4 +954,78 @@ function calculateNormalizedPower(powerReadings: (number | undefined | null)[]):
   const averageOfFourthPowerValues = fourthPowerValues.reduce((acc, p) => acc + p, 0) / fourthPowerValues.length;
   
   return Math.pow(averageOfFourthPowerValues, 0.25);
+}
+
+/**
+ * Controlla se dopo il caricamento di una nuova attività è necessario suggerire un aggiornamento FTP
+ * Analizza tutte le attività storiche dell'atleta per rilevare discrepanze
+ */
+async function checkForHistoricalFTPSuggestion(
+  supabase: any,
+  athleteId: string,
+  newActivity: any
+): Promise<string | null> {
+  try {
+    console.log(`[checkForHistoricalFTPSuggestion] Inizio controllo FTP per atleta ${athleteId} dopo caricamento attività ${newActivity.id}`);
+
+    // 1. Recupera l'atleta e il suo FTP attuale
+    const { data: athlete, error: athleteError } = await supabase
+      .from('athletes')
+      .select('id, name, current_ftp, weight_kg')
+      .eq('id', athleteId)
+      .single();
+
+    if (athleteError || !athlete) {
+      console.warn('[checkForHistoricalFTPSuggestion] Atleta non trovato:', athleteError?.message);
+      return null;
+    }
+
+    // 2. Se l'attività appena caricata non ha dati di potenza, non fare controlli
+    if (!newActivity.avg_power_watts || newActivity.avg_power_watts <= 0) {
+      console.log('[checkForHistoricalFTPSuggestion] Attività senza dati di potenza, skip controllo FTP');
+      return null;
+    }
+
+    // 3. Recupera TUTTE le attività dell'atleta (incluse quelle storiche)
+    const { data: allActivities, error: activitiesError } = await supabase
+      .from('activities')
+      .select('*')
+      .eq('athlete_id', athleteId)
+      .order('activity_date', { ascending: false });
+
+    if (activitiesError || !allActivities || allActivities.length === 0) {
+      console.warn('[checkForHistoricalFTPSuggestion] Nessuna attività trovata:', activitiesError?.message);
+      return null;
+    }
+
+    console.log(`[checkForHistoricalFTPSuggestion] Analizzando ${allActivities.length} attività totali per stima FTP`);
+
+    // 4. Esegui stima FTP su TUTTE le attività (non solo recenti)
+    const ftpEstimation = estimateFTPFromAllActivities(allActivities, athlete.current_ftp);
+
+    if (!ftpEstimation) {
+      console.log('[checkForHistoricalFTPSuggestion] Nessuna stima FTP possibile dalle attività');
+      return null;
+    }
+
+    console.log(`[checkForHistoricalFTPSuggestion] FTP stimato: ${ftpEstimation.estimatedFTP}W (metodo: ${ftpEstimation.method}, affidabilità: ${ftpEstimation.confidence})`);
+
+    // 5. Controlla se dovremmo suggerire un aggiornamento
+    const suggestion = shouldSuggestFTPUpdateFromHistorical(ftpEstimation, athlete.current_ftp);
+
+    if (suggestion.shouldUpdate) {
+      console.log(`[checkForHistoricalFTPSuggestion] ✅ Suggerimento FTP necessario: ${suggestion.message}`);
+      
+      // 6. Qui potresti salvare il suggerimento nel database per mostrarlo nel UI
+      // Per ora lo loggiamo e lo restituiamo
+      return suggestion.message;
+    } else {
+      console.log(`[checkForHistoricalFTPSuggestion] ℹ️ FTP coerente: ${suggestion.message}`);
+      return null;
+    }
+
+  } catch (error: any) {
+    console.error('[checkForHistoricalFTPSuggestion] Errore durante il controllo FTP:', error.message);
+    return null;
+  }
 } 

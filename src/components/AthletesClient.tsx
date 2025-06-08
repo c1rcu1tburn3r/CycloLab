@@ -83,9 +83,8 @@ export default function AthletesClient({ userId, initialAthletes = [] }: Athlete
     <>
       {/* Header con indicatore di caricamento */}
       <div className={spacing.bottom.xl}>
-        <div className={`relative overflow-hidden rounded-3xl bg-white/70 dark:bg-gray-800/70 backdrop-blur-xl border border-gray-200/50 dark:border-gray-700/50 ${spacing.all.xl} shadow-2xl`}>
-          {/* Gradient Accent */}
-          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 via-purple-500 to-emerald-500 rounded-t-3xl" />
+        <div className={`relative overflow-hidden rounded-3xl bg-white/70 dark:bg-gray-800/70 backdrop-blur-xl border border-gray-200/50 dark:border-gray-700/50 border-t-2 border-t-blue-500 dark:border-t-blue-400 ${spacing.all.xl} shadow-2xl`}>
+
           
           {/* Indicatore di caricamento */}
           {isLoading && (
@@ -122,11 +121,6 @@ export default function AthletesClient({ userId, initialAthletes = [] }: Athlete
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h4a1 1 0 011 1v5m-6 0V9a1 1 0 011-1h4a1 1 0 011 1v11" />
                   </svg>
                   Schede Atleti
-                  {isStale && (
-                    <span className="text-xs bg-orange-100 dark:bg-orange-900 text-orange-600 dark:text-orange-400 px-2 py-1 rounded-full">
-                      Cache
-                    </span>
-                  )}
                 </p>
               </div>
             </div>
@@ -134,7 +128,7 @@ export default function AthletesClient({ userId, initialAthletes = [] }: Athlete
             {/* Actions */}
             <div className="flex items-center gap-4">
               <Link href="/athletes/add">
-                <Button className="bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white font-semibold px-6 py-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105">
+                <Button className="bg-gradient-to-r from-emerald-500 to-blue-600 hover:from-emerald-600 hover:to-blue-700 text-white font-semibold px-6 py-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105">
                   <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                   </svg>
@@ -201,17 +195,17 @@ export default function AthletesClient({ userId, initialAthletes = [] }: Athlete
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
             </svg>
             <h3 className={`text-xl font-semibold text-gray-900 dark:text-white ${spacing.bottom.md}`}>
-              {isLoading ? 'Caricamento atleti...' : 'Nessun atleta ancora'}
+              {isLoading ? 'Caricamento atleti...' : 'Nessun atleta presente'}
             </h3>
             <p className={`text-gray-600 dark:text-gray-300 ${spacing.bottom.xl} max-w-md mx-auto`}>
               {isLoading 
                 ? 'Stiamo caricando i tuoi atleti...'
-                : 'Inizia aggiungendo il tuo primo atleta per gestire le performance e monitorare i progressi.'
+                : 'Inserisci qui i tuoi atleti. Potrai analizzarne le performances, valutarne i progressi e condurli al successo!'
               }
             </p>
             {!isLoading && (
               <Link href="/athletes/add">
-                <Button className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-semibold px-8 py-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105">
+                <Button className="bg-gradient-to-r from-emerald-500 to-blue-600 hover:from-emerald-600 hover:to-blue-700 text-white font-semibold px-6 py-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105">
                   <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                   </svg>

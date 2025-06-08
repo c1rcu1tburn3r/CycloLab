@@ -12,6 +12,7 @@ import type { Athlete } from '@/lib/types'; // Importa l'interfaccia Athlete dal
 // Importa i componenti Shadcn/ui
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
 import { 
   Select, 
   SelectContent, 
@@ -24,6 +25,7 @@ import { useCycloLabToast } from "@/hooks/use-cyclolab-toast";
 import { Card, MetricCard, getGridClasses, spacing } from '@/components/design-system';
 import { useConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { UserX } from 'lucide-react';
+import { useCycloLabCacheInvalidation } from '@/hooks/use-cyclolab-cache';
 
 // Validazione range FTP realistici per tutti i livelli
 const FTP_VALIDATION_RANGES = {
@@ -52,6 +54,7 @@ export default function AthleteForm({ initialData, onFormSubmitSuccess, mode = '
   const router = useRouter();
   const { showAthleteAdded, showAthleteUpdated, showError, showSuccess } = useCycloLabToast();
   const { showConfirm, ConfirmDialog } = useConfirmDialog();
+  const { invalidateOnAthleteChange } = useCycloLabCacheInvalidation();
   // Inizializza il client Supabase per il browser
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -443,9 +446,25 @@ export default function AthleteForm({ initialData, onFormSubmitSuccess, mode = '
       if (initialData?.id) {
         setSuccessMessage('Atleta aggiornato con successo!');
         showAthleteUpdated(athleteName);
+        // Invalida cache per aggiornamento atleta
+        if (currentUser?.id) {
+          invalidateOnAthleteChange(currentUser.id);
+        }
       } else {
         setSuccessMessage('Atleta creato e associato automaticamente al tuo account coach!');
         showAthleteAdded(athleteName);
+        // Invalida cache per nuovo atleta
+        if (currentUser?.id) {
+          invalidateOnAthleteChange(currentUser.id);
+        }
+      }
+      
+      // Revalida anche la cache Next.js
+      try {
+        await fetch('/api/revalidate/athletes', { method: 'POST' });
+      } catch (error) {
+        console.warn('Errore revalidazione cache Next.js:', error);
+        // Non blocchiamo il flusso per questo errore
       }
       
       if (onFormSubmitSuccess) {
@@ -831,10 +850,10 @@ export default function AthleteForm({ initialData, onFormSubmitSuccess, mode = '
         </div>
 
         <div className="mt-8">
-          <button
+          <Button
             type="submit"
             disabled={isLoading}
-            className="w-full text-white font-semibold px-6 py-3 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 bg-gradient-to-r from-emerald-500 to-blue-600 hover:from-emerald-600 hover:to-blue-700 disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:scale-100"
+            className="w-full text-white font-semibold px-6 py-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 bg-gradient-to-r from-emerald-500 to-blue-600 hover:from-emerald-600 hover:to-blue-700 disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:scale-100 border-0"
           >
             {isLoading ? (
               <span className="flex items-center justify-center">
@@ -842,7 +861,7 @@ export default function AthleteForm({ initialData, onFormSubmitSuccess, mode = '
                 {mode === 'registration' ? 'Registrazione in corso...' : 'Salvataggio...'}
               </span>
             ) : (initialData?.id ? 'Aggiorna Atleta' : mode === 'registration' ? 'Completa Registrazione' : 'Aggiungi Atleta')}
-          </button>
+          </Button>
         </div>
       </form>
     </>

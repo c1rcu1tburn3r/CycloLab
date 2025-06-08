@@ -169,9 +169,7 @@ export default async function ActivityDetailPage({ params }: ActivityDetailPageP
       <div className="relative">
         {/* Ultra-Modern Header */}
         <div className="mb-8">
-            <div className="relative overflow-hidden rounded-3xl bg-white/70 dark:bg-gray-800/70 backdrop-blur-xl border border-gray-200/50 dark:border-gray-700/50 p-8 shadow-2xl">
-              {/* Gradient Accent */}
-              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 via-purple-500 to-emerald-500 rounded-t-3xl" />
+            <div className="relative overflow-hidden rounded-3xl bg-white/70 dark:bg-gray-800/70 backdrop-blur-xl border border-gray-200/50 dark:border-gray-700/50 border-t-2 border-t-blue-500 dark:border-t-blue-400 p-8 shadow-2xl">
               
               <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
                 <div className="flex items-center gap-6">
@@ -205,7 +203,7 @@ export default async function ActivityDetailPage({ params }: ActivityDetailPageP
                     Tutte le Attività
                   </Link>
                   <DeleteActivityButton 
-                    activityId={activity.id} 
+                    activityId={activity.id}
                   />
                 </div>
               </div>
@@ -406,7 +404,7 @@ export default async function ActivityDetailPage({ params }: ActivityDetailPageP
               <a 
                 href={updatedFileUrl} 
                 download={activity.fit_file_name || 'activity.fit'} 
-                className="group flex items-center justify-center w-full px-4 py-3 text-sm font-semibold text-white bg-gradient-to-r from-purple-500 to-blue-600 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
+                className="group flex items-center justify-center w-full px-6 py-3 text-sm font-semibold text-white bg-gradient-to-r from-emerald-500 to-blue-600 hover:from-emerald-600 hover:to-blue-700 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4 mr-2">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />

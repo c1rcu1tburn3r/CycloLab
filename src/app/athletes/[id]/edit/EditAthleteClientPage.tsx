@@ -77,11 +77,6 @@ export default function EditAthleteClientPage({
   const { showSuccess, showError } = useCycloLabToast();
   const { showConfirm, ConfirmDialog } = useConfirmDialog();
 
-  // EFFETTO PER IDRATAZIONE SICURA
-  useEffect(() => {
-    setIsHydrated(true);
-  }, []);
-
   // Estrai i dati più recenti per il cruscotto
   const latestEntry = profileEntriesData.length > 0 ? profileEntriesData[0] : null;
   let currentWeight: number | null = null;
@@ -95,6 +90,23 @@ export default function EditAthleteClientPage({
       currentWPerKg = parseFloat((currentFtp / currentWeight).toFixed(2));
     }
   }
+
+  // EFFETTO PER IDRATAZIONE SICURA
+  useEffect(() => {
+    setIsHydrated(true);
+  }, []);
+
+  // EFFETTO PER CONTROLLO FTP RETROATTIVO
+  useEffect(() => {
+    if (isHydrated && activitiesData && activitiesData.length >= 2) {
+      // Esegui il controllo FTP dopo un breve delay per non bloccare il rendering
+      const timer = setTimeout(() => {
+        checkHistoricalFTPSuggestion();
+      }, 1000);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [isHydrated, activitiesData, currentFtp]);
 
   // STATI PER CALCOLI PROFESSIONALI
   const [ftpEstimation, setFtpEstimation] = useState<FTPEstimationResult | null>(null);
@@ -136,6 +148,50 @@ export default function EditAthleteClientPage({
       power60min: null,
     }
   });
+
+  // NUOVO: Stato per suggerimenti FTP retroattivi
+  const [ftpSuggestion, setFtpSuggestion] = useState<{
+    shouldUpdate: boolean;
+    message: string;
+    estimatedFTP: number;
+  } | null>(null);
+
+  // Funzione per controllare FTP retroattivo dalle attività storiche
+  const checkHistoricalFTPSuggestion = async () => {
+    try {
+      if (!activitiesData || activitiesData.length < 2) {
+        return; // Servono almeno 2 attività per una stima significativa
+      }
+
+      // Importa dinamicamente le funzioni di stima
+      const { estimateFTPFromAllActivities, shouldSuggestFTPUpdateFromHistorical } = await import('@/lib/ftpEstimation');
+      
+      // Esegui stima FTP su tutte le attività
+      const estimation = estimateFTPFromAllActivities(activitiesData as any[], currentFtp);
+      
+      if (!estimation) {
+        console.log('[FTP Check] Nessuna stima FTP possibile dalle attività');
+        return;
+      }
+
+      // Controlla se suggerire aggiornamento
+      const suggestion = shouldSuggestFTPUpdateFromHistorical(estimation, currentFtp);
+      
+      if (suggestion.shouldUpdate) {
+        setFtpSuggestion({
+          shouldUpdate: true,
+          message: suggestion.message,
+          estimatedFTP: estimation.estimatedFTP
+        });
+        console.log('[FTP Check] Suggerimento FTP impostato:', suggestion.message);
+      } else {
+        setFtpSuggestion(null);
+        console.log('[FTP Check] FTP attuale coerente con le attività');
+      }
+    } catch (error: any) {
+      console.error('[FTP Check] Errore nel controllo FTP retroattivo:', error.message);
+    }
+  };
 
   // Funzione per calcolare metriche dalle attività
   const calculateProfessionalMetrics = (activities: Activity[]) => {
@@ -527,9 +583,7 @@ export default function EditAthleteClientPage({
         <div className="container mx-auto px-4 py-8">
           {/* Ultra-Modern Header */}
           <div className="mb-8">
-            <div className="relative overflow-hidden rounded-3xl bg-white/70 dark:bg-gray-800/70 backdrop-blur-xl border border-gray-200/50 dark:border-gray-700/50 p-8 shadow-2xl">
-              {/* Gradient Accent */}
-              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 via-purple-500 to-emerald-500 rounded-t-3xl" />
+            <div className="relative overflow-hidden rounded-3xl bg-white/70 dark:bg-gray-800/70 backdrop-blur-xl border border-gray-200/50 dark:border-gray-700/50 border-t-2 border-t-blue-500 dark:border-t-blue-400 p-8 shadow-2xl">
               
               <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
                 <div className="flex items-center gap-6">
@@ -634,7 +688,7 @@ export default function EditAthleteClientPage({
               )}
 
               {/* ALERT SYSTEM PROFESSIONALI */}
-              {(needsFTPUpdate || needsWeightUpdate || needsHRUpdate || (ftpEstimation && ftpEstimation.isReliable && shouldSuggestFTPUpdate(ftpEstimation, currentFtp))) && (
+              {(needsFTPUpdate || needsWeightUpdate || needsHRUpdate || ftpSuggestion || (ftpEstimation && ftpEstimation.isReliable && shouldSuggestFTPUpdate(ftpEstimation, currentFtp))) && (
                 <div className="mb-6 space-y-3">
                   
                   {/* Alert Zone HR Rilevate */}
@@ -708,6 +762,83 @@ export default function EditAthleteClientPage({
                     </div>
                   )}
 
+                  {/* Alert FTP Retroattivo - Nuovo suggerimento basato su attività storiche */}
+                  {ftpSuggestion && ftpSuggestion.shouldUpdate && (
+                    <div className="flex items-start gap-3 p-4 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg">
+                      <div className="w-5 h-5 rounded-full bg-orange-500 flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-orange-900 dark:text-orange-100">
+                          📈 FTP Suggerito dalle Attività Storiche: {ftpSuggestion.estimatedFTP}W
+                          {currentFtp && ` (attuale: ${currentFtp}W)`}
+                        </p>
+                        <p className="text-xs text-orange-700 dark:text-orange-300 mt-1 whitespace-pre-line">
+                          {ftpSuggestion.message}
+                        </p>
+                      </div>
+                      <div className="flex gap-2 flex-shrink-0">
+                        <button
+                          onClick={() => setFtpSuggestion(null)}
+                          className="text-xs px-2 py-1 text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200"
+                        >
+                          Ignora
+                        </button>
+                        <button
+                          onClick={async () => {
+                            if (!ftpSuggestion) return;
+                            
+                            try {
+                              const response = await fetch(`/api/athletes/${athleteId}/ftp`, {
+                                method: 'POST',
+                                headers: {
+                                  'Content-Type': 'application/json',
+                                },
+                                body: JSON.stringify({
+                                  ftp: ftpSuggestion.estimatedFTP,
+                                  weight: currentWeight
+                                }),
+                              });
+
+                              if (!response.ok) {
+                                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                              }
+
+                              const result = await response.json();
+                              
+                              if (result.success) {
+                                const refreshedEntries = await getAthleteProfileEntriesDataForClient(athleteId);
+                                setProfileEntriesData(refreshedEntries);
+                                setFtpSuggestion(null);
+                                setFeedbackMessage({ 
+                                  type: 'success', 
+                                  text: `✅ FTP aggiornato a ${ftpSuggestion.estimatedFTP}W basato su analisi storica` 
+                                });
+                                setTimeout(() => setFeedbackMessage(null), 4000);
+                              } else {
+                                setFeedbackMessage({ 
+                                  type: 'error', 
+                                  text: result.error || 'Errore durante l\'aggiornamento dell\'FTP' 
+                                });
+                              }
+                            } catch (error) {
+                              console.error('Errore aggiornamento FTP retroattivo:', error);
+                              setFeedbackMessage({ 
+                                type: 'error', 
+                                text: 'Errore durante l\'aggiornamento dell\'FTP' 
+                              });
+                            }
+                          }}
+                          className="text-xs px-3 py-1 bg-orange-600 text-white rounded hover:bg-orange-700"
+                        >
+                          Accetta FTP
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Alert FTP Rilevato */}
                   {ftpEstimation && ftpEstimation.isReliable && shouldSuggestFTPUpdate(ftpEstimation, currentFtp) && (
                     <div className="flex items-start gap-3 p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
@@ -739,19 +870,34 @@ export default function EditAthleteClientPage({
                             if (!ftpEstimation) return;
                             
                             try {
-                              const today = new Date().toISOString().split('T')[0];
-                              const result = await saveAthleteProfileEntry(athleteId, {
-                                effectiveDate: today,
-                                ftp: Math.round(ftpEstimation.estimatedFTP),
-                                weight: currentWeight
+                              const response = await fetch(`/api/athletes/${athleteId}/ftp`, {
+                                method: 'POST',
+                                headers: {
+                                  'Content-Type': 'application/json',
+                                },
+                                body: JSON.stringify({
+                                  ftp: Math.round(ftpEstimation.estimatedFTP),
+                                  weight: currentWeight
+                                }),
                               });
+
+                              if (!response.ok) {
+                                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                              }
+
+                              const result = await response.json();
                               
                               if (result.success) {
                                 // Refresh completo di tutti i dati
                                 const [refreshedEntries, refreshedActivities] = await Promise.all([
                                   getAthleteProfileEntriesDataForClient(athleteId),
                                   // Re-fetch delle attività per ricalcolare le zone HR
-                                  fetch(`/api/athletes/${athleteId}/activities`).then(res => res.json())
+                                  fetch(`/api/athletes/${athleteId}/activities`).then(res => {
+                                    if (!res.ok) {
+                                      throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+                                    }
+                                    return res.json();
+                                  })
                                 ]);
                                 
                                 setProfileEntriesData(refreshedEntries);
@@ -1536,7 +1682,7 @@ export default function EditAthleteClientPage({
                         <Button
                           onClick={() => setShowNewEntryForm(!showNewEntryForm)}
                           size="sm"
-                          className="bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-white font-semibold px-4 py-2 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 border-0"
+                          className="bg-gradient-to-r from-emerald-500 to-blue-600 hover:from-emerald-600 hover:to-blue-700 text-white font-semibold px-4 py-2 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 border-0"
                           disabled={isPendingGlobal}
                         >
                           <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1947,8 +2093,16 @@ export default function EditAthleteClientPage({
 
             <TabsContent value="attivita" className="space-y-6">
               <AthleteActivitiesTab 
-                activities={initialActivities} 
+                activities={activitiesData} 
                 athleteName={`${initialAthlete.name} ${initialAthlete.surname}`}
+                onActivityDeleted={(activityId) => {
+                  // Aggiorna la lista delle attività rimuovendo quella eliminata
+                  setActivitiesData(prev => prev.filter(activity => activity.id !== activityId));
+                  // Ricalcola le metriche professionali
+                  const updatedActivities = activitiesData.filter(activity => activity.id !== activityId);
+                  const newMetrics = calculateProfessionalMetrics(updatedActivities);
+                  setProfessionalMetrics(newMetrics);
+                }}
               />
             </TabsContent>
           </Tabs>

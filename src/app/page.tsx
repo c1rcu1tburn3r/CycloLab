@@ -110,10 +110,10 @@ export default async function HomePage() {
 
             {/* Hero Visual */}
             <div className="relative animate-fade-in">
-              <div className="relative">
+              <div className="relative perspective-1000">
                 {/* Main Dashboard Mockup */}
-                <Card variant="glass" className="transform rotate-3 hover:rotate-0 transition-transform duration-500">
-                  <div className="space-y-6">
+                <Card variant="glass" className="transform-gpu hover:scale-105 hover:-translate-y-2 hover:shadow-2xl transition-all duration-700 ease-out group">
+                  <div className="space-y-6 transform-gpu group-hover:rotateY-5 transition-transform duration-700">
                     {/* Header */}
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-3">
@@ -162,15 +162,15 @@ export default async function HomePage() {
                   </div>
                 </Card>
 
-                {/* Floating Elements */}
-                <div className="absolute -top-6 -right-6 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-2xl p-4 shadow-lg animate-bounce">
-                  <svg className="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                {/* Floating Elements with 3D Effects */}
+                <div className="absolute -top-6 -right-6 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-2xl p-4 shadow-lg transform-gpu hover:scale-110 hover:-translate-y-1 hover:shadow-xl transition-all duration-500 ease-out">
+                  <svg className="h-8 w-8 text-white transform-gpu group-hover:rotate-12 transition-transform duration-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                   </svg>
                 </div>
                 
-                <div className="absolute -bottom-4 -left-4 bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl p-3 shadow-lg animate-pulse">
-                  <svg className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <div className="absolute -bottom-4 -left-4 bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl p-3 shadow-lg transform-gpu hover:scale-110 hover:-translate-y-1 hover:shadow-xl transition-all duration-500 ease-out">
+                  <svg className="h-6 w-6 text-white transform-gpu group-hover:-rotate-12 transition-transform duration-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                   </svg>
                 </div>

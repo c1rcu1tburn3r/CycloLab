@@ -16,8 +16,7 @@ export default function AthletesLoading() {
         <div className="container mx-auto px-4 py-8">
           {/* Ultra-Modern Header (Skeleton or Simplified) */}
           <div className="mb-8">
-            <div className="relative overflow-hidden rounded-3xl bg-white/70 dark:bg-gray-800/70 backdrop-blur-xl border border-gray-200/50 dark:border-gray-700/50 p-8 shadow-2xl">
-              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 via-purple-500 to-emerald-500 rounded-t-3xl" />
+            <div className="relative overflow-hidden rounded-3xl bg-white/70 dark:bg-gray-800/70 backdrop-blur-xl border border-gray-200/50 dark:border-gray-700/50 border-t-2 border-t-blue-500 dark:border-t-blue-400 p-8 shadow-2xl">
               <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
                 <div className="flex items-center gap-6">
                   <div className="w-20 h-20 rounded-2xl bg-gray-300 dark:bg-gray-700 animate-pulse"></div>
@@ -32,7 +31,7 @@ export default function AthletesLoading() {
                     <div className="h-7 bg-gray-300 dark:bg-gray-700 rounded-md w-10 animate-pulse"></div>
                   </div>
                   {/* Skeleton for Add Athlete Button or keep the actual button if it doesn't depend on loaded data */}
-                  <Button className="bg-gradient-to-r from-emerald-500 to-emerald-600 text-white font-semibold px-6 py-3 rounded-xl shadow-lg opacity-50 cursor-not-allowed">
+                  <Button className="bg-gradient-to-r from-emerald-500 to-blue-600 text-white font-semibold px-6 py-3 rounded-xl shadow-lg opacity-50 cursor-not-allowed">
                     <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                     </svg>

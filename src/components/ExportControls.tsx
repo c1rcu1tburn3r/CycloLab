@@ -188,7 +188,7 @@ export default function ExportControls({
         <Button 
           onClick={handleExport}
           disabled={isExporting || activities.length === 0 || isFormatDisabled(selectedFormat)}
-          className="w-full bg-gradient-to-r from-blue-500 to-purple-700 text-white font-semibold py-3 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+          className="w-full bg-gradient-to-r from-emerald-500 to-blue-600 hover:from-emerald-600 hover:to-blue-700 text-white font-semibold py-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
         >
           {isExporting ? (
             <>

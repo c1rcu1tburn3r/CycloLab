@@ -62,6 +62,13 @@ export default function TrainingLoadTab({ athleteId, athlete }: TrainingLoadTabP
   // Nuovi stati per la strategia adattiva
   const [adaptiveMessage, setAdaptiveMessage] = useState<string | null>(null);
   const [totalActivitiesFound, setTotalActivitiesFound] = useState<number>(0);
+  
+  // Nuovo stato per FTP estimation
+  const [ftpEstimation, setFtpEstimation] = useState<any>(null);
+
+  // FTP effettivo: usa FTP atleta se disponibile, altrimenti FTP stimato, altrimenti fallback
+  const effectiveFTP = athlete.current_ftp || ftpEstimation?.estimatedFTP || 250;
+  const isUsingEstimatedFTP = !athlete.current_ftp && ftpEstimation?.estimatedFTP;
 
   useEffect(() => {
     const loadPMCData = async () => {
@@ -216,7 +223,7 @@ export default function TrainingLoadTab({ athleteId, athlete }: TrainingLoadTabP
         }
 
         // Stima distribuzione zone basata su pattern tipici di allenamento
-        const ftpWatts = athlete.current_ftp || 250;
+        const ftpWatts = athlete.current_ftp || ftpEstimation?.estimatedFTP || 250;
         
         // Calcola intensità media (TSS medio per attività)
         const avgTSSPerActivity = totalTSS / totalActivities;

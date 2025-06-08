@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useMemo, useRef } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import { Activity, RoutePoint } from '@/lib/types';
 import { spacing } from '@/lib/design-system';
@@ -116,71 +116,18 @@ const ActivityMap: React.FC<ActivityMapProps> = ({ activity, routePoints, highli
   const [isSlowConnection, setIsSlowConnection] = useState<boolean>(false);
   
   // Refs per cleanup
-  const mapRef = useRef<L.Map | null>(null);
-  const tileLayerRef = useRef<L.TileLayer | null>(null);
-  const eventListenersRef = useRef<Array<() => void>>([]);
+  // Refs rimossi per evitare warning con componenti dinamici
 
   // Stato per la selezione del segmento
   const [selectionStartIdx, setSelectionStartIdx] = useState<number | null>(null);
   const [selectionEndIdx, setSelectionEndIdx] = useState<number | null>(null);
   const [selectingEndPoint, setSelectingEndPoint] = useState<boolean>(false);
 
-  // Ref per i marker di selezione
-  const startSelectionMarkerRef = useRef<L.Marker | null>(null);
-  const endSelectionMarkerRef = useRef<L.Marker | null>(null);
-
   const { showInfo } = useCycloLabToast();
 
-  // Cleanup function per rimuovere event listeners e layer
+  // Cleanup function semplificata per componenti dinamici
   const cleanup = () => {
-    // Rimuovi tutti gli event listeners registrati
-    eventListenersRef.current.forEach(removeListener => {
-      try {
-        removeListener();
-      } catch (error) {
-        console.warn('Errore durante la rimozione di event listener:', error);
-      }
-    });
-    eventListenersRef.current = [];
-
-    // Cleanup marker refs
-    if (startSelectionMarkerRef.current) {
-      try {
-        startSelectionMarkerRef.current.remove();
-      } catch (error) {
-        console.warn('Errore durante la rimozione del marker di inizio:', error);
-      }
-      startSelectionMarkerRef.current = null;
-    }
-
-    if (endSelectionMarkerRef.current) {
-      try {
-        endSelectionMarkerRef.current.remove();
-      } catch (error) {
-        console.warn('Errore durante la rimozione del marker di fine:', error);
-      }
-      endSelectionMarkerRef.current = null;
-    }
-
-    // Cleanup tile layer
-    if (tileLayerRef.current) {
-      try {
-        tileLayerRef.current.remove();
-      } catch (error) {
-        console.warn('Errore durante la rimozione del tile layer:', error);
-      }
-      tileLayerRef.current = null;
-    }
-
-    // Cleanup mappa
-    if (mapRef.current) {
-      try {
-        mapRef.current.remove();
-      } catch (error) {
-        console.warn('Errore durante la rimozione della mappa:', error);
-      }
-      mapRef.current = null;
-    }
+    // I componenti dinamici di React-Leaflet gestiscono automaticamente il cleanup
   };
 
   // Gestione connessione lenta
@@ -589,20 +536,6 @@ const ActivityMap: React.FC<ActivityMapProps> = ({ activity, routePoints, highli
           zoom={zoomLevel} 
           style={{ height: '100%', width: '100%' }}
           scrollWheelZoom={true}
-          ref={(mapInstance) => {
-            if (mapInstance) {
-              mapRef.current = mapInstance;
-              
-              // Registra event listeners per cleanup
-              const onMapClick = (e: L.LeafletMouseEvent) => handlePolylineClick(e);
-              mapInstance.on('click', onMapClick);
-              
-              const removeMapClickListener = () => {
-                mapInstance.off('click', onMapClick);
-              };
-              eventListenersRef.current.push(removeMapClickListener);
-            }
-          }}
         >
           {/* Banner errori tile */}
           {tileLoadError && (

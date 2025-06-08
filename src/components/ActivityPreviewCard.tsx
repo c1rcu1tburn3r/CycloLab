@@ -8,6 +8,7 @@ import { Activity, RoutePoint } from '@/lib/types';
 import ActivityPreviewMap from './ActivityPreviewMap';
 import { Card, CardContent } from "@/components/ui/card";
 import { spacing } from '@/lib/design-system';
+import DeleteActivityIcon from './DeleteActivityIcon';
 
 interface ActivityPreviewCardProps {
   activity: Activity;
@@ -17,6 +18,8 @@ interface ActivityPreviewCardProps {
   onToggleSelection?: () => void;
   canSelect?: boolean;
   athleteName?: string;
+  onActivityDeleted?: () => void; // Callback per aggiornare la lista dopo eliminazione
+  showDeleteButton?: boolean; // Mostra il pulsante di eliminazione
 }
 
 // Funzione helper per formattare la durata
@@ -169,7 +172,9 @@ const ActivityPreviewCard: React.FC<ActivityPreviewCardProps> = ({
   isSelected = false,
   onToggleSelection,
   canSelect = true,
-  athleteName
+  athleteName,
+  onActivityDeleted,
+  showDeleteButton = true
 }) => {
   const [routePoints, setRoutePoints] = useState<RoutePoint[]>([]);
   const [isLoadingRoute, setIsLoadingRoute] = useState(true);
@@ -247,7 +252,7 @@ const ActivityPreviewCard: React.FC<ActivityPreviewCardProps> = ({
       <div className="relative">
         {/* Se non siamo in modalità comparazione, wrappa tutto in un Link */}
         {!isComparisonMode ? (
-          <Link href={`/activities/${activity.id}`} className="block">
+          <Link href={`/activities/${activity.id}`} className="block" prefetch={false}>
             <CardContentWrapper
               activity={activity}
               routePoints={routePoints}
@@ -259,6 +264,8 @@ const ActivityPreviewCard: React.FC<ActivityPreviewCardProps> = ({
               isComparisonMode={isComparisonMode}
               isSelected={isSelected}
               canSelect={canSelect}
+              onActivityDeleted={onActivityDeleted}
+              showDeleteButton={showDeleteButton}
             />
           </Link>
         ) : (
@@ -273,6 +280,8 @@ const ActivityPreviewCard: React.FC<ActivityPreviewCardProps> = ({
             isComparisonMode={isComparisonMode}
             isSelected={isSelected}
             canSelect={canSelect}
+            onActivityDeleted={onActivityDeleted}
+            showDeleteButton={showDeleteButton}
           />
         )}
       </div>
@@ -292,11 +301,13 @@ const CardContentWrapper: React.FC<{
   isComparisonMode?: boolean;
   isSelected?: boolean;
   canSelect?: boolean;
-}> = ({ activity, routePoints, isLoadingRoute, displayTitle, athleteName, bg, text, isComparisonMode, isSelected, canSelect }) => {
+  onActivityDeleted?: () => void;
+  showDeleteButton?: boolean;
+}> = ({ activity, routePoints, isLoadingRoute, displayTitle, athleteName, bg, text, isComparisonMode, isSelected, canSelect, onActivityDeleted, showDeleteButton }) => {
   return (
     <div className="p-0">
       {/* Mappa di anteprima */}
-      <div className="relative">
+      <div className="relative" style={{ zIndex: 1 }}>
         {isLoadingRoute ? (
           <div className="h-48 bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-700 rounded-t-xl flex items-center justify-center">
             <div className="animate-pulse">
@@ -312,7 +323,7 @@ const CardContentWrapper: React.FC<{
         )}
         
         {/* Badge tipo attività sovrapposto */}
-        <div className={`absolute top-3 right-3 flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium backdrop-blur-sm shadow-lg ${bg} ${text} border border-white/20`}>
+        <div className={`absolute top-3 right-3 z-50 flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium backdrop-blur-sm shadow-lg ${bg} ${text} border border-white/20`} style={{ zIndex: 1000 }}>
           {getActivityIcon(activity.activity_type)}
           <span className="hidden sm:inline">
             {activity.activity_type ? 
@@ -324,12 +335,25 @@ const CardContentWrapper: React.FC<{
 
         {/* Badge sensori sovrapposto */}
         <div 
-          className={`absolute top-3 left-3 flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium backdrop-blur-sm shadow-lg ${getSensorBadge(activity).bg} ${getSensorBadge(activity).textColor} border border-white/20`}
+          className={`absolute top-3 left-3 z-50 flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium backdrop-blur-sm shadow-lg ${getSensorBadge(activity).bg} ${getSensorBadge(activity).textColor} border border-white/20`}
           title={getSensorBadge(activity).tooltip}
+          style={{ zIndex: 1000 }}
         >
           <span>{getSensorBadge(activity).icon}</span>
           <span className="hidden sm:inline">{getSensorBadge(activity).text}</span>
         </div>
+
+        {/* Icona eliminazione - appare solo al hover e se abilitata */}
+        {showDeleteButton && !isComparisonMode && (
+          <div className="absolute bottom-3 right-3 z-50 opacity-0 group-hover:opacity-100 transition-opacity duration-200" style={{ zIndex: 1000 }}>
+            <DeleteActivityIcon 
+              activityId={activity.id}
+              activityTitle={displayTitle}
+              onDeleted={onActivityDeleted}
+              size="sm"
+            />
+          </div>
+        )}
       </div>
 
       {/* Contenuto della card */}

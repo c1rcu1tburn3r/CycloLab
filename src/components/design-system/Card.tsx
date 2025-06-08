@@ -247,11 +247,19 @@ export interface MetricCardProps extends Omit<CardProps, 'variant'> {
 export const MetricCard = React.forwardRef<HTMLDivElement, MetricCardProps>(
   ({ title, value, subtitle, icon, trend, accent = 'blue', className, ...props }, ref) => {
     const accentClasses = {
-      blue: 'border-t-blue-500',
-      emerald: 'border-t-emerald-500',
-      amber: 'border-t-amber-500',
-      red: 'border-t-red-500',
-      purple: 'border-t-purple-500',
+      blue: 'border-t-blue-500 dark:border-t-blue-400',
+      emerald: 'border-t-emerald-500 dark:border-t-emerald-400',
+      amber: 'border-t-amber-500 dark:border-t-amber-400',
+      red: 'border-t-red-500 dark:border-t-red-400',
+      purple: 'border-t-purple-500 dark:border-t-purple-400',
+    };
+
+    const iconAccentClasses = {
+      blue: 'from-blue-500/10 to-blue-500/5 text-blue-600 dark:text-blue-400',
+      emerald: 'from-emerald-500/10 to-emerald-500/5 text-emerald-600 dark:text-emerald-400',
+      amber: 'from-amber-500/10 to-amber-500/5 text-amber-600 dark:text-amber-400',
+      red: 'from-red-500/10 to-red-500/5 text-red-600 dark:text-red-400',
+      purple: 'from-purple-500/10 to-purple-500/5 text-purple-600 dark:text-purple-400',
     };
 
     return (
@@ -263,20 +271,22 @@ export const MetricCard = React.forwardRef<HTMLDivElement, MetricCardProps>(
         {...props}
       >
         <CardContent spacing="sm">
-          {/* Header with icon and title */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              {icon && (
-                <div className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-700 flex items-center justify-center flex-shrink-0">
-                  <div className="w-4 h-4 text-gray-600 dark:text-gray-400">
-                    {icon}
-                  </div>
+          {/* Header with centered icon and title */}
+          <div className="flex items-center justify-between mb-4">
+            <CardTitle size="sm" className="text-gray-600 dark:text-gray-400 font-medium">
+              {title}
+            </CardTitle>
+            
+            {icon && (
+              <div className={cn(
+                "w-10 h-10 rounded-xl bg-gradient-to-br flex items-center justify-center flex-shrink-0 shadow-sm border border-white/20",
+                iconAccentClasses[accent]
+              )}>
+                <div className="w-5 h-5">
+                  {icon}
                 </div>
-              )}
-              <CardTitle size="sm" className="text-gray-600 dark:text-gray-400 font-medium">
-                {title}
-              </CardTitle>
-            </div>
+              </div>
+            )}
             
             {trend && (
               <div className={cn(
@@ -300,7 +310,7 @@ export const MetricCard = React.forwardRef<HTMLDivElement, MetricCardProps>(
           </div>
 
           {/* Value */}
-          <div className="text-2xl font-bold text-gray-900 dark:text-gray-100 leading-none">
+          <div className="text-2xl font-bold text-gray-900 dark:text-gray-100 leading-none mb-2">
             {value}
           </div>
 

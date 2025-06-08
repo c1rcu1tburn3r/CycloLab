@@ -127,8 +127,7 @@ export default function ActivityComparisonDashboard({ activities }: ActivityComp
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="relative overflow-hidden rounded-3xl bg-white/70 dark:bg-gray-800/70 backdrop-blur-xl border border-gray-200/50 dark:border-gray-700/50 p-8 shadow-2xl">
-        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500 via-blue-500 to-purple-500 rounded-t-3xl" />
+      <div className="relative overflow-hidden rounded-3xl bg-white/70 dark:bg-gray-800/70 backdrop-blur-xl border border-gray-200/50 dark:border-gray-700/50 border-t-2 border-t-blue-500 dark:border-t-blue-400 p-8 shadow-2xl">
         
         <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
           <div>
@@ -276,91 +275,42 @@ export default function ActivityComparisonDashboard({ activities }: ActivityComp
                 </div>
                 
                 <CardTitle className="text-lg font-bold text-gray-900 dark:text-white mt-2">
-                  <Link href={`/activities/${activity.id}`} className="hover:underline">
-                    {activity.title || 'Attività Senza Titolo'}
+                  <Link 
+                    href={`/activities/${activity.id}`}
+                    className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                  >
+                    {activity.title || `Attività ${new Date(activity.created_at).toLocaleDateString()}`}
                   </Link>
                 </CardTitle>
-                
-                <div className="space-y-1 text-sm text-gray-500 dark:text-gray-400">
-                  <p>Atleta: {athleteName}</p>
-                  <p>{format(parseISO(activity.activity_date), 'EEEE d MMMM yyyy', { locale: it })}</p>
-                </div>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  {athleteName}
+                </p>
               </CardHeader>
               
               <CardContent>
-                <div className="grid grid-cols-3 gap-2 text-sm">
-                  <div className="bg-gray-50/50 dark:bg-gray-800/40 p-2 rounded-lg">
-                    <p className="text-xs text-gray-500 dark:text-gray-400">Distanza</p>
-                    <p className="font-semibold text-gray-800 dark:text-gray-200">
-                      {activity.distance_meters ? `${(activity.distance_meters / 1000).toFixed(2)} km` : 'N/D'}
-                    </p>
-                  </div>
-                  <div className="bg-gray-50/50 dark:bg-gray-800/40 p-2 rounded-lg">
-                    <p className="text-xs text-gray-500 dark:text-gray-400">Durata</p>
-                    <p className="font-semibold text-gray-800 dark:text-gray-200">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Durata</p>
+                    <p className="text-sm font-semibold text-gray-900 dark:text-white">
                       {formatDuration(activity.duration_seconds)}
                     </p>
                   </div>
-                  <div className="bg-gray-50/50 dark:bg-gray-800/40 p-2 rounded-lg">
-                    <p className="text-xs text-gray-500 dark:text-gray-400">Vel. Media</p>
-                    <p className="font-semibold text-gray-800 dark:text-gray-200">
-                      {activity.distance_meters && activity.duration_seconds ? 
-                        `${((activity.distance_meters / 1000) / (activity.duration_seconds / 3600)).toFixed(1)} km/h` : 'N/D'}
+                  <div>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Distanza</p>
+                    <p className="text-sm font-semibold text-gray-900 dark:text-white">
+                      {activity.distance_meters ? `${(activity.distance_meters / 1000).toFixed(1)} km` : 'N/D'}
                     </p>
                   </div>
-                  <div className="bg-gray-50/50 dark:bg-gray-800/40 p-2 rounded-lg">
-                    <p className="text-xs text-gray-500 dark:text-gray-400">Pot. Media</p>
-                    <p className="font-semibold text-gray-800 dark:text-gray-200">
+                  <div>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Potenza Media</p>
+                    <p className="text-sm font-semibold text-gray-900 dark:text-white">
                       {activity.avg_power_watts ? `${activity.avg_power_watts} W` : 'N/D'}
                     </p>
                   </div>
-                  <div className="bg-gray-50/50 dark:bg-gray-800/40 p-2 rounded-lg">
-                    <p className="text-xs text-gray-500 dark:text-gray-400">Pot. Max</p>
-                    <p className="font-semibold text-gray-800 dark:text-gray-200">
-                      {activity.max_power_watts ? `${activity.max_power_watts} W` : 'N/D'}
-                    </p>
-                  </div>
-                  <div className="bg-gray-50/50 dark:bg-gray-800/40 p-2 rounded-lg">
-                    <p className="text-xs text-gray-500 dark:text-gray-400">FC Media</p>
-                    <p className="font-semibold text-gray-800 dark:text-gray-200">
-                      {activity.avg_heart_rate ? `${activity.avg_heart_rate} bpm` : 'N/D'}
-                    </p>
-                  </div>
-                  <div className="bg-gray-50/50 dark:bg-gray-800/40 p-2 rounded-lg">
-                    <p className="text-xs text-gray-500 dark:text-gray-400">Dislivello</p>
-                    <p className="font-semibold text-gray-800 dark:text-gray-200">
-                      {activity.elevation_gain_meters ? `${activity.elevation_gain_meters} m` : 'N/D'}
-                    </p>
-                  </div>
-                  <div className="bg-gray-50/50 dark:bg-gray-800/40 p-2 rounded-lg">
-                    <p className="text-xs text-gray-500 dark:text-gray-400">Cadenza</p>
-                    <p className="font-semibold text-gray-800 dark:text-gray-200">
-                      {activity.avg_cadence ? `${activity.avg_cadence} rpm` : 'N/D'}
-                    </p>
-                  </div>
-                  <div className="bg-gray-50/50 dark:bg-gray-800/40 p-2 rounded-lg">
-                    <p className="text-xs text-gray-500 dark:text-gray-400">TSS</p>
-                    <p className="font-semibold text-gray-800 dark:text-gray-200">
-                      {activity.tss ? `${Math.round(activity.tss)}` : 'N/D'}
-                    </p>
-                  </div>
-                  <div className="bg-gray-50/50 dark:bg-gray-800/40 p-2 rounded-lg">
-                    <p className="text-xs text-gray-500 dark:text-gray-400">Pot. Norm.</p>
-                    <p className="font-semibold text-gray-800 dark:text-gray-200">
-                      {activity.normalized_power_watts ? `${activity.normalized_power_watts} W` : 'N/D'}
-                    </p>
-                  </div>
-                  <div className="bg-gray-50/50 dark:bg-gray-800/40 p-2 rounded-lg">
-                    <p className="text-xs text-gray-500 dark:text-gray-400">FC Max</p>
-                    <p className="font-semibold text-gray-800 dark:text-gray-200">
-                      {activity.max_heart_rate ? `${activity.max_heart_rate} bpm` : 'N/D'}
-                    </p>
-                  </div>
-                  <div className="bg-gray-50/50 dark:bg-gray-800/40 p-2 rounded-lg">
-                    <p className="text-xs text-gray-500 dark:text-gray-400">Efficienza</p>
-                    <p className="font-semibold text-gray-800 dark:text-gray-200">
-                      {activity.avg_power_watts && activity.avg_heart_rate ? 
-                        `${(activity.avg_power_watts / activity.avg_heart_rate).toFixed(1)}` : 'N/D'}
+                  <div>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Data</p>
+                    <p className="text-sm font-semibold text-gray-900 dark:text-white">
+                      {new Date(activity.created_at).toLocaleDateString('it-IT')}
                     </p>
                   </div>
                 </div>
@@ -371,4 +321,4 @@ export default function ActivityComparisonDashboard({ activities }: ActivityComp
       </div>
     </div>
   );
-} 
+}

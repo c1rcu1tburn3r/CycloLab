@@ -10,15 +10,17 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import ActivityPreviewCard from './ActivityPreviewCard';
 import { spacing } from '@/lib/design-system';
+import EmptyStateCard from '@/components/ui/EmptyStateCard';
 
 interface AthleteActivitiesTabProps {
   activities: Activity[];
   athleteName: string;
+  onActivityDeleted?: (activityId: string) => void;
 }
 
 type SortOption = 'date_desc' | 'date_asc' | 'distance_desc' | 'distance_asc' | 'duration_desc' | 'duration_asc';
 
-export default function AthleteActivitiesTab({ activities, athleteName }: AthleteActivitiesTabProps) {
+export default function AthleteActivitiesTab({ activities, athleteName, onActivityDeleted }: AthleteActivitiesTabProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState<SortOption>('date_desc');
   const [activityTypeFilter, setActivityTypeFilter] = useState<string>('all');
@@ -333,31 +335,28 @@ export default function AthleteActivitiesTab({ activities, athleteName }: Athlet
 
           {/* Griglia attività */}
           {filteredAndSortedActivities.length === 0 ? (
-            <div className={`${spacing.bottom.xl} flex flex-col items-center justify-center text-center`}>
-              <svg className="w-20 h-20 text-gray-300 dark:text-gray-600 mx-auto mb-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-              </svg>
-              <h3 className={`text-xl font-semibold text-gray-900 dark:text-white ${spacing.bottom.md}`}>
-                {activities.length === 0 ? 'Nessuna attività registrata' : 'Nessuna attività trovata'}
-              </h3>
-              <p className="text-gray-600 dark:text-gray-300 mb-8 max-w-md mx-auto">
-                {activities.length === 0 
-                  ? `${athleteName} non ha ancora attività registrate.`
-                  : 'Prova a modificare i filtri di ricerca.'
-                }
-              </p>
-              {activities.length === 0 && (
-                <Button 
-                  onClick={() => window.location.href = '/activities/upload'}
-                  className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-semibold px-6 py-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
-                >
-                  <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+            <EmptyStateCard
+              variant={activities.length === 0 ? 'activities' : 'search'}
+              icon={
+                activities.length === 0 ? (
+                  <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
                   </svg>
-                  Carica Prima Attività
-                </Button>
-              )}
-            </div>
+                ) : (
+                  <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                )
+              }
+              title={activities.length === 0 ? 'Inizia il Tuo Viaggio' : 'Nessun Risultato'}
+              description={
+                activities.length === 0 
+                  ? `${athleteName} è pronto per registrare la prima avventura. Ogni grande atleta inizia con un singolo passo - o pedalata!`
+                  : 'I filtri applicati non hanno prodotto risultati. Prova a modificare i criteri di ricerca per trovare le attività che stai cercando.'
+              }
+              actionLabel={activities.length === 0 ? 'Carica Prima Attività' : undefined}
+              actionHref={activities.length === 0 ? '/activities/upload' : undefined}
+            />
           ) : (
             <>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
@@ -370,6 +369,8 @@ export default function AthleteActivitiesTab({ activities, athleteName }: Athlet
                     isSelected={false}
                     onToggleSelection={() => {}}
                     canSelect={false}
+                    onActivityDeleted={onActivityDeleted ? () => onActivityDeleted(activity.id) : undefined}
+                    showDeleteButton={true}
                   />
                 ))}
               </div>

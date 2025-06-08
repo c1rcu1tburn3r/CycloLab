@@ -232,6 +232,7 @@
     scroll-behavior: smooth;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    height: 100%;
   }
   
   body {
@@ -446,6 +447,37 @@
     @apply bg-white/70 dark:bg-gray-800/70 shadow-lg transform scale-[1.02];
     z-index: var(--z-docked);
   }
+
+  /* 3D Effects */
+  .perspective-1000 {
+    perspective: 1000px;
+  }
+
+  .transform-gpu {
+    transform-style: preserve-3d;
+    backface-visibility: hidden;
+    will-change: transform;
+  }
+
+  .rotateY-5 {
+    transform: rotateY(5deg);
+  }
+
+  .rotateX-2 {
+    transform: rotateX(2deg);
+  }
+
+  /* Enhanced 3D Hover Effects */
+  .card-3d {
+    transform-style: preserve-3d;
+    transition: all 0.7s cubic-bezier(0.23, 1, 0.320, 1);
+  }
+
+  .card-3d:hover {
+    transform: perspective(1000px) rotateY(-5deg) rotateX(2deg) translateZ(20px);
+  }
+
+
 }
 
 @keyframes slideUp {

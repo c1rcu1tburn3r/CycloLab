@@ -103,6 +103,20 @@ function classifyWorkoutType(activity: ActivityPowerData): 'test' | 'workout' | 
     }
   }
   
+  // Riconosci salite lunghe e sostenute come potenziali test
+  const climbPatterns = [
+    /salita/i, /climb/i, /ascent/i, /monte/i, /passo/i, /col/i, /colle/i
+  ];
+  
+  if (climbPatterns.some(pattern => pattern.test(name)) && 
+      duration >= 1140 && duration <= 1800 && // 19-30 minuti
+      normalizedPower && avgPower) {
+    const intensityIndicator = normalizedPower / avgPower;
+    if (intensityIndicator > 0.92) { // Salite sostenute = potenziali test
+      return 'test';
+    }
+  }
+  
   // Pattern per allenamenti strutturati
   const workoutPatterns = [
     /interval/i, /workout/i, /training/i, /sweet.*spot/i, /threshold/i, /tempo/i
@@ -196,9 +210,24 @@ function estimateFTPFromCriticalPower(bestEfforts: Record<number, { power: numbe
     return Math.round(twentyMinEffort.power * 0.95);
   }
   
-  // Fallback: usa il miglior effort lungo disponibile
+  // Controlla effort a 30 minuti
+  const thirtyMinEffort = bestEfforts[1800];
+  if (thirtyMinEffort) {
+    // FTP stimato = 98% della potenza di 30 minuti
+    return Math.round(thirtyMinEffort.power * 0.98);
+  }
+  
+  // Fallback: usa il miglior effort lungo disponibile con fattore appropriato
   const bestLongEffort = longEfforts[longEfforts.length - 1];
-  return Math.round(bestLongEffort.power * 0.92); // Fattore conservativo
+  
+  // Applica fattore basato sulla durata dell'effort
+  if (bestLongEffort.duration >= 1800) { // >= 30 min
+    return Math.round(bestLongEffort.power * 0.98);
+  } else if (bestLongEffort.duration >= 1200) { // >= 20 min
+    return Math.round(bestLongEffort.power * 0.95);
+  } else {
+    return Math.round(bestLongEffort.power * 0.92); // < 20 min, più conservativo
+  }
 }
 
 /**
@@ -439,4 +468,91 @@ export function formatFTPSuggestionMessage(
   const differencePercent = Math.round(Math.abs(difference) / currentFTP * 100);
   
   return `Rilevato possibile ${changeText} dell'FTP: ${estimation.estimatedFTP}W vs ${currentFTP}W attuali (${differencePercent}% di differenza). Basato su "${methodName}" con ${confidencePercent}% di confidenza. Aggiornare?`;
+}
+
+/**
+ * Versione retroattiva della stima FTP - analizza TUTTE le attività indipendentemente dalla data
+ * Utilizzata quando si caricano attività storiche o si vuole una valutazione completa
+ */
+export function estimateFTPFromAllActivities(
+  activities: Activity[], 
+  currentFTP?: number | null,
+  minActivities: number = 2 // Soglia più bassa per attività storiche
+): FTPEstimationResult | null {
+  
+  // Filtra TUTTE le attività valide senza limiti temporali
+  const validActivities: ActivityPowerData[] = activities
+    .filter(a => {
+      const hasValidPower = a.avg_power_watts && a.avg_power_watts > 0;
+      const hasValidDuration = a.duration_seconds && a.duration_seconds > 300;
+      const hasValidDate = a.activity_date && a.activity_date.trim() !== '';
+      
+      return hasValidDate && hasValidPower && hasValidDuration;
+    })
+    .map(a => ({
+      id: a.id,
+      date: a.activity_date || '',
+      name: a.title || 'Attività senza nome',
+      duration: a.duration_seconds!,
+      avgPower: a.avg_power_watts!,
+      normalizedPower: a.normalized_power_watts,
+      maxPower: a.max_power_watts,
+      intensityFactor: a.intensity_factor,
+      workType: 'unknown' as const
+    }))
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()); // Più recenti prima
+  
+  // Se non abbiamo abbastanza attività, restituisci null
+  if (validActivities.length < minActivities) {
+    return null;
+  }
+
+  // Calcola il periodo effettivo analizzato
+  const oldestActivity = validActivities[validActivities.length - 1];
+  const newestActivity = validActivities[0];
+  const daysCovered = Math.ceil(
+    (new Date(newestActivity.date).getTime() - new Date(oldestActivity.date).getTime()) / (1000 * 60 * 60 * 24)
+  );
+
+  console.log(`[estimateFTPFromAllActivities] Analizzando ${validActivities.length} attività in ${daysCovered} giorni (${oldestActivity.date} → ${newestActivity.date})`);
+
+  // Usa la stessa logica di performFTPEstimation ma con tutte le attività
+  return performFTPEstimation(validActivities, daysCovered);
+}
+
+/**
+ * Confronta FTP stimato con FTP attuale e determina se suggerire un aggiornamento
+ * Include logica specifica per attività storiche
+ */
+export function shouldSuggestFTPUpdateFromHistorical(
+  estimation: FTPEstimationResult,
+  currentFTP?: number | null,
+  threshold: number = 0.15 // 15% per attività storiche (più conservativo)
+): { shouldUpdate: boolean; message: string } {
+  if (!currentFTP) {
+    return {
+      shouldUpdate: true,
+      message: `🎯 **FTP Stimato**: ${estimation.estimatedFTP}W basato su analisi delle attività storiche. Consigliamo di aggiornare il profilo atleta.`
+    };
+  }
+
+  const difference = estimation.estimatedFTP - currentFTP;
+  const percentageChange = Math.abs(difference) / currentFTP;
+
+  if (percentageChange >= threshold) {
+    const direction = difference > 0 ? 'superiore' : 'inferiore';
+    const changePercent = Math.round(percentageChange * 100);
+    
+    return {
+      shouldUpdate: true,
+      message: `📈 **FTP Suggerito**: ${estimation.estimatedFTP}W (${direction} del ${changePercent}% rispetto a ${currentFTP}W attuale)\n` +
+               `📅 **Basato su**: Analisi attività storiche - ${estimation.reasoning}\n` +
+               `🔍 **Metodo**: ${estimation.method} (affidabilità: ${Math.round(estimation.confidence * 100)}%)`
+    };
+  }
+
+  return {
+    shouldUpdate: false,
+    message: `✅ FTP attuale (${currentFTP}W) coerente con le attività storiche (stima: ${estimation.estimatedFTP}W)`
+  };
 } 

@@ -2,14 +2,22 @@
 
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Button } from '@/components/ui/button';
 import { Trash2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
-interface DeleteActivityButtonProps {
+interface DeleteActivityIconProps {
   activityId: string;
+  activityTitle?: string;
+  onDeleted?: () => void; // Callback per aggiornare la lista
+  size?: 'sm' | 'md';
 }
 
-export default function DeleteActivityButton({ activityId }: DeleteActivityButtonProps) {
+export default function DeleteActivityIcon({ 
+  activityId, 
+  activityTitle = 'questa attività',
+  onDeleted,
+  size = 'sm'
+}: DeleteActivityIconProps) {
   const [isDeleting, setIsDeleting] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -61,8 +69,15 @@ export default function DeleteActivityButton({ activityId }: DeleteActivityButto
 
       setShowConfirmDialog(false);
       
-      // Torna alla lista attività dopo l'eliminazione
-      window.location.href = '/activities';
+      // Chiama il callback se fornito, altrimenti ricarica la pagina
+      if (onDeleted) {
+        // Usa setTimeout per evitare conflitti con la navigazione
+        setTimeout(() => {
+          onDeleted();
+        }, 100);
+      } else {
+        window.location.reload();
+      }
     } catch (error: any) {
       console.error('Errore eliminazione attività:', error);
       alert('Errore durante l\'eliminazione dell\'attività: ' + error.message);
@@ -71,29 +86,33 @@ export default function DeleteActivityButton({ activityId }: DeleteActivityButto
     }
   };
 
+  const handleIconClick = (e: React.MouseEvent) => {
+    e.preventDefault(); // Impedisce la navigazione
+    e.stopPropagation(); // Impedisce il click sulla card
+    e.nativeEvent.stopImmediatePropagation(); // Ferma completamente la propagazione
+    setShowConfirmDialog(true);
+  };
+
+  const iconSize = size === 'sm' ? 'w-4 h-4' : 'w-5 h-5';
+  const buttonSize = size === 'sm' ? 'w-8 h-8' : 'w-10 h-10';
+
   return (
     <>
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={() => setShowConfirmDialog(true)}
+      {/* Icona di eliminazione */}
+      <button
+        onClick={handleIconClick}
         disabled={isDeleting}
-        className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200 hover:border-red-300 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-900/20 dark:border-red-800 dark:hover:border-red-700"
+        className={`${buttonSize} rounded-full bg-red-500/10 hover:bg-red-500/20 border border-red-200/50 hover:border-red-300 backdrop-blur-sm transition-all duration-200 flex items-center justify-center group hover:scale-110 shadow-lg`}
+        title="Elimina attività"
       >
         {isDeleting ? (
-          <>
-            <div className="w-4 h-4 border-2 border-red-600 border-t-transparent rounded-full animate-spin mr-2" />
-            Eliminando...
-          </>
+          <div className={`${iconSize} border-2 border-red-500 border-t-transparent rounded-full animate-spin`} />
         ) : (
-          <>
-            <Trash2 className="w-4 h-4 mr-2" />
-            Elimina
-          </>
+          <Trash2 className={`${iconSize} text-red-500 group-hover:text-red-600`} />
         )}
-      </Button>
+      </button>
 
-      {/* Modern Confirmation Dialog - Rendered via Portal */}
+      {/* Dialog di conferma - Rendered via Portal */}
       {mounted && showConfirmDialog && createPortal(
         <div className="fixed inset-0 flex items-center justify-center p-4" style={{ zIndex: 99999 }}>
           {/* Backdrop */}
@@ -113,7 +132,7 @@ export default function DeleteActivityButton({ activityId }: DeleteActivityButto
             <div className="text-center space-y-4">
               <h3 className="text-xl font-bold text-foreground">Elimina Attività</h3>
               <p className="text-muted-foreground">
-                Sei sicuro di voler eliminare questa attività?
+                Sei sicuro di voler eliminare <span className="font-medium">"{activityTitle}"</span>?
               </p>
               <div className="text-sm text-muted-foreground bg-destructive/10 border border-destructive/20 rounded-xl p-4 space-y-2">
                 <div className="flex items-center gap-2 text-destructive font-medium">
@@ -155,7 +174,7 @@ export default function DeleteActivityButton({ activityId }: DeleteActivityButto
                 ) : (
                   <>
                     <Trash2 className="w-4 h-4 mr-2" />
-                    Elimina Attività
+                    Elimina
                   </>
                 )}
               </Button>

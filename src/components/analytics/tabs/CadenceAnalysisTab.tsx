@@ -57,7 +57,12 @@ export default function CadenceAnalysisTab({ athleteId, athlete }: CadenceAnalys
   const [adaptiveMessage, setAdaptiveMessage] = useState<string | null>(null);
 
   // FTP attuale dall'atleta o valore di default
-  const currentFTP = athlete.current_ftp || 250;
+  // Nuovo stato per FTP estimation
+  const [ftpEstimation, setFtpEstimation] = useState<any>(null);
+
+  // FTP effettivo: usa FTP atleta se disponibile, altrimenti FTP stimato, altrimenti fallback
+  const effectiveFTP = athlete.current_ftp || ftpEstimation?.estimatedFTP || 250;
+  const isUsingEstimatedFTP = !athlete.current_ftp && ftpEstimation?.estimatedFTP;
 
   // Debounced loading per evitare troppe chiamate API
   const [loadingTimeoutId, setLoadingTimeoutId] = useState<NodeJS.Timeout | null>(null);
@@ -68,9 +73,9 @@ export default function CadenceAnalysisTab({ athleteId, athlete }: CadenceAnalys
     setAdaptiveMessage(null);
     
     try {
-      console.log(`[CadenceAnalysisTab] Caricamento analisi per atleta ${athleteId}, periodo ${selectedPeriod}m, FTP ${currentFTP}W`);
-      
-      const result = await analyzeCadenceEfficiency(athleteId, selectedPeriod, currentFTP);
+              console.log(`[CadenceAnalysisTab] Caricamento analisi per atleta ${athleteId}, periodo ${selectedPeriod}m, FTP ${effectiveFTP}W`);
+        
+        const result = await analyzeCadenceEfficiency(athleteId, selectedPeriod, effectiveFTP);
       
       if (result.error) {
         setError(result.error);
@@ -115,7 +120,7 @@ export default function CadenceAnalysisTab({ athleteId, athlete }: CadenceAnalys
     } finally {
       setIsLoading(false);
     }
-  }, [athleteId, selectedPeriod, currentFTP]);
+  }, [athleteId, selectedPeriod, effectiveFTP]);
 
   useEffect(() => {
     // Cancella timeout precedente se esiste
@@ -535,7 +540,7 @@ export default function CadenceAnalysisTab({ athleteId, athlete }: CadenceAnalys
                 {totalZones}/6
               </p>
               <p className="text-xs text-gray-500 mt-1">
-                FTP: {currentFTP}W
+                FTP: {effectiveFTP}W
               </p>
             </div>
           </div>

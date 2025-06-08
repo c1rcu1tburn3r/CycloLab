@@ -107,6 +107,10 @@ export default async function ActivitiesPage() {
     redirect('/auth/login');
   }
 
+  // Recupera il nome del coach dai metadati dell'utente (solo il primo nome)
+  const fullName = user.user_metadata?.full_name || '';
+  const coachName = fullName ? fullName.split(' ')[0] : 'Coach';
+
   // Recuperiamo TUTTE le attività del coach
   const allActivities = await getActivitiesForCoach(supabase, user.id);
   // Recuperiamo TUTTI gli atleti del coach per popolare il filtro
@@ -137,7 +141,8 @@ export default async function ActivitiesPage() {
           <ActivitiesClientManager 
             initialActivities={allActivities} 
             coachAthletes={allCoachAthletes}
-            currentUserId={user.id} 
+            currentUserId={user.id}
+            coachName={coachName}
           />
           
           {/* 

@@ -8,6 +8,7 @@ import { processAndCreateActivity } from '@/app/activities/actions';
 import { useCycloLabToast } from "@/hooks/use-cyclolab-toast";
 import { Button } from '@/components/ui/button';
 import { spacing } from '@/lib/design-system';
+import DataMissingAlert from '@/components/ui/DataMissingAlert';
 
 interface ActivityUploadFormProps {
   userId: string;
@@ -901,193 +902,105 @@ export default function ActivityUploadForm({ userId, athletes }: ActivityUploadF
             </div>
           )}
           
-          {athleteDataWarning?.show && (
-            <div className="mt-3 p-4 bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 border border-amber-200 dark:border-amber-800 rounded-2xl shadow-sm">
-              <div className={`flex items-start justify-between ${spacing.bottom.sm}`}>
-                <div className="flex items-center">
-                  <div className="w-8 h-8 bg-amber-100 dark:bg-amber-800 rounded-full flex items-center justify-center mr-3">
-                    <svg className="w-4 h-4 text-amber-600 dark:text-amber-400" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                    </svg>
-                  </div>
-                  <div>
-                    <h4 className="text-sm font-semibold text-amber-800 dark:text-amber-200">
-                      Dati Performance Mancanti
-                    </h4>
-                    <p className="text-xs text-amber-700 dark:text-amber-300 mt-1">
-                      {athleteDataWarning.missingFTP && athleteDataWarning.missingWeight 
-                        ? `FTP e Peso mancanti per ${athleteDataWarning.activityDate}`
-                        : athleteDataWarning.missingFTP 
-                        ? `FTP mancante per ${athleteDataWarning.activityDate}`
-                        : `Peso mancante per ${athleteDataWarning.activityDate}`
-                      }
-                    </p>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setAthleteDataWarning(null)}
-                  className="text-amber-500 hover:text-amber-700 dark:text-amber-400 dark:hover:text-amber-200 p-1 rounded-full hover:bg-amber-100 dark:hover:bg-amber-800/30 transition-colors"
-                >
-                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-                  </svg>
-                </button>
-              </div>
+          {athleteDataWarning?.show && !showManualFTPInput && (
+            <DataMissingAlert
+              activityDate={athleteDataWarning.activityDate}
+              missingFTP={athleteDataWarning.missingFTP}
+              missingWeight={athleteDataWarning.missingWeight}
+                             closestFTP={athleteDataWarning.closestFTP || undefined}
+               closestWeight={athleteDataWarning.closestWeight || undefined}
+                             onApplyFTP={async (value: number, date: string) => await applyClosestFTP(value, date)}
+               onApplyWeight={async (value: number, date: string) => await applyClosestWeight(value, date)}
+              onManualEntry={() => setShowManualFTPInput(true)}
+              onDismiss={() => setAthleteDataWarning(null)}
+              className="mt-3"
+            />
+          )}
 
-              {/* Badge dati richiesti */}
-              <div className="flex flex-wrap gap-2 mb-4">
+          {/* Form inserimento manuale */}
+          {athleteDataWarning?.show && showManualFTPInput && (
+            <div className="mt-3 p-6 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 border border-blue-200 dark:border-blue-700 rounded-2xl shadow-lg">
+              <div className="flex items-center mb-4">
+                <div className="w-10 h-10 bg-gradient-to-br from-blue-100 to-indigo-100 dark:from-blue-900/50 dark:to-indigo-900/50 rounded-xl flex items-center justify-center mr-3 shadow-inner">
+                  <svg className="w-5 h-5 text-blue-600 dark:text-blue-400" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <div>
+                  <h4 className="text-lg font-bold text-blue-800 dark:text-blue-200">
+                    Inserimento Manuale
+                  </h4>
+                  <p className="text-sm text-blue-700 dark:text-blue-300">
+                    Inserisci i dati mancanti per <span className="font-semibold">{athleteDataWarning.activityDate}</span>
+                  </p>
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                 {athleteDataWarning.missingFTP && (
-                  <div className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-800/30 dark:text-red-300">
-                    <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3z" />
-                    </svg>
-                    FTP Mancante
+                  <div>
+                    <label className="block text-sm font-semibold text-blue-800 dark:text-blue-200 mb-2">
+                      FTP (Watt):
+                    </label>
+                    <input
+                      type="number"
+                      value={manualFTP}
+                      onChange={(e) => setManualFTP(e.target.value)}
+                      placeholder="250"
+                      min="50"
+                      max="600"
+                      className="w-full px-3 py-2 text-sm border border-blue-300 dark:border-blue-600 rounded-lg bg-white dark:bg-blue-900/20 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-sm"
+                    />
                   </div>
                 )}
                 {athleteDataWarning.missingWeight && (
-                  <div className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-800/30 dark:text-blue-300">
-                    <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M6 6V5a3 3 0 013-3h2a3 3 0 013 3v1h2a2 2 0 012 2v3.57A22.952 22.952 0 0110 13a22.95 22.95 0 01-8-1.43V8a2 2 0 012-2h2zm2-1a1 1 0 011-1h2a1 1 0 011 1v1H8V5zm1 5a1 1 0 011-1h.01a1 1 0 110 2H10a1 1 0 01-1-1z" clipRule="evenodd" />
-                    </svg>
-                    Peso Mancante
+                  <div>
+                    <label className="block text-sm font-semibold text-blue-800 dark:text-blue-200 mb-2">
+                      Peso (kg):
+                    </label>
+                    <input
+                      type="number"
+                      value={manualWeight}
+                      onChange={(e) => setManualWeight(e.target.value)}
+                      placeholder="70"
+                      min="30"
+                      max="200"
+                      step="0.1"
+                      className="w-full px-3 py-2 text-sm border border-blue-300 dark:border-blue-600 rounded-lg bg-white dark:bg-blue-900/20 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-sm"
+                    />
                   </div>
                 )}
               </div>
-
-              {/* Dati disponibili da altre date */}
-              {(athleteDataWarning.closestFTP || athleteDataWarning.closestWeight) && (
-                <div className="bg-white/60 dark:bg-gray-800/60 p-3 rounded-xl border border-amber-200/50 dark:border-amber-700/50 mb-4">
-                  <div className={`text-xs font-medium text-amber-800 dark:text-amber-200 ${spacing.bottom.sm}`}>
-                    📊 Dati disponibili da altre date:
-                  </div>
-                  <div className="space-y-2">
-                    {athleteDataWarning.closestFTP && (
-                      <div className="flex items-center justify-between p-2 bg-blue-50 dark:bg-blue-900/30 rounded border border-blue-200 dark:border-blue-700">
-                        <div className="flex items-center">
-                          <span className="w-2 h-2 bg-blue-500 rounded-full mr-2"></span>
-                          <span className="text-xs text-blue-800 dark:text-blue-200">
-                            <strong>{athleteDataWarning.closestFTP.value}W</strong> FTP del {athleteDataWarning.closestFTP.date}
-                            <span className="text-blue-600 dark:text-blue-400 ml-1">
-                              (±{athleteDataWarning.closestFTP.daysDiff} giorni)
-                            </span>
-                          </span>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => applyClosestFTP(athleteDataWarning.closestFTP!.value, athleteDataWarning.closestFTP!.date)}
-                          className="px-3 py-1 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
-                        >
-                          Applica
-                        </button>
-                      </div>
-                    )}
-                    {athleteDataWarning.closestWeight && (
-                      <div className="flex items-center justify-between p-2 bg-green-50 dark:bg-green-900/30 rounded border border-green-200 dark:border-green-700">
-                        <div className="flex items-center">
-                          <span className="w-2 h-2 bg-green-500 rounded-full mr-2"></span>
-                          <span className="text-xs text-green-800 dark:text-green-200">
-                            <strong>{athleteDataWarning.closestWeight.value}kg</strong> peso del {athleteDataWarning.closestWeight.date}
-                            <span className="text-green-600 dark:text-green-400 ml-1">
-                              (±{athleteDataWarning.closestWeight.daysDiff} giorni)
-                            </span>
-                          </span>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => applyClosestWeight(athleteDataWarning.closestWeight!.value, athleteDataWarning.closestWeight!.date)}
-                          className="px-3 py-1 text-xs font-medium text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors"
-                        >
-                          Applica
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* Azioni disponibili */}
-              <div className="flex flex-wrap gap-2">
-                {!showManualFTPInput ? (
-                  <button
-                    type="button"
-                    onClick={() => setShowManualFTPInput(true)}
-                    className="inline-flex items-center px-3 py-2 text-xs font-medium text-amber-800 dark:text-amber-200 bg-amber-100 dark:bg-amber-800/30 border border-amber-300 dark:border-amber-600 rounded-lg hover:bg-amber-200 dark:hover:bg-amber-700/50 transition-colors"
-                  >
-                    <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
+              
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={addManualData}
+                  disabled={isAddingManualData || (!manualFTP && !manualWeight)}
+                  className="inline-flex items-center px-4 py-2 text-sm font-semibold text-white bg-gradient-to-r from-emerald-500 to-blue-600 hover:from-emerald-600 hover:to-blue-700 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed rounded-lg shadow-lg hover:shadow-xl transition-all duration-200"
+                >
+                  {isAddingManualData && (
+                    <svg className="animate-spin w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
-                    Inserisci Manualmente
-                  </button>
-                ) : (
-                  <div className="w-full bg-white/70 dark:bg-gray-800/70 p-3 rounded-xl border border-amber-200 dark:border-amber-700">
-                    <div className="text-xs font-medium text-amber-800 dark:text-amber-200 mb-3">
-                      ✏️ Inserisci dati per {athleteDataWarning.activityDate}:
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
-                      {athleteDataWarning.missingFTP && (
-                        <div>
-                          <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                            FTP (Watt):
-                          </label>
-                          <input
-                            type="number"
-                            value={manualFTP}
-                            onChange={(e) => setManualFTP(e.target.value)}
-                            placeholder="250"
-                            min="50"
-                            max="600"
-                            className="w-full px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
-                          />
-                        </div>
-                      )}
-                      {athleteDataWarning.missingWeight && (
-                        <div>
-                          <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                            Peso (kg):
-                          </label>
-                          <input
-                            type="number"
-                            value={manualWeight}
-                            onChange={(e) => setManualWeight(e.target.value)}
-                            placeholder="70"
-                            min="30"
-                            max="200"
-                            step="0.1"
-                            className="w-full px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
-                          />
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={addManualData}
-                        disabled={isAddingManualData || (!manualFTP && !manualWeight)}
-                        className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-white bg-green-600 hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed rounded-md transition-colors"
-                      >
-                        {isAddingManualData && (
-                          <svg className="animate-spin w-3 h-3 mr-1" fill="none" viewBox="0 0 24 24">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                          </svg>
-                        )}
-                        Salva Dati
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setShowManualFTPInput(false);
-                          setManualFTP('');
-                          setManualWeight('');
-                        }}
-                        className="px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 underline transition-colors"
-                      >
-                        Annulla
-                      </button>
-                    </div>
-                  </div>
-                )}
+                  )}
+                  <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                  Salva Dati
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowManualFTPInput(false);
+                    setManualFTP('');
+                    setManualWeight('');
+                  }}
+                  className="px-4 py-2 text-sm font-medium text-blue-700 dark:text-blue-300 hover:text-blue-900 dark:hover:text-blue-100 hover:bg-blue-100 dark:hover:bg-blue-800/30 rounded-lg transition-colors"
+                >
+                  Annulla
+                </button>
               </div>
             </div>
           )}

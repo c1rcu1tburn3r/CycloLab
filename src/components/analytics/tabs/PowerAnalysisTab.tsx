@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { RefreshCw, Zap, Target, TrendingUp, Info } from 'lucide-react';
+import { RefreshCw, Zap, Target, TrendingUp, Info, AlertCircle } from 'lucide-react';
 import LoadingSkeleton from '@/components/LoadingSkeleton';
 import type { Athlete } from '@/lib/types';
 import { PB_DURATIONS_SECONDS } from '@/lib/fitnessCalculations';
@@ -42,9 +42,13 @@ export default function PowerAnalysisTab({ athleteId, athlete }: PowerAnalysisTa
   // Nuovi stati per la strategia adattiva
   const [actualPeriodUsed, setActualPeriodUsed] = useState<number | null>(null);
   const [adaptiveMessage, setAdaptiveMessage] = useState<string | null>(null);
+  
+  // Nuovo stato per FTP estimation
+  const [ftpEstimation, setFtpEstimation] = useState<any>(null);
 
-  // FTP attuale dall'atleta o valore di default
-  const currentFTP = athlete.current_ftp || 250;
+  // FTP effettivo: usa FTP atleta se disponibile, altrimenti FTP stimato, altrimenti fallback
+  const effectiveFTP = athlete.current_ftp || ftpEstimation?.estimatedFTP || 250;
+  const isUsingEstimatedFTP = !athlete.current_ftp && ftpEstimation?.estimatedFTP;
 
   useEffect(() => {
     const loadPowerData = async () => {
@@ -55,6 +59,30 @@ export default function PowerAnalysisTab({ athleteId, athlete }: PowerAnalysisTa
       try {
         // Recupera dati di potenza reali
         const powerResult = await getAthletePowerData(athleteId, selectedPeriod);
+        
+        // Se non c'è FTP nell'atleta, prova a stimarlo dalle attività
+        if (!athlete.current_ftp) {
+          try {
+            // Importa la funzione di stima FTP
+            const { estimateFTPFromActivities } = await import('@/lib/ftpEstimation');
+            
+            // Simula le attività usando i dati dalla power curve che abbiamo già
+            if (powerResult.activities && powerResult.activities.length > 0) {
+              const estimation = await estimateFTPFromActivities(
+                powerResult.activities as any[], 
+                null, 
+                2 // minActivities ridotto per PowerAnalysisTab
+              );
+              
+              if (estimation) {
+                setFtpEstimation(estimation);
+                console.log(`[PowerAnalysisTab] FTP stimato: ${estimation.estimatedFTP}W (${estimation.method})`);
+              }
+            }
+          } catch (ftpError) {
+            console.warn('[PowerAnalysisTab] Errore nella stima FTP:', ftpError);
+          }
+        }
         
         if (powerResult.error) {
           setError(powerResult.error);
@@ -72,7 +100,7 @@ export default function PowerAnalysisTab({ athleteId, athlete }: PowerAnalysisTa
         }
 
         // Calcola distribuzione potenza dall'ultima attività
-        const distributionResult = await calculatePowerDistribution(athleteId, undefined, currentFTP);
+        const distributionResult = await calculatePowerDistribution(athleteId, undefined, effectiveFTP);
         
         if (distributionResult.error) {
           console.warn('Errore calcolo distribuzione:', distributionResult.error);
@@ -89,7 +117,7 @@ export default function PowerAnalysisTab({ athleteId, athlete }: PowerAnalysisTa
     };
 
     loadPowerData();
-  }, [athleteId, selectedPeriod, currentFTP]);
+  }, [athleteId, selectedPeriod, effectiveFTP]);
 
   const handleRefresh = async () => {
     setIsLoading(true);
@@ -381,6 +409,36 @@ export default function PowerAnalysisTab({ athleteId, athlete }: PowerAnalysisTa
         </Alert>
       )}
 
+      {/* Alert per FTP stimato */}
+      {isUsingEstimatedFTP && ftpEstimation && (
+        <Alert className="border-amber-200 bg-amber-50 dark:bg-amber-900/20">
+          <AlertCircle className="h-4 w-4 text-amber-600" />
+          <AlertDescription className="text-amber-800 dark:text-amber-200">
+            <div className="flex items-center justify-between">
+              <span>
+                Zone calcolate su FTP stimato <strong>{ftpEstimation.estimatedFTP}W</strong> dalle tue attività. 
+                <br />
+                <span className="text-sm opacity-75">
+                  Metodo: {ftpEstimation.method === 'TWENTY_MINUTE_TEST' ? 'Test 20min' : 
+                          ftpEstimation.method === 'CRITICAL_POWER' ? 'Critical Power' : 
+                          ftpEstimation.method} • Confidenza: {Math.round(ftpEstimation.confidence * 100)}%
+                </span>
+              </span>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="ml-4"
+                onClick={() => {
+                  window.open(`/athletes/${athleteId}/edit`, '_blank');
+                }}
+              >
+                Conferma nel Profilo
+              </Button>
+            </div>
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* FTP Info */}
       <Card>
         <CardContent className="p-4">
@@ -391,13 +449,13 @@ export default function PowerAnalysisTab({ athleteId, athlete }: PowerAnalysisTa
               </div>
               <div>
                 <p className="text-sm text-gray-600 dark:text-gray-400">FTP Attuale</p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">{currentFTP} W</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">{effectiveFTP} W</p>
               </div>
             </div>
             <div className="text-right">
               <p className="text-sm text-gray-600 dark:text-gray-400">W/kg</p>
               <p className="text-lg font-semibold text-gray-900 dark:text-white">
-                {athlete.weight_kg ? (currentFTP / athlete.weight_kg).toFixed(1) : '-'}
+                                  {athlete.weight_kg ? (effectiveFTP / athlete.weight_kg).toFixed(1) : '-'}
               </p>
             </div>
           </div>
@@ -452,7 +510,7 @@ export default function PowerAnalysisTab({ athleteId, athlete }: PowerAnalysisTa
                       const wPerKg = data.current && athlete.weight_kg 
                         ? (data.current / athlete.weight_kg).toFixed(1) 
                         : null;
-                      const ftpPercent = data.current ? Math.round((data.current / currentFTP) * 100) : null;
+                      const ftpPercent = data.current ? Math.round((data.current / effectiveFTP) * 100) : null;
 
                       return (
                         <tr key={index} className="border-b hover:bg-gray-50 dark:hover:bg-gray-800">
@@ -545,7 +603,7 @@ export default function PowerAnalysisTab({ athleteId, athlete }: PowerAnalysisTa
                 <CardHeader>
                   <CardTitle>Zone di Potenza</CardTitle>
                   <p className="text-sm text-gray-600 dark:text-gray-400">
-                    Basato su FTP di {currentFTP}W
+                    Basato su FTP di {effectiveFTP}W
                   </p>
                 </CardHeader>
                 <CardContent className="p-6">

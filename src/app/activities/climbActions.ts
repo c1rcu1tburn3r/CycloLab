@@ -147,7 +147,7 @@ export async function detectAndSaveClimbs(
       max_power_watts: climb.maxPower ? Math.round(climb.maxPower) : null,
       avg_heart_rate: climb.avgHeartRate ? Math.round(climb.avgHeartRate) : null,
       max_heart_rate: climb.maxHeartRate ? Math.round(climb.maxHeartRate) : null,
-      avg_cadence: climb.avgCadence ? Number(climb.avgCadence.toFixed(1)) : null,
+      avg_cadence: climb.avgCadence ? Math.round(climb.avgCadence) : null,
       vam_meters_per_hour: Math.round(climb.vam),
       climb_score: Math.round(climb.climbScore),
       category: climb.category,
@@ -181,7 +181,7 @@ export async function detectAndSaveClimbs(
         avg_power_watts: originalClimb.avgPower ? Math.round(originalClimb.avgPower) : null,
         avg_heart_rate: originalClimb.avgHeartRate ? Math.round(originalClimb.avgHeartRate) : null,
         max_heart_rate: originalClimb.maxHeartRate ? Math.round(originalClimb.maxHeartRate) : null,
-        avg_cadence: originalClimb.avgCadence ? Number(originalClimb.avgCadence.toFixed(1)) : null,
+        avg_cadence: originalClimb.avgCadence ? Math.round(originalClimb.avgCadence) : null,
         vam_meters_per_hour: Math.round(originalClimb.vam),
         is_personal_best: true
       };

@@ -136,9 +136,9 @@ export function ModernSidebar({ user }: SidebarProps) {
       }`}>
         <div className="flex flex-col h-full">
           {/* Header */}
-          <div className="flex items-center justify-between p-4 border-b border-gray-200/50 dark:border-gray-700/50">
+          <div className="flex items-center justify-between px-4 h-[64px] border-b border-gray-200/50 dark:border-gray-700/50">
             {!collapsed && (
-              <div className={`flex items-center space-x-3 ${spacing.bottom.md} overflow-hidden`}>
+              <div className={`flex items-center space-x-3 overflow-hidden min-h-[32px] mt-[12px]`}>
                 <div className={`w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center`}>
                   <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
@@ -298,4 +298,4 @@ export function ModernSidebar({ user }: SidebarProps) {
       <div className={`flex-shrink-0 transition-all duration-300 ${collapsed ? 'w-16' : 'w-64'}`} />
     </>
   );
-} 
+}

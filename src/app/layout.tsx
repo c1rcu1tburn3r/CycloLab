@@ -51,7 +51,7 @@ export default async function RootLayout({
   const { data: { user } } = await supabase.auth.getUser();
 
   return (
-    <html lang="it" className="h-full">
+    <html lang="it" suppressHydrationWarning>
       <body className={`${inter.className} h-full`}>
         <ThemeProvider>
           <div className="flex h-full bg-gray-50 dark:bg-gray-900">
@@ -63,45 +63,43 @@ export default async function RootLayout({
                 {/* Area principale con header e contenuto */}
                 <div className="flex-1 flex flex-col overflow-hidden">
                   {/* Header moderno con glassmorphism */}
-                  <header className="relative bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border-b border-gray-200/50 dark:border-gray-700/50 shadow-lg z-30">
-                    <div className="px-6 py-4">
-                      <div className="flex items-center justify-between">
-                        {/* Breadcrumb / Page Title */}
-                        <div className="flex items-center space-x-4">
-                          <div className="hidden md:block">
-                            <nav className="flex items-center space-x-2 text-sm">
-                              <Link 
-                                href="/athletes" 
-                                className="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
-                              >
-                                CycloLab
-                              </Link>
-                              <span className="text-gray-500 dark:text-gray-400">/</span>
-                              <span className="font-medium text-gray-900 dark:text-white">Panoramica</span>
-                            </nav>
-                          </div>
+                  <header className="relative bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border-b border-gray-200/50 dark:border-gray-700/50 shadow-lg z-30 h-[64px]">
+                    <div className="flex items-center justify-between h-full px-6">
+                      {/* Breadcrumb / Page Title */}
+                      <div className="flex items-center space-x-4">
+                        <div className="hidden md:block">
+                          <nav className="flex items-center space-x-2 text-sm">
+                            <Link 
+                              href="/athletes" 
+                              className="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
+                            >
+                              CycloLab
+                            </Link>
+                            <span className="text-gray-500 dark:text-gray-400">/</span>
+                            <span className="font-medium text-gray-900 dark:text-white">Panoramica</span>
+                          </nav>
                         </div>
+                      </div>
 
-                        {/* Header Actions */}
-                        <div className="flex items-center space-x-4">
-                          <GlobalSearch />
-                          <button className="relative p-2 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white rounded-xl hover:bg-gray-100/50 dark:hover:bg-gray-800/50 transition-all">
-                            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-3.5-3.5a1.5 1.5 0 010-2.12l.7-.7a1 1 0 00.3-.7V6a6 6 0 10-12 0v4.58a1 1 0 00.3.7l.7.7a1.5 1.5 0 010 2.12L3 17h5m4 0v1a3 3 0 11-6 0v-1m6 0H9" />
-                            </svg>
-                            <span className="absolute top-1 right-1 h-2 w-2 bg-blue-500 rounded-full"></span>
-                          </button>
-                          <ThemeToggle />
-                          <div className="flex items-center space-x-3">
-                            <div className="hidden sm:block text-right">
-                              <p className="text-sm font-medium text-gray-900 dark:text-white">
-                                {user.user_metadata?.full_name || user.email?.split('@')[0]}
-                              </p>
-                              <p className="text-xs text-gray-500 dark:text-gray-400">Coach</p>
-                            </div>
-                            <div className="h-8 w-8 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-sm font-semibold">
-                              {(user.user_metadata?.full_name || user.email || 'U')[0].toUpperCase()}
-                            </div>
+                      {/* Header Actions */}
+                      <div className="flex items-center space-x-4">
+                        <GlobalSearch />
+                        <button className="relative p-2 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white rounded-xl hover:bg-gray-100/50 dark:hover:bg-gray-800/50 transition-all">
+                          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-3.5-3.5a1.5 1.5 0 010-2.12l.7-.7a1 1 0 00.3-.7V6a6 6 0 10-12 0v4.58a1 1 0 00.3.7l.7.7a1.5 1.5 0 010 2.12L3 17h5m4 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                          </svg>
+                          <span className="absolute top-1 right-1 h-2 w-2 bg-blue-500 rounded-full"></span>
+                        </button>
+                        <ThemeToggle />
+                        <div className="flex items-center space-x-3">
+                          <div className="hidden sm:block text-right">
+                            <p className="text-sm font-medium text-gray-900 dark:text-white">
+                              {user.user_metadata?.full_name || user.email?.split('@')[0]}
+                            </p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">Coach</p>
+                          </div>
+                          <div className="h-8 w-8 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-sm font-semibold">
+                            {(user.user_metadata?.full_name || user.email || 'U')[0].toUpperCase()}
                           </div>
                         </div>
                       </div>
@@ -158,7 +156,7 @@ export default async function RootLayout({
                         </Link>
                         <Link
                           href="/auth/signup"
-                          className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
+                          className="inline-flex items-center px-6 py-3 text-sm font-medium text-white bg-gradient-to-r from-emerald-500 to-blue-600 hover:from-emerald-600 hover:to-blue-700 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
                         >
                           Inizia Gratis
                         </Link>

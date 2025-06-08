@@ -19,11 +19,13 @@ import { useFilterPreferences } from '@/hooks/useFilterPreferences';
 import ExportControls from '@/components/ExportControls';
 import { useRouter } from 'next/navigation';
 import { MetricCard, getGridClasses } from '@/components/design-system';
+import EmptyStateCard from '@/components/ui/EmptyStateCard';
 
 interface ActivitiesClientManagerProps {
   initialActivities: Activity[];
   coachAthletes: Athlete[];
   currentUserId: string; // Necessario per DeleteActivityButton per costruire fitFilePath
+  coachName: string;
 }
 
 // Funzioni helper (considera di spostarle in un file utils se usate altrove)
@@ -100,7 +102,7 @@ const getActivityIcon = (type: string | null | undefined) => {
   };
 
 
-export default function ActivitiesClientManager({ initialActivities, coachAthletes, currentUserId }: ActivitiesClientManagerProps) {
+export default function ActivitiesClientManager({ initialActivities, coachAthletes, currentUserId, coachName }: ActivitiesClientManagerProps) {
   // Hook per gestire le preferenze filtri
   const {
     preferences,
@@ -134,6 +136,20 @@ export default function ActivitiesClientManager({ initialActivities, coachAthlet
   // Stato per la paginazione
   const [currentPage, setCurrentPage] = useState(1);
   const ACTIVITIES_PER_PAGE = 12;
+
+  // Callback per rimuovere un'attività dalla lista dopo l'eliminazione
+  const handleActivityDeleted = (deletedActivityId: string) => {
+    // Rimuovi l'attività dalla lista locale
+    const updatedActivities = initialActivities.filter(activity => activity.id !== deletedActivityId);
+    // Aggiorna anche la selezione se era selezionata
+    setSelectedActivities(prev => {
+      const newSet = new Set(prev);
+      newSet.delete(deletedActivityId);
+      return newSet;
+    });
+    // Ricarica la pagina per aggiornare i dati
+    window.location.reload();
+  };
 
   // NUOVO: Filtro sensori semplice con dropdown
   const [sensorFilter, setSensorFilter] = useState<'all' | 'power' | 'heartrate' | 'cadence' | 'complete'>('all');
@@ -377,19 +393,13 @@ export default function ActivitiesClientManager({ initialActivities, coachAthlet
     return athlete ? `${athlete.name} ${athlete.surname}` : null;
   }, [selectedAthleteId, coachAthletes]);
 
-  // Debug per verificare che il componente funzioni
-  useEffect(() => {
-    console.log('DEBUG - ActivitiesClientManager rendered');
-    console.log('DEBUG - filteredActivities.length:', filteredActivities.length);
-    console.log('DEBUG - isComparisonMode:', isComparisonMode);
-  }, [filteredActivities.length, isComparisonMode]);
+
 
   return (
     <div className="min-h-screen">
       {/* Header copiato da page.tsx, adattato per usare i dati filtrati */}
       <div className="mb-8">
-        <div className="relative overflow-hidden rounded-3xl bg-white/70 dark:bg-gray-800/70 backdrop-blur-xl border border-gray-200/50 dark:border-gray-700/50 p-8 shadow-2xl">
-          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500 via-blue-500 to-purple-500 rounded-t-3xl" />
+        <div className="relative overflow-hidden rounded-3xl bg-white/70 dark:bg-gray-800/70 backdrop-blur-xl border border-gray-200/50 dark:border-gray-700/50 border-t-2 border-t-blue-500 dark:border-t-blue-400 p-8 shadow-2xl">
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
             <div className="flex items-center gap-6">
               <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-emerald-500 to-blue-600 flex items-center justify-center text-white shadow-lg">
@@ -397,11 +407,11 @@ export default function ActivitiesClientManager({ initialActivities, coachAthlet
               </div>
               <div>
                 <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-                  {selectedAthleteName ? `Attività di ${selectedAthleteName}` : 'Tutte le Attività'}
+                  {selectedAthleteName ? `Attività di ${selectedAthleteName}` : 'Activity Hub'}
                 </h1>
                 <p className="text-gray-600 dark:text-gray-300 flex items-center gap-2">
                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
-                   Activity Hub
+                   Tutte le Attività
                 </p>
               </div>
             </div>
@@ -422,7 +432,7 @@ export default function ActivitiesClientManager({ initialActivities, coachAthlet
       </div>
 
       {/* Filtri */}
-      <Card className="mb-6 p-4">
+      <Card className="mb-6 p-4 border-t-2 border-t-blue-500 dark:border-t-blue-400 relative overflow-hidden">
         {/* Prima riga - Filtri principali */}
         <div className="flex flex-wrap items-end gap-3 mb-4">
           {/* Atleta */}
@@ -684,11 +694,28 @@ export default function ActivitiesClientManager({ initialActivities, coachAthlet
 
       {/* Elenco Attività con Preview Cards */}
       {filteredActivities.length === 0 ? (
-         <Card className="text-center py-16">
-           <svg className="w-20 h-20 text-gray-300 dark:text-gray-600 mx-auto mb-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
-           <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">Nessuna attività trovata</h3>
-           <p className="text-gray-600 dark:text-gray-300 mb-8 max-w-md mx-auto">Prova a modificare i filtri o carica nuove attività.</p>
-         </Card>
+        <EmptyStateCard
+          variant={initialActivities.length === 0 ? 'activities' : 'search'}
+          icon={
+            initialActivities.length === 0 ? (
+              <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+            ) : (
+              <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            )
+          }
+          title={initialActivities.length === 0 ? `Ciao, ${coachName}!` : 'Nessun Risultato'}
+          description={
+            initialActivities.length === 0 
+              ? 'Il tuo Hub di analisi è pronto... qui potrai caricare le attività dei tuoi atleti e guidarli al successo!'
+              : 'I filtri applicati non hanno prodotto risultati. Prova a modificare i criteri di ricerca o a resettare i filtri per vedere tutte le attività disponibili.'
+          }
+          actionLabel={initialActivities.length === 0 ? 'Carica Prima Attività' : undefined}
+          actionHref={initialActivities.length === 0 ? '/activities/upload' : undefined}
+        />
       ) : (
         <>
           {/* Grid delle attività - sempre 4 colonne su schermi grandi */}
@@ -709,6 +736,8 @@ export default function ActivitiesClientManager({ initialActivities, coachAthlet
                   onToggleSelection={() => toggleActivitySelection(activity.id)}
                   canSelect={!selectedActivities.has(activity.id) && selectedActivities.size < 2}
                   athleteName={athleteName}
+                  onActivityDeleted={() => handleActivityDeleted(activity.id)}
+                  showDeleteButton={true}
                 />
               );
             })}
